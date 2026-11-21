@@ -1,10 +1,10 @@
 # Velai Desktop 旗舰原生插件套件 (`velai-desktop-plugins`)
 
-本仓库包含 **10 个高颜值、多视图、深业务闭环的 Velai Desktop 旗舰级工作台插件**（涵盖长篇小说开发 IDE、股票 AI 投研与量化终端、产品需求与路线图、学术科研综述、CRM 销售管道、智能财务 CFO、间隔重复知识图谱、系统架构与 API 契约、全渠道内容工厂、安全审计与故障复盘作战室）。
+本仓库包含 **11 个高颜值、多视图、深业务闭环的 Velai Desktop 旗舰级工作台插件**（涵盖长篇小说开发 IDE、股票 AI 投研与量化终端、个人会话与用量统计大屏、产品需求与路线图、学术科研综述、CRM 销售管道、智能财务 CFO、间隔重复知识图谱、系统架构与 API 契约、全渠道内容工厂、安全审计与故障复盘作战室）。
 
 每个插件均为自包含 `.nmas-plugin` 单文件归档，内置**纯原生高精 SVG 可视化图表**（零外部 CDN/三方库）、**明暗双色主题切换**、**一键加载行业演示工作区**、**CAS 乐观锁持久化**、**原生文档导出/导入**，并深度集成 Velai **Agent Tools** 与 **会话 AI 副驾 (`session.turn.*`)**。
 
-## 10 个旗舰专业系统插件
+## 11 个旗舰专业系统插件
 
 | # | 插件 ID | 系统名称 | 作用域 & 展示面 | Agent Tools | 核心专业模块与可视化亮点 |
 |---|---|---|---|---|---|
@@ -18,8 +18,9 @@
 | 8 | `api-arch-studio` | **系统架构与 API 契约设计台** | `project` · `workspace/chat` | `arch.topology`, `arch.endpoint.upsert` | 微服务架构拓扑 SVG 画布 + **Tarjan SCC 循环依赖检测**与扇入/扇出耦合度分析、API 契约管理、实时编译输出 **OpenAPI 3.0.3 JSON & TypeScript Interface** |
 | 9 | `content-growth-os` | **全渠道内容工厂与增长运营台** | `account` · `workspace/chat/assistant` | `content.pipeline`, `content.draft.save` | 多平台阅读/互动双轴趋势图 + 六渠道流量分布 SVG、选题排期四列看板、5 维度爆款标题诊断仪、AI 一稿多改矩阵（小红书/X Thread/知乎/短视频脚本） |
 | 10 | `code-audit-warroom` | **安全审计与故障复盘作战室 (COE)** | `project` · `workspace/chat` | `audit.summary`, `audit.finding.add` | SVG 5×5 风险热力矩阵 + 五维安全雷达图、分级漏洞台账、SEV 故障时间线与 **5-Whys 根因分析树**、整改行动项闭环与一键生成 Markdown 复盘报告 |
+| 11 | `usage-analytics-hub` | **个人会话与用量统计大屏** | `account` · `workspace/chat/assistant` | `usage.dashboard.summary`, `usage.session.record`, `usage.budget.status` | 7d/30d/全部时间窗切换；5 项发光 KPI + **SVG Token/缓存/费用双轴趋势图**、**24h 活跃高峰分布图**、**模型环形图**与场景条形图；模型性价比 ROI 表、预算预警、一键请当前会话/助手整理近期会话并批量导入大屏 |
 
-> 全部 10 个旗舰系统合计提供 **24 个 Agent Tools**（低于 Velai Desktop 单账号 32 个工具上限），支持全部同时启用。
+> 全部 11 个旗舰系统合计提供 **27 个 Agent Tools**（低于 Velai Desktop 单账号 32 个工具上限），支持全部同时启用。
 
 ## 安装与使用
 

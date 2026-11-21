@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "repository": "xunzhimeng/velai-desktop-plugins",
-  "total_plugins": 10,
-  "total_tools": 24,
+  "total_plugins": 11,
+  "total_tools": 27,
   "plugins": [
     {
       "dir": "01-novel-studio",
@@ -506,6 +506,58 @@
         {
           "id": "audit.finding.add",
           "title": "登记新的安全审计发现"
+        }
+      ],
+      "http": []
+    },
+    {
+      "dir": "11-usage-analytics-hub",
+      "plugin_id": "usage-analytics-hub",
+      "name": "个人会话与用量统计大屏",
+      "version": "1.0.0",
+      "file": "dist/usage-analytics-hub.nmas-plugin",
+      "bytes": 91476,
+      "file_sha256": "2714810a64d5021a957228b8b218c09218f72f3df64ba4854f94ce4cac7f1328",
+      "package_digest": "ca48e9f252d01d8a6eace298a66ac46abb45d3e325a476c8b6b792f753ca5b2e",
+      "icon": "table",
+      "surfaces": [
+        "workspace",
+        "chat",
+        "assistant"
+      ],
+      "permissions": [
+        "data.read",
+        "data.write",
+        "tasks.start",
+        "tasks.read",
+        "tasks.cancel"
+      ],
+      "data_scope": "account",
+      "actions": [
+        "usage.dashboard",
+        "usage.session.save",
+        "usage.session.batch_ingest",
+        "usage.session.delete",
+        "usage.config.save",
+        "usage.seed_demo",
+        "session.turn.request",
+        "session.turn.result",
+        "document.list",
+        "document.export",
+        "document.import"
+      ],
+      "tools": [
+        {
+          "id": "usage.dashboard.summary",
+          "title": "读取个人 AI 使用量与效率统计"
+        },
+        {
+          "id": "usage.session.record",
+          "title": "归档一条近期会话与用量记录"
+        },
+        {
+          "id": "usage.budget.status",
+          "title": "检查个人月度 AI 预算与限额状态"
         }
       ],
       "http": []
