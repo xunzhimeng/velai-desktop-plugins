@@ -2,18 +2,18 @@
   "schema_version": 1,
   "repository": "xunzhimeng/velai-desktop-plugins",
   "total_plugins": 10,
-  "total_tools": 12,
+  "total_tools": 24,
   "plugins": [
     {
-      "dir": "01-prompt-vault",
-      "plugin_id": "prompt-vault",
-      "name": "提示词模板库",
+      "dir": "01-novel-studio",
+      "plugin_id": "novel-studio",
+      "name": "AI 长篇小说开发系统",
       "version": "1.0.0",
-      "file": "dist/prompt-vault.nmas-plugin",
-      "bytes": 29430,
-      "file_sha256": "0c477be7c9a9e214fb056ab81c00b1100e401529d4d4fb23ad7f6dcfe4c64c3a",
-      "package_digest": "8361b6a8c6f214ea841cc2bc7a8c83b1aa84db13a96fe17d17a528396936e69c",
-      "icon": "text",
+      "file": "dist/novel-studio.nmas-plugin",
+      "bytes": 97227,
+      "file_sha256": "a2a459391cb2ab707a1e8625c421ec16c6c1861f48c42243cf2a42e61383410e",
+      "package_digest": "e2e12e66c820742386fe2a5ecd3afc5cbe8ea32b8fa0b8dbed424d16d732958d",
+      "icon": "edit",
       "surfaces": [
         "workspace",
         "chat",
@@ -21,39 +21,106 @@
       ],
       "permissions": [
         "data.read",
-        "data.write"
+        "data.write",
+        "tasks.start",
+        "tasks.read",
+        "tasks.cancel"
       ],
       "data_scope": "account",
       "actions": [
-        "vault.list",
-        "vault.save",
-        "vault.delete",
-        "vault.render",
+        "novel.bootstrap",
+        "novel.book.save",
+        "novel.chapter.get",
+        "novel.chapter.save",
+        "novel.chapter.delete",
+        "novel.world.save",
+        "novel.plot.save",
+        "novel.seed_demo",
+        "session.turn.request",
+        "session.turn.result",
         "document.list",
         "document.export",
         "document.import"
       ],
       "tools": [
         {
-          "id": "prompt.list",
-          "title": "查询提示词模板"
+          "id": "novel.outline",
+          "title": "读取小说全书大纲与伏笔"
         },
         {
-          "id": "prompt.render",
-          "title": "渲染提示词模板"
+          "id": "novel.chapter.read",
+          "title": "读取指定小说章节正文"
+        },
+        {
+          "id": "novel.bible.upsert",
+          "title": "写入人物或世界观设定"
         }
       ],
       "http": []
     },
     {
-      "dir": "02-project-checklist",
-      "plugin_id": "project-checklist",
-      "name": "项目任务清单",
+      "dir": "02-stock-ai-terminal",
+      "plugin_id": "stock-ai-terminal",
+      "name": "股票 AI 投研与量化终端",
       "version": "1.0.0",
-      "file": "dist/project-checklist.nmas-plugin",
-      "bytes": 24273,
-      "file_sha256": "e0a554472ae972c77fef8b689107453d42fbb19104d13553101ab1f1e441cf4c",
-      "package_digest": "790e834772d713f33cb83d723397583632bb08e584b95c0002641a7f2d32be26",
+      "file": "dist/stock-ai-terminal.nmas-plugin",
+      "bytes": 88400,
+      "file_sha256": "57ab4cefb7d9a51a301f6a02904dffafe678f21faaf7e120e8e01b6a924d733e",
+      "package_digest": "b9c156ff15327aee6d82ebd7f45370694afd8508f07a20c1bd98a98406fd4382",
+      "icon": "table",
+      "surfaces": [
+        "workspace",
+        "chat",
+        "assistant"
+      ],
+      "permissions": [
+        "data.read",
+        "data.write",
+        "tasks.start",
+        "tasks.read",
+        "tasks.cancel"
+      ],
+      "data_scope": "account",
+      "actions": [
+        "stock.bootstrap",
+        "stock.kline.get",
+        "stock.backtest",
+        "stock.dcf",
+        "stock.watchlist.upsert",
+        "stock.portfolio.save",
+        "stock.note.save",
+        "stock.seed_demo",
+        "session.turn.request",
+        "session.turn.result",
+        "document.list",
+        "document.export",
+        "document.import"
+      ],
+      "tools": [
+        {
+          "id": "stock.portfolio",
+          "title": "读取股票持仓与风控总览"
+        },
+        {
+          "id": "stock.analyze",
+          "title": "分析单只股票技术与基本面因子"
+        },
+        {
+          "id": "stock.note.add",
+          "title": "记录股票 AI 投研评级与逻辑"
+        }
+      ],
+      "http": []
+    },
+    {
+      "dir": "03-product-studio",
+      "plugin_id": "product-studio",
+      "name": "产品需求与路线图设计台",
+      "version": "1.0.0",
+      "file": "dist/product-studio.nmas-plugin",
+      "bytes": 119593,
+      "file_sha256": "59162b523bee9362d12c2130fadc743b907baf1e884ab84c622b74492855c3af",
+      "package_digest": "708053b3380339e8f56ec853f0d2ce5af0cc30f6f08aeb534850f7813c7cb6bd",
       "icon": "table",
       "surfaces": [
         "workspace",
@@ -65,74 +132,39 @@
       ],
       "data_scope": "project",
       "actions": [
-        "tasks.list",
-        "tasks.upsert",
-        "tasks.remove",
+        "studio.load",
+        "req.save",
+        "req.delete",
+        "roadmap.save",
+        "spec.get",
+        "spec.save",
+        "studio.seed_demo",
         "document.list",
         "document.export",
         "document.import"
       ],
       "tools": [
         {
-          "id": "checklist.list",
-          "title": "查询当前项目任务清单"
+          "id": "prd.list",
+          "title": "查询项目产品需求与 RICE 评分"
         },
         {
-          "id": "checklist.add",
-          "title": "登记项目待办任务"
+          "id": "prd.create",
+          "title": "新增带 RICE 评分的产品需求"
         }
       ],
       "http": []
     },
     {
-      "dir": "03-decision-log",
-      "plugin_id": "decision-log",
-      "name": "项目决策记录 (ADR)",
+      "dir": "04-research-lab",
+      "plugin_id": "research-lab",
+      "name": "AI 学术科研与文献综述工作台",
       "version": "1.0.0",
-      "file": "dist/decision-log.nmas-plugin",
-      "bytes": 22711,
-      "file_sha256": "eebdcc2570a1d130ff0d2669b976b5ccd4091011c2936aa5ee1cf7323c049627",
-      "package_digest": "ff6f5529e57e2ee6143bf8bcb652f6e67e5036d3803333af9b04a4bfd2312a39",
-      "icon": "edit",
-      "surfaces": [
-        "workspace",
-        "chat"
-      ],
-      "permissions": [
-        "data.read",
-        "data.write"
-      ],
-      "data_scope": "project",
-      "actions": [
-        "adr.list",
-        "adr.save",
-        "adr.delete",
-        "document.list",
-        "document.export",
-        "document.import"
-      ],
-      "tools": [
-        {
-          "id": "decision.list",
-          "title": "查询项目架构决策"
-        },
-        {
-          "id": "decision.record",
-          "title": "新增项目架构决策"
-        }
-      ],
-      "http": []
-    },
-    {
-      "dir": "04-snippet-box",
-      "plugin_id": "snippet-box",
-      "name": "常用片段剪贴箱",
-      "version": "1.0.0",
-      "file": "dist/snippet-box.nmas-plugin",
-      "bytes": 17487,
-      "file_sha256": "b3c0eb3e7e52be1e991e1c44f25f01e509bb877ddde72f4d1b3782df1d14eede",
-      "package_digest": "241fa059a841f0b6fe793c54b355e643b9deb7e057669b44d23c7afe0bfcf2f6",
-      "icon": "app",
+      "file": "dist/research-lab.nmas-plugin",
+      "bytes": 117330,
+      "file_sha256": "a4350a8b6a4ee236391603b951b2a8f19aba672707cd6b828e199105b543a97b",
+      "package_digest": "716b8a49b8e23e67225b15ede6e39e50eeb457fc75da38017d24c2fabf8e5d26",
+      "icon": "text",
       "surfaces": [
         "workspace",
         "chat",
@@ -140,31 +172,52 @@
       ],
       "permissions": [
         "data.read",
-        "data.write"
+        "data.write",
+        "tasks.start",
+        "tasks.read",
+        "tasks.cancel"
       ],
       "data_scope": "account",
       "actions": [
-        "snippet.list",
-        "snippet.save",
-        "snippet.delete"
+        "lab.load",
+        "paper.save",
+        "paper.delete",
+        "matrix.save",
+        "note.get",
+        "note.save",
+        "note.delete",
+        "lab.seed_demo",
+        "session.turn.request",
+        "session.turn.result",
+        "document.list",
+        "document.export",
+        "document.import"
       ],
       "tools": [
         {
-          "id": "snippet.search",
-          "title": "检索常用片段"
+          "id": "paper.search",
+          "title": "检索学术文献库"
+        },
+        {
+          "id": "paper.read",
+          "title": "精读单篇论文详情与引用链"
+        },
+        {
+          "id": "paper.add",
+          "title": "收录新论文到文献库"
         }
       ],
       "http": []
     },
     {
-      "dir": "05-meeting-minutes",
-      "plugin_id": "meeting-minutes",
-      "name": "会议纪要工作台",
+      "dir": "05-crm-sales-os",
+      "plugin_id": "crm-sales-os",
+      "name": "AI 智能客户与商机管理系统",
       "version": "1.0.0",
-      "file": "dist/meeting-minutes.nmas-plugin",
-      "bytes": 21498,
-      "file_sha256": "917062865f02257b4204572132250112ae5c68f2c66d4b4e89242d1da303e2da",
-      "package_digest": "4154ddb9ef35e92908b7947b9dd498300c3dc7c02338eeabeb0000249afc6abe",
+      "file": "dist/crm-sales-os.nmas-plugin",
+      "bytes": 120566,
+      "file_sha256": "a8936e807e072ae3e88413a135559d425defc5bbf49934cae8f1afa686bd6211",
+      "package_digest": "9e3115bd8545066be320e4684cd1274bc8bb22c837a3025074b69293814a0458",
       "icon": "chat",
       "surfaces": [
         "workspace",
@@ -180,30 +233,148 @@
       ],
       "data_scope": "account",
       "actions": [
-        "minutes.read",
-        "minutes.save",
-        "minutes.delete",
+        "crm.snapshot",
+        "crm.account.save",
+        "crm.account.delete",
+        "crm.deal.save",
+        "crm.deal.stage",
+        "crm.deal.delete",
+        "crm.activity.save",
+        "crm.activity.delete",
+        "crm.demo.seed",
+        "document.list",
+        "document.export",
+        "document.import",
         "session.turn.request",
         "session.turn.result"
       ],
       "tools": [
         {
-          "id": "minutes.list",
-          "title": "查询历史会议纪要"
+          "id": "crm.pipeline",
+          "title": "查询销售漏斗与加权营收"
+        },
+        {
+          "id": "crm.account.get",
+          "title": "按名称查询客户 360° 档案"
+        },
+        {
+          "id": "crm.activity.log",
+          "title": "记录客户互动跟进"
         }
       ],
       "http": []
     },
     {
-      "dir": "06-glossary-hub",
-      "plugin_id": "glossary-hub",
-      "name": "项目术语表",
+      "dir": "06-finance-wealth-os",
+      "plugin_id": "finance-wealth-os",
+      "name": "智能财务与资产配置 CFO 系统",
       "version": "1.0.0",
-      "file": "dist/glossary-hub.nmas-plugin",
-      "bytes": 20536,
-      "file_sha256": "6b7d18d7c962073e4a3f8e094a7b41952fda13bd80caab97a2cc076755fc59d9",
-      "package_digest": "f81f8f35c36dac61f613be7e29f036d404eba952d4daa5a70b15201d99a4a871",
+      "file": "dist/finance-wealth-os.nmas-plugin",
+      "bytes": 123991,
+      "file_sha256": "0a21e7c6e38d63534a7c625be9c7213a052e5d4b47eed7ccccaf898f46058a7d",
+      "package_digest": "d7eb5a4fdb0cd8349e88bb961589164ba30c66afa9d540405e71fd58225daf46",
+      "icon": "table",
+      "surfaces": [
+        "workspace",
+        "chat",
+        "assistant"
+      ],
+      "permissions": [
+        "data.read",
+        "data.write",
+        "tasks.start",
+        "tasks.read",
+        "tasks.cancel"
+      ],
+      "data_scope": "account",
+      "actions": [
+        "finance.snapshot",
+        "finance.account.save",
+        "finance.account.delete",
+        "finance.tx.save",
+        "finance.tx.delete",
+        "finance.goal.save",
+        "finance.goal.delete",
+        "finance.cfo.memo",
+        "finance.simulate",
+        "finance.demo.seed",
+        "document.list",
+        "document.export",
+        "document.import",
+        "session.turn.request",
+        "session.turn.result"
+      ],
+      "tools": [
+        {
+          "id": "finance.summary",
+          "title": "获取财务总览与超支预警"
+        },
+        {
+          "id": "finance.tx.add",
+          "title": "快速记一笔收入或支出流水"
+        }
+      ],
+      "http": []
+    },
+    {
+      "dir": "07-course-knowledge-os",
+      "plugin_id": "course-knowledge-os",
+      "name": "AI 知识图谱与间隔重复学习系统",
+      "version": "1.0.0",
+      "file": "dist/course-knowledge-os.nmas-plugin",
+      "bytes": 112159,
+      "file_sha256": "d779c0c38ca5fe2c4ee4aa81952e42fe61929200ab2a3562735bbbea89cdbea3",
+      "package_digest": "b22f5e2b57d5fd8943fcd2d1a8331339dfb6404238378dcda921d06a473aaac8",
       "icon": "text",
+      "surfaces": [
+        "workspace",
+        "chat",
+        "assistant"
+      ],
+      "permissions": [
+        "data.read",
+        "data.write",
+        "tasks.start",
+        "tasks.read",
+        "tasks.cancel"
+      ],
+      "data_scope": "account",
+      "actions": [
+        "study.state",
+        "study.deck.save",
+        "study.deck.delete",
+        "study.card.save",
+        "study.card.delete",
+        "study.review.submit",
+        "study.demo.load",
+        "document.list",
+        "document.export",
+        "document.import",
+        "session.turn.request",
+        "session.turn.result"
+      ],
+      "tools": [
+        {
+          "id": "study.due",
+          "title": "查询今日待复习卡片与掌握率"
+        },
+        {
+          "id": "study.card.add",
+          "title": "新增双链知识闪卡"
+        }
+      ],
+      "http": []
+    },
+    {
+      "dir": "08-api-arch-studio",
+      "plugin_id": "api-arch-studio",
+      "name": "系统架构与 API 契约设计台",
+      "version": "1.0.0",
+      "file": "dist/api-arch-studio.nmas-plugin",
+      "bytes": 131555,
+      "file_sha256": "f1e4051a02c17e8411c9560fe4153cf6e2c51c2fa565ee3e89b13649fe8e6a76",
+      "package_digest": "c980fb4b38afdd8358fdba2e0422fab442f85c4cb00b11cb6743b1cc93e25d47",
+      "icon": "app",
       "surfaces": [
         "workspace",
         "chat"
@@ -214,35 +385,96 @@
       ],
       "data_scope": "project",
       "actions": [
-        "glossary.list",
-        "glossary.save",
-        "glossary.delete",
+        "arch.state",
+        "arch.service.save",
+        "arch.service.delete",
+        "arch.edge.save",
+        "arch.edge.delete",
+        "arch.endpoint.save",
+        "arch.endpoint.delete",
+        "arch.schema.save",
+        "arch.schema.delete",
+        "arch.codegen",
+        "arch.demo.load",
         "document.list",
         "document.export",
         "document.import"
       ],
       "tools": [
         {
-          "id": "glossary.lookup",
-          "title": "查询项目术语定义"
+          "id": "arch.topology",
+          "title": "读取项目服务拓扑与接口清单"
         },
         {
-          "id": "glossary.upsert",
-          "title": "登记项目术语"
+          "id": "arch.endpoint.upsert",
+          "title": "新增或更新 API 接口契约"
         }
       ],
       "http": []
     },
     {
-      "dir": "07-okr-tracker",
-      "plugin_id": "okr-tracker",
-      "name": "目标进度追踪器 (OKR)",
+      "dir": "09-content-growth-os",
+      "plugin_id": "content-growth-os",
+      "name": "全渠道内容工厂与增长运营台",
       "version": "1.0.0",
-      "file": "dist/okr-tracker.nmas-plugin",
-      "bytes": 23917,
-      "file_sha256": "410c54730a62047e54ce25273b5cd59f272a160f728c7b65e0375636cb9f77df",
-      "package_digest": "0745f4df498b59793adb4b73e32b93110b30feb8fe8c4a1a5335a9a17b8e4867",
-      "icon": "table",
+      "file": "dist/content-growth-os.nmas-plugin",
+      "bytes": 138955,
+      "file_sha256": "b2eb8cff0fcc6c1907af7bb0bb9ed80361e79288488c45dccac5b59393b00e7d",
+      "package_digest": "8a7d08b37d077e6f5557e7c0150c188cb92abd0767d599a0c752f27d5a36fadd",
+      "icon": "media",
+      "surfaces": [
+        "workspace",
+        "chat",
+        "assistant"
+      ],
+      "permissions": [
+        "data.read",
+        "data.write",
+        "tasks.start",
+        "tasks.read",
+        "tasks.cancel"
+      ],
+      "data_scope": "account",
+      "actions": [
+        "growth.dashboard",
+        "calendar.save",
+        "calendar.move",
+        "calendar.delete",
+        "draft.read",
+        "draft.save",
+        "draft.delete",
+        "draft.diagnose",
+        "draft.variant.save",
+        "metrics.record",
+        "demo.seed",
+        "document.list",
+        "document.export",
+        "document.import",
+        "session.turn.request",
+        "session.turn.result"
+      ],
+      "tools": [
+        {
+          "id": "content.pipeline",
+          "title": "查询内容排期队列与渠道数据汇总"
+        },
+        {
+          "id": "content.draft.save",
+          "title": "新建或更新选题与主稿"
+        }
+      ],
+      "http": []
+    },
+    {
+      "dir": "10-code-audit-warroom",
+      "plugin_id": "code-audit-warroom",
+      "name": "安全审计与故障复盘作战室 (COE)",
+      "version": "1.0.0",
+      "file": "dist/code-audit-warroom.nmas-plugin",
+      "bytes": 121923,
+      "file_sha256": "9eed7decc22f137078873e701c234f20a82490bdf65b77a709c68de7c3f88c8e",
+      "package_digest": "5d34afe4e651c4b2a19a0a07350b7583f76f3973aed053ff7ed8532a8df46138",
+      "icon": "edit",
       "surfaces": [
         "workspace",
         "chat"
@@ -251,110 +483,32 @@
         "data.read",
         "data.write"
       ],
-      "data_scope": "account",
+      "data_scope": "project",
       "actions": [
-        "okr.read",
-        "okr.save",
-        "okr.delete",
+        "warroom.state",
+        "finding.save",
+        "finding.delete",
+        "incident.save",
+        "incident.delete",
+        "action_item.save",
+        "action_item.delete",
+        "report.generate",
+        "demo.seed",
         "document.list",
         "document.export",
         "document.import"
       ],
       "tools": [
         {
-          "id": "okr.summary",
-          "title": "获取 OKR 进展摘要"
-        }
-      ],
-      "http": []
-    },
-    {
-      "dir": "08-reply-polisher",
-      "plugin_id": "reply-polisher",
-      "name": "回复改写与格式助手",
-      "version": "1.0.0",
-      "file": "dist/reply-polisher.nmas-plugin",
-      "bytes": 13494,
-      "file_sha256": "82ae3f5c4e8a339050fb59a221b841ada6850f8305ca34311bc3903283154339",
-      "package_digest": "0a8c90e7125e234971cf6f84823b3addb65a3239d095cfb6427ee84bd1f7c500",
-      "icon": "edit",
-      "surfaces": [
-        "workspace",
-        "chat",
-        "assistant"
-      ],
-      "permissions": [
-        "tasks.start",
-        "tasks.read",
-        "tasks.cancel"
-      ],
-      "data_scope": "none",
-      "actions": [
-        "text.transform",
-        "session.turn.request",
-        "session.turn.result"
-      ],
-      "tools": [],
-      "http": []
-    },
-    {
-      "dir": "09-json-workbench",
-      "plugin_id": "json-workbench",
-      "name": "JSON 与结构化数据工坊",
-      "version": "1.0.0",
-      "file": "dist/json-workbench.nmas-plugin",
-      "bytes": 17500,
-      "file_sha256": "1aed001bc3d585e18442e0212157c0c3e99e9b895529bb558d1de3a5f7530766",
-      "package_digest": "d29e8d596c6117240cb54d4e8501f61de8491bb9a10365713c8b01b7b892d7c7",
-      "icon": "app",
-      "surfaces": [
-        "workspace",
-        "chat",
-        "assistant"
-      ],
-      "permissions": [],
-      "data_scope": "none",
-      "actions": [
-        "json.format",
-        "json.query",
-        "json.diff"
-      ],
-      "tools": [
+          "id": "audit.summary",
+          "title": "读取项目安全健康分与高危风险摘要"
+        },
         {
-          "id": "json.analyze",
-          "title": "分析并规范化 JSON"
+          "id": "audit.finding.add",
+          "title": "登记新的安全审计发现"
         }
       ],
       "http": []
-    },
-    {
-      "dir": "10-fx-market-board",
-      "plugin_id": "fx-market-board",
-      "name": "实时汇率换算看板",
-      "version": "1.0.0",
-      "file": "dist/fx-market-board.nmas-plugin",
-      "bytes": 13923,
-      "file_sha256": "8731caf104229d67d6321c3fda647db469b5f6b0caacb3e173f7cc14654079b0",
-      "package_digest": "f1d38369fa472a3530f8d9b91746355a13cc6a731e0d59f3957690970963ec4b",
-      "icon": "table",
-      "surfaces": [
-        "workspace",
-        "chat"
-      ],
-      "permissions": [
-        "http.request"
-      ],
-      "data_scope": "none",
-      "actions": [
-        "fx.rates",
-        "fx.currencies",
-        "fx.convert"
-      ],
-      "tools": [],
-      "http": [
-        "https://api.frankfurter.dev/v1/latest",
-        "https://api.frankfurter.dev/v1/currencies"
-      ]
     }
   ]
 }

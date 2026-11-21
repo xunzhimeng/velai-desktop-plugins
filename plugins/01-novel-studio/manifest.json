@@ -1,0 +1,578 @@
+{
+  "manifest_version": 1,
+  "plugin_id": "novel-studio",
+  "name": "AI 长篇小说开发系统",
+  "version": "1.0.0",
+  "host_api": 1,
+  "backend": "backend/index.js",
+  "page": "ui/index.html",
+  "ui": {
+    "icon": "edit",
+    "surfaces": ["workspace", "chat", "assistant"]
+  },
+  "permissions": ["data.read", "data.write", "tasks.start", "tasks.read", "tasks.cancel"],
+  "actions": [
+    {
+      "id": "novel.bootstrap",
+      "title": "读取小说工作台总览",
+      "permissions": ["data.read"],
+      "input_schema": { "type": "object", "additionalProperties": false, "required": [], "properties": {} },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["revision", "book", "characters", "relations", "lore", "threads"],
+        "properties": {
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "book": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["title", "genre", "logline", "target_words", "total_words", "chapters"],
+            "properties": {
+              "title": { "type": "string", "maxLength": 100 },
+              "genre": { "type": "string", "maxLength": 40 },
+              "logline": { "type": "string", "maxLength": 400 },
+              "target_words": { "type": "integer", "minimum": 1000, "maximum": 10000000 },
+              "total_words": { "type": "integer", "minimum": 0, "maximum": 10000000 },
+              "chapters": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["id", "volume", "order", "title", "status", "tension", "pov", "word_count", "summary"],
+                  "properties": {
+                    "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                    "volume": { "type": "string", "maxLength": 60 },
+                    "order": { "type": "integer", "minimum": 1, "maximum": 9999 },
+                    "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+                    "status": { "type": "string", "enum": ["draft", "revising", "done"] },
+                    "tension": { "type": "integer", "minimum": 1, "maximum": 10 },
+                    "pov": { "type": "string", "maxLength": 40 },
+                    "word_count": { "type": "integer", "minimum": 0, "maximum": 100000 },
+                    "summary": { "type": "string", "maxLength": 240 }
+                  }
+                }
+              }
+            }
+          },
+          "characters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "name", "role", "faction", "traits", "goal", "secret"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "name": { "type": "string", "minLength": 1, "maxLength": 40 },
+                "role": { "type": "string", "enum": ["protagonist", "antagonist", "supporting", "mentor"] },
+                "faction": { "type": "string", "maxLength": 40 },
+                "traits": { "type": "string", "maxLength": 120 },
+                "goal": { "type": "string", "maxLength": 200 },
+                "secret": { "type": "string", "maxLength": 200 }
+              }
+            }
+          },
+          "relations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "from", "to", "kind", "label"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "from": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "to": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "kind": { "type": "string", "enum": ["ally", "rival", "mentor", "romance", "secret"] },
+                "label": { "type": "string", "maxLength": 40 }
+              }
+            }
+          },
+          "lore": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "category", "title", "detail"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "category": { "type": "string", "enum": ["location", "faction", "magic_tech", "artifact", "history"] },
+                "title": { "type": "string", "minLength": 1, "maxLength": 64 },
+                "detail": { "type": "string", "maxLength": 400 }
+              }
+            }
+          },
+          "threads": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "title", "planted_ch", "payoff_ch", "status", "priority", "detail"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "title": { "type": "string", "minLength": 1, "maxLength": 80 },
+                "planted_ch": { "type": "integer", "minimum": 1, "maximum": 9999 },
+                "payoff_ch": { "type": "integer", "minimum": 0, "maximum": 9999 },
+                "status": { "type": "string", "enum": ["planted", "hinted", "payoff", "abandoned"] },
+                "priority": { "type": "string", "enum": ["critical", "major", "minor"] },
+                "detail": { "type": "string", "maxLength": 240 }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "novel.book.save",
+      "title": "更新书籍基本信息",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "title", "genre", "logline", "target_words"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "genre": { "type": "string", "maxLength": 40 },
+          "logline": { "type": "string", "maxLength": 400 },
+          "target_words": { "type": "integer", "minimum": 1000, "maximum": 10000000 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "invalid_input"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "novel.chapter.get",
+      "title": "读取章节完整正文",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 48 } }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["found", "revision"],
+        "properties": {
+          "found": { "type": "boolean" },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "body": { "type": "string", "maxLength": 10000 },
+          "beats": { "type": "string", "maxLength": 1000 },
+          "notes": { "type": "string", "maxLength": 1000 }
+        }
+      }
+    },
+    {
+      "id": "novel.chapter.save",
+      "title": "保存章节元数据与正文",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id", "volume", "title", "status", "tension", "pov", "summary", "beats", "notes", "body"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "volume": { "type": "string", "maxLength": 60 },
+          "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "status": { "type": "string", "enum": ["draft", "revising", "done"] },
+          "tension": { "type": "integer", "minimum": 1, "maximum": 10 },
+          "pov": { "type": "string", "maxLength": 40 },
+          "summary": { "type": "string", "maxLength": 240 },
+          "beats": { "type": "string", "maxLength": 1000 },
+          "notes": { "type": "string", "maxLength": 1000 },
+          "body": { "type": "string", "maxLength": 10000 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "word_count": { "type": "integer", "minimum": 0, "maximum": 100000 }
+        }
+      }
+    },
+    {
+      "id": "novel.chapter.delete",
+      "title": "删除章节",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["deleted", "not_found", "conflict"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "novel.world.save",
+      "title": "保存人物、关系或世界观设定",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "characters", "relations", "lore"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "characters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "name", "role", "faction", "traits", "goal", "secret"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "name": { "type": "string", "minLength": 1, "maxLength": 40 },
+                "role": { "type": "string", "enum": ["protagonist", "antagonist", "supporting", "mentor"] },
+                "faction": { "type": "string", "maxLength": 40 },
+                "traits": { "type": "string", "maxLength": 120 },
+                "goal": { "type": "string", "maxLength": 200 },
+                "secret": { "type": "string", "maxLength": 200 }
+              }
+            }
+          },
+          "relations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "from", "to", "kind", "label"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "from": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "to": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "kind": { "type": "string", "enum": ["ally", "rival", "mentor", "romance", "secret"] },
+                "label": { "type": "string", "maxLength": 40 }
+              }
+            }
+          },
+          "lore": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "category", "title", "detail"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "category": { "type": "string", "enum": ["location", "faction", "magic_tech", "artifact", "history"] },
+                "title": { "type": "string", "minLength": 1, "maxLength": 64 },
+                "detail": { "type": "string", "maxLength": 400 }
+              }
+            }
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "novel.plot.save",
+      "title": "保存伏笔与线索追踪表",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "threads"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "threads": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "title", "planted_ch", "payoff_ch", "status", "priority", "detail"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "title": { "type": "string", "minLength": 1, "maxLength": 80 },
+                "planted_ch": { "type": "integer", "minimum": 1, "maximum": 9999 },
+                "payoff_ch": { "type": "integer", "minimum": 0, "maximum": 9999 },
+                "status": { "type": "string", "enum": ["planted", "hinted", "payoff", "abandoned"] },
+                "priority": { "type": "string", "enum": ["critical", "major", "minor"] },
+                "detail": { "type": "string", "maxLength": 240 }
+              }
+            }
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "novel.seed_demo",
+      "title": "加载演示长篇项目",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["seeded", "conflict"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "session.turn.request",
+      "title": "向当前会话派发 AI 写作任务",
+      "permissions": ["tasks.start"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["prompt", "work_id"],
+        "properties": {
+          "prompt": { "type": "string", "minLength": 1, "maxLength": 2048 },
+          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["task_id", "state"],
+        "properties": {
+          "task_id": { "type": "string", "minLength": 36, "maxLength": 36 },
+          "state": { "type": "string", "enum": ["dispatching"] }
+        }
+      }
+    },
+    {
+      "id": "session.turn.result",
+      "title": "核对 AI 写作结果",
+      "permissions": ["tasks.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["work_id"],
+        "properties": { "work_id": { "type": "string", "minLength": 36, "maxLength": 36 } }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["work_id", "state", "truncated"],
+        "properties": {
+          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 },
+          "state": { "type": "string", "enum": ["dispatching", "running", "waiting", "completed", "cancelled", "failed", "unknown", "unavailable"] },
+          "truncated": { "type": "boolean" }
+        }
+      }
+    },
+    {
+      "id": "document.list",
+      "title": "列出可导出内容",
+      "permissions": ["data.read"],
+      "input_schema": { "type": "object", "additionalProperties": false, "required": [], "properties": {} },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "label"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "label": { "type": "string", "minLength": 1, "maxLength": 120 }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "document.export",
+      "title": "导出大纲设定或单章",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 48 } }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "filename": { "type": "string", "maxLength": 80 },
+          "text": { "type": "string", "maxLength": 12288 },
+          "error": { "type": "string", "maxLength": 64 }
+        }
+      }
+    },
+    {
+      "id": "document.import",
+      "title": "导入小说设定或章节 JSON",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text"],
+        "properties": { "text": { "type": "string", "minLength": 2, "maxLength": 12288 } }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["imported"],
+        "properties": {
+          "imported": { "type": "boolean" },
+          "reason": { "type": "string", "maxLength": 64 }
+        }
+      }
+    }
+  ],
+  "tools": [
+    {
+      "id": "novel.outline",
+      "title": "读取小说全书大纲与伏笔",
+      "description": "获取当前长篇小说的书名、总字数、分卷章节摘要、主要人物清单及未回收伏笔，用于续写或剧情策划。",
+      "permissions": ["data.read"],
+      "input_schema": { "type": "object", "additionalProperties": false, "required": [], "properties": {} },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["ready", "empty"] },
+          "title": { "type": "string", "maxLength": 100 },
+          "total_words": { "type": "integer", "minimum": 0, "maximum": 10000000 },
+          "chapters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "order", "title", "tension", "pov", "summary"],
+              "properties": {
+                "id": { "type": "string", "maxLength": 48 },
+                "order": { "type": "integer", "minimum": 1, "maximum": 9999 },
+                "title": { "type": "string", "maxLength": 100 },
+                "tension": { "type": "integer", "minimum": 1, "maximum": 10 },
+                "pov": { "type": "string", "maxLength": 40 },
+                "summary": { "type": "string", "maxLength": 240 }
+              }
+            }
+          },
+          "open_threads": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["title", "planted_ch", "priority"],
+              "properties": {
+                "title": { "type": "string", "maxLength": 80 },
+                "planted_ch": { "type": "integer", "minimum": 1, "maximum": 9999 },
+                "priority": { "type": "string", "maxLength": 16 }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "novel.chapter.read",
+      "title": "读取指定小说章节正文",
+      "description": "按章节 ID 读取该章的完整正文、分镜节拍和作者笔记，便于做续写、润色或一致性检查。",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 48 } }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["ready", "not_found"] },
+          "title": { "type": "string", "maxLength": 100 },
+          "pov": { "type": "string", "maxLength": 40 },
+          "beats": { "type": "string", "maxLength": 1000 },
+          "body": { "type": "string", "maxLength": 10000 }
+        }
+      }
+    },
+    {
+      "id": "novel.bible.upsert",
+      "title": "写入人物或世界观设定",
+      "description": "向小说世界观圣经新增或更新一条世界观词条（地点/势力/力量体系/道具/历史）或新伏笔。",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "title", "detail"],
+        "properties": {
+          "kind": { "type": "string", "enum": ["location", "faction", "magic_tech", "artifact", "history", "thread"] },
+          "title": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "detail": { "type": "string", "minLength": 1, "maxLength": 400 },
+          "planted_ch": { "type": "integer", "minimum": 1, "maximum": 9999 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit"] },
+          "id": { "type": "string", "maxLength": 48 }
+        }
+      }
+    }
+  ],
+  "data": [
+    { "collection": "meta", "scope": "account", "schema_version": 1 },
+    { "collection": "chapters", "scope": "account", "schema_version": 1 },
+    { "collection": "world", "scope": "account", "schema_version": 1 },
+    { "collection": "plot", "scope": "account", "schema_version": 1 }
+  ],
+  "http": [],
+  "tasks": [],
+  "files": []
+}

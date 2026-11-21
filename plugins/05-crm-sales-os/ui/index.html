@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 智能客户与商机管理系统 · CRM Sales OS</title>
+<style>
+:root{color-scheme:light dark;--bg:#f4f6fb;--surface:#fff;--surface-2:#f8fafc;--surface-hover:#f1f5f9;--fg:#0f172a;--fg-2:#334155;--muted:#64748b;--border:#e2e8f0;--border-strong:#cbd5e1;--accent:#4f46e5;--accent-2:#6366f1;--accent-soft:rgba(79,70,229,.1);--ok:#059669;--ok-soft:rgba(5,150,105,.12);--warn:#d97706;--warn-soft:rgba(217,119,6,.13);--danger:#dc2626;--danger-soft:rgba(220,38,38,.12);--sky:#0284c7;--violet:#7c3aed;--shadow-sm:0 1px 2px rgba(15,23,42,.05);--shadow-md:0 6px 20px rgba(15,23,42,.07);--r:12px;--rs:8px;font:13.5px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Segoe UI",sans-serif}
+:root[data-theme="dark"]{--bg:#0b1120;--surface:#111827;--surface-2:#162033;--surface-hover:#1e293b;--fg:#f1f5f9;--fg-2:#cbd5e1;--muted:#94a3b8;--border:#1f2b40;--border-strong:#334155;--accent:#6366f1;--accent-2:#818cf8;--accent-soft:rgba(99,102,241,.18);--ok:#10b981;--ok-soft:rgba(16,185,129,.16);--warn:#f59e0b;--warn-soft:rgba(245,158,11,.16);--danger:#f87171;--danger-soft:rgba(248,113,113,.16);--sky:#38bdf8;--violet:#a78bfa;--shadow-sm:0 1px 2px rgba(0,0,0,.25);--shadow-md:0 10px 28px rgba(0,0,0,.35)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);min-height:100vh}.num{font-variant-numeric:tabular-nums}[hidden]{display:none!important}
+.shell{display:grid;grid-template-columns:220px minmax(0,1fr);min-height:100vh}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:16px 12px;display:flex;flex-direction:column;gap:14px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 6px 10px;border-bottom:1px solid var(--border)}
+.brand-icon{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--violet));display:grid;place-items:center;color:#fff;flex-shrink:0;box-shadow:0 4px 12px rgba(79,70,229,.3)}
+.brand-title{font-weight:750;font-size:14px;letter-spacing:-.01em;line-height:1.25}.brand-sub{font-size:11px;color:var(--muted)}
+.nav{display:flex;flex-direction:column;gap:4px}
+.nav-btn{display:flex;align-items:center;gap:9px;width:100%;padding:9px 10px;border-radius:9px;border:1px solid transparent;background:transparent;color:var(--fg-2);font:inherit;font-weight:500;cursor:pointer;text-align:left;transition:all .15s}
+.nav-btn:hover{background:var(--surface-hover);color:var(--fg)}.nav-btn.active{background:var(--accent-soft);color:var(--accent);border-color:rgba(99,102,241,.25);font-weight:650}
+.nav-badge{margin-left:auto;font-size:11px;font-weight:650;padding:1px 7px;border-radius:999px;background:var(--surface-2);color:var(--muted)}.nav-badge.alert{background:var(--danger-soft);color:var(--danger)}
+.side-footer{margin-top:auto;display:flex;flex-direction:column;gap:6px;padding-top:12px;border-top:1px solid var(--border)}
+.side-tool{width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--fg-2);font:inherit;font-size:12.5px;font-weight:500;cursor:pointer}
+.side-tool:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.main{padding:16px 20px 28px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.topbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+.page-title{font-size:18px;font-weight:750;margin:0;letter-spacing:-.015em}
+.status-pill{font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--border);padding:4px 10px;border-radius:999px;display:inline-flex;align-items:center;gap:6px}
+.status-pill[data-error="true"]{color:var(--danger);border-color:var(--danger);background:var(--danger-soft)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok);display:inline-block}.status-pill[data-error="true"] .dot{background:var(--danger)}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:13px 15px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:4px;position:relative;overflow:hidden}
+.kpi-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}.kpi-card.ok::before{background:var(--ok)}.kpi-card.sky::before{background:var(--sky)}.kpi-card.warn::before{background:var(--warn)}
+.kpi-label{font-size:12px;color:var(--muted);font-weight:500;display:flex;justify-content:space-between;align-items:center}
+.kpi-val{font-size:21px;font-weight:780;letter-spacing:-.02em}.kpi-sub{font-size:11.5px;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow-sm)}
+.card-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.card-title{font-size:14px;font-weight:700;margin:0;display:flex;align-items:center;gap:7px}.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.between{justify-content:space-between}.col{display:flex;flex-direction:column;gap:8px}.sub{font-size:12px;color:var(--muted)}.empty{padding:22px 10px;text-align:center;color:var(--muted);font-size:12.5px}
+input,select,textarea,button{font:inherit;color:var(--fg);border:1px solid var(--border-strong);border-radius:var(--rs);padding:6px 10px;background:var(--surface);transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+textarea{resize:vertical;min-height:76px;width:100%}
+button{cursor:pointer;font-weight:550;display:inline-flex;align-items:center;justify-content:center;gap:5px}
+button:hover:not(:disabled){border-color:var(--accent)}button.primary{background:var(--accent);border-color:var(--accent);color:#fff}button.primary:hover:not(:disabled){background:var(--accent-2);border-color:var(--accent-2)}
+button.ok{background:var(--ok);border-color:var(--ok);color:#fff}button.ghost{background:transparent;border-color:var(--border);color:var(--fg-2)}button.ghost:hover:not(:disabled){background:var(--surface-hover);color:var(--fg)}
+button.danger{color:var(--danger);border-color:rgba(220,38,38,.35);background:var(--danger-soft)}button.sm{padding:4px 8px;font-size:12px;border-radius:6px}button:disabled{opacity:.5;cursor:not-allowed}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:650;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--fg-2);border:1px solid var(--border)}
+.tag.accent{background:var(--accent-soft);color:var(--accent);border-color:transparent}.tag.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}.tag.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}.tag.danger{background:var(--danger-soft);color:var(--danger);border-color:transparent}
+.charts-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:12px}.svg-wrap{width:100%;overflow:hidden}.svg-wrap svg{width:100%;height:auto;display:block}
+.kanban{display:grid;grid-template-columns:repeat(5,minmax(200px,1fr));gap:10px;overflow-x:auto;padding-bottom:6px}
+.lane{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r);padding:10px;display:flex;flex-direction:column;gap:8px;min-height:260px}
+.lane-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:6px;border-bottom:2px solid var(--border)}
+.lane-head[data-stage="lead"]{border-bottom-color:#64748b}.lane-head[data-stage="qualified"]{border-bottom-color:#0284c7}.lane-head[data-stage="proposal"]{border-bottom-color:#7c3aed}.lane-head[data-stage="negotiation"]{border-bottom-color:#d97706}.lane-head[data-stage="won"]{border-bottom-color:#059669}
+.lane-title{font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:6px}.lane-sum{font-size:11.5px;color:var(--muted);font-weight:650}
+.deal-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 11px;display:flex;flex-direction:column;gap:7px;box-shadow:var(--shadow-sm);transition:transform .14s,border-color .14s}
+.deal-card:hover{transform:translateY(-1px);border-color:var(--accent)}
+.deal-acc{font-size:11.5px;color:var(--accent);font-weight:650;display:flex;justify-content:space-between}.deal-title{font-size:13px;font-weight:700;line-height:1.35}
+.deal-amt{font-size:15px;font-weight:780;display:flex;align-items:baseline;justify-content:space-between}
+.prob-bar{height:5px;border-radius:999px;background:var(--border);overflow:hidden}.prob-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--ok))}
+.deal-meta{font-size:11.5px;color:var(--muted);display:flex;justify-content:space-between;gap:6px}
+.deal-step{font-size:11.5px;color:var(--fg-2);background:var(--surface-2);padding:5px 7px;border-radius:6px;line-height:1.4}.deal-actions{display:flex;gap:5px;flex-wrap:wrap;padding-top:2px}
+.split-360{display:grid;grid-template-columns:minmax(250px,310px) minmax(0,1fr);gap:14px}
+.acc-list{display:flex;flex-direction:column;gap:7px;max-height:620px;overflow-y:auto}
+.acc-item{text-align:left;width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--fg);cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.acc-item:hover{border-color:var(--accent)}.acc-item.active{background:var(--accent-soft);border-color:var(--accent)}
+.acc-hero{display:flex;flex-wrap:wrap;gap:16px;align-items:center;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.info-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}
+.info-box{background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:9px 11px}.info-k{font-size:11.5px;color:var(--muted)}.info-v{font-size:14px;font-weight:750;margin-top:2px}
+.timeline{display:flex;flex-direction:column;gap:9px}
+.act-row{background:var(--surface-2);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:10px;padding:11px 13px;display:flex;flex-direction:column;gap:6px}
+.act-row.overdue{border-left-color:var(--danger);background:color-mix(in srgb,var(--danger-soft) 45%,var(--surface))}.act-row.soon{border-left-color:var(--warn);background:color-mix(in srgb,var(--warn-soft) 40%,var(--surface))}.act-row.done{border-left-color:var(--ok);opacity:.82}
+.scenario-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.scenario-card{text-align:left;padding:11px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface-2);cursor:pointer;display:flex;flex-direction:column;gap:4px}
+.scenario-card:hover{border-color:var(--accent)}.scenario-card.active{border-color:var(--accent);background:var(--accent-soft)}
+.scenario-title{font-weight:700;font-size:13px}.scenario-desc{font-size:11.5px;color:var(--muted);line-height:1.4}
+.ai-output{white-space:pre-wrap;word-break:break-word;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px;font:13.5px/1.65 inherit;max-height:360px;overflow-y:auto;margin:0}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.field{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:600;color:var(--fg-2)}.field.full{grid-column:1/-1}
+.modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.55);display:grid;place-items:center;padding:16px;z-index:50}
+.modal{width:min(620px,100%);max-height:90vh;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow-md);display:flex;flex-direction:column;gap:12px}
+@media(max-width:960px){.shell{grid-template-columns:1fr}.sidebar{position:static;height:auto;border-right:none;border-bottom:1px solid var(--border);padding:10px 12px;gap:10px}.nav{flex-direction:row;overflow-x:auto}.nav-btn{width:auto;white-space:nowrap}.side-footer{flex-direction:row;margin-top:0;padding-top:8px}.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.charts-grid,.split-360{grid-template-columns:1fr}.scenario-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.kpi-grid,.form-grid,.info-grid,.scenario-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+<div class="brand">
+<div class="brand-icon" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 6-7"/></svg></div>
+<div><div class="brand-title">CRM Sales OS</div><div class="brand-sub">AI 智能客户与商机管理</div></div>
+</div>
+<nav class="nav">
+<button type="button" class="nav-btn active" data-view="pipeline"><span>商机漏斗看板</span><span class="nav-badge num" id="badge-deals">0</span></button>
+<button type="button" class="nav-btn" data-view="accounts"><span>客户 360° 档案</span><span class="nav-badge num" id="badge-accounts">0</span></button>
+<button type="button" class="nav-btn" data-view="activities"><span>互动时间轴与提醒</span><span class="nav-badge num" id="badge-alerts">0</span></button>
+<button type="button" class="nav-btn" data-view="advisor"><span>AI 销售军师</span><span class="nav-badge">AI</span></button>
+</nav>
+<div class="side-footer">
+<button type="button" class="side-tool" id="btn-seed">加载 B2B SaaS 演示数据</button>
+<button type="button" class="side-tool" id="btn-io">JSON 导入 / 导出</button>
+<button type="button" class="side-tool" id="btn-theme">切换亮/暗主题</button>
+</div>
+</aside>
+<main class="main">
+<header class="topbar">
+<h1 class="page-title" id="view-heading">商机漏斗看板</h1>
+<div class="row">
+<span class="status-pill" id="status-pill" role="status"><span class="dot"></span><span id="status-text">正在初始化…</span></span>
+<button type="button" class="ghost sm" id="btn-refresh">刷新</button>
+</div>
+</header>
+<section class="kpi-grid">
+<div class="kpi-card"><div class="kpi-label"><span>在途商机总额</span><span class="tag accent num" id="kpi-active-cnt">0 笔</span></div><div class="kpi-val num" id="kpi-pipeline">¥0</div><div class="kpi-sub">覆盖线索至商务报价阶段</div></div>
+<div class="kpi-card sky"><div class="kpi-label"><span>加权预测营收</span><span class="tag num" id="kpi-avg-prob">综合赢率 0%</span></div><div class="kpi-val num" id="kpi-weighted">¥0</div><div class="kpi-sub">按各阶段赢率实时加权</div></div>
+<div class="kpi-card ok"><div class="kpi-label"><span>已赢单营收</span><span class="tag ok num" id="kpi-winrate">赢率 0%</span></div><div class="kpi-val num" id="kpi-won">¥0</div><div class="kpi-sub" id="kpi-lost-sub">丢单归档 ¥0</div></div>
+<div class="kpi-card warn"><div class="kpi-label"><span>客户健康度 / 跟进告警</span><span class="tag danger num" id="kpi-overdue">0 逾期</span></div><div class="kpi-val num" id="kpi-health">0 分</div><div class="kpi-sub" id="kpi-soon-sub">3 日内到期 0 项</div></div>
+</section>
+<section id="view-pipeline" class="view">
+<div class="charts-grid" style="margin-bottom:12px">
+<div class="card"><div class="card-head"><h2 class="card-title">销售转化漏斗（5 阶段）</h2><span class="tag">实时转化率与阶段金额</span></div><div class="svg-wrap" id="svg-funnel"></div></div>
+<div class="card"><div class="card-head"><h2 class="card-title">阶段原始金额 vs 加权营收预测</h2><div class="row" style="font-size:11.5px;color:var(--muted)"><span><strong style="color:var(--accent)">■</strong> 原始金额</span><span><strong style="color:var(--ok)">■</strong> 加权预测</span></div></div><div class="svg-wrap" id="svg-forecast"></div></div>
+</div>
+<div class="card">
+<div class="card-head">
+<h2 class="card-title">5 阶段商机看板</h2>
+<div class="row">
+<input id="deal-search" placeholder="搜索商机或客户名称…" style="width:190px">
+<button type="button" class="ghost sm" id="btn-toggle-lost">显示丢单归档</button>
+<button type="button" class="primary sm" id="btn-new-deal">+ 新建商机</button>
+</div>
+</div>
+<div class="kanban" id="kanban-board"></div>
+<div id="lost-archive" hidden style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--border)">
+<div class="row" style="margin-bottom:8px"><strong style="font-size:13px;color:var(--muted)">丢单归档（复盘库）</strong><span class="tag num" id="lost-count">0</span></div>
+<div id="lost-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px"></div>
+</div>
+</div>
+</section>
+<section id="view-accounts" class="view" hidden>
+<div class="split-360">
+<div class="card" style="display:flex;flex-direction:column;gap:10px">
+<div class="row"><input id="acc-search" placeholder="搜索企业客户/行业…" style="flex:1;min-width:120px"><button type="button" class="primary sm" id="btn-new-acc">+ 客户</button></div>
+<div class="acc-list" id="acc-list"></div>
+</div>
+<div class="card">
+<div id="acc-empty" style="padding:36px 12px;text-align:center;color:var(--muted)">请选择左侧企业客户查看 360° 全景档案，或点击左下角「加载 B2B SaaS 演示数据」。</div>
+<div id="acc-detail" hidden>
+<div class="acc-hero">
+<div id="acc-health-svg" style="width:74px;height:74px;flex-shrink:0"></div>
+<div style="flex:1;min-width:180px">
+<div class="row" style="gap:8px"><h2 id="acc-name" style="margin:0;font-size:18px"></h2><span class="tag accent" id="acc-industry"></span><span class="tag" id="acc-size"></span></div>
+<div id="acc-contact" style="font-size:13px;color:var(--fg-2);margin-top:4px"></div>
+<div id="acc-tags" class="row" style="margin-top:6px"></div>
+</div>
+<div class="row">
+<button type="button" class="primary sm" id="btn-acc-ai">AI 军师分析</button>
+<button type="button" class="ghost sm" id="btn-acc-edit">编辑</button>
+<button type="button" class="danger sm" id="btn-acc-del">删除</button>
+</div>
+</div>
+<div class="info-grid">
+<div class="info-box"><div class="info-k">年潜在价值 (ARR 潜额)</div><div class="info-v num" id="acc-potential">¥0</div></div>
+<div class="info-box"><div class="info-k">关联商机总额</div><div class="info-v num" id="acc-deals-sum">¥0</div></div>
+<div class="info-box"><div class="info-k">关联商机 / 互动记录</div><div class="info-v num" id="acc-counts">0 / 0</div></div>
+</div>
+<div class="info-box" style="margin-bottom:12px"><div class="info-k">风险提示与策略备注</div><div id="acc-risk" style="margin-top:4px;font-size:13px;color:var(--fg-2)"></div></div>
+<div class="card-head" style="margin-top:6px"><h3 class="card-title">关联商机明细</h3><button type="button" class="ghost sm" id="btn-acc-add-deal">+ 为该客户建商机</button></div>
+<div id="acc-deals-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px"></div>
+<div class="card-head"><h3 class="card-title">历史互动时间轴</h3><button type="button" class="ghost sm" id="btn-acc-add-act">+ 记录跟进</button></div>
+<div id="acc-acts-list" class="timeline"></div>
+</div>
+</div>
+</div>
+</section>
+<section id="view-activities" class="view" hidden>
+<div class="card" style="margin-bottom:12px">
+<div class="card-head"><h2 class="card-title">快速记录互动跟进</h2><span class="tag">自动计算逾期与 3 日内到期提醒</span></div>
+<div class="form-grid">
+<label class="field">关联客户<select id="act-f-acc"></select></label>
+<label class="field">关联商机（可选）<select id="act-f-deal"></select></label>
+<label class="field">互动方式<select id="act-f-type"></select></label>
+<label class="field">互动日期<input id="act-f-date" type="date"></label>
+<label class="field full">互动内容摘要<textarea id="act-f-summary" maxlength="400" placeholder="记录核心沟通要点、客户异议或决策链信息…"></textarea></label>
+<label class="field">下一步行动<input id="act-f-next" maxlength="160" placeholder="例如：发送修订报价并约法务终审"></label>
+<label class="field">下次跟进截止日<input id="act-f-due" type="date"></label>
+</div>
+<div class="row" style="margin-top:10px;justify-content:flex-end"><button type="button" class="primary" id="btn-act-submit">记录此互动跟进</button></div>
+</div>
+<div class="card">
+<div class="card-head">
+<h2 class="card-title">互动时间轴与到期提醒</h2>
+<div class="row">
+<select id="act-filter-status"><option value="all">全部状态</option><option value="urgent">仅看逾期与 3 日内到期</option><option value="open">仅看待跟进</option><option value="done">仅看已完成</option></select>
+<select id="act-filter-type"></select>
+</div>
+</div>
+<div id="act-timeline" class="timeline"></div>
+</div>
+</section>
+<section id="view-advisor" class="view" hidden>
+<div class="card" style="display:flex;flex-direction:column;gap:14px">
+<div class="card-head" style="margin-bottom:0"><h2 class="card-title">AI 销售军师工作台</h2><span class="tag accent">联动 Velai 当前会话 · session.turn.*</span></div>
+<div class="form-grid">
+<label class="field">选择目标企业客户<select id="ai-acc"></select></label>
+<label class="field">选择聚焦商机（可选）<select id="ai-deal"></select></label>
+</div>
+<div class="info-box" id="ai-context-preview" style="font-size:12.5px;line-height:1.6;color:var(--fg-2);white-space:pre-line"></div>
+<div>
+<div style="font-size:12.5px;font-weight:700;margin-bottom:7px;color:var(--fg-2)">选择 AI 销售辅助场景</div>
+<div class="scenario-grid" id="ai-scenarios">
+<button type="button" class="scenario-card active" data-sc="email"><span class="scenario-title">起草高转化跟进邮件</span><span class="scenario-desc">紧扣联系人职位与痛点，输出可直接发送的商务邮件与 CTA</span></button>
+<button type="button" class="scenario-card" data-sc="objection"><span class="scenario-title">生成异议应对脚本</span><span class="scenario-desc">拆解价格/竞品/法务审批阻力，输出 LAER 应对话术</span></button>
+<button type="button" class="scenario-card" data-sc="strategy"><span class="scenario-title">输出赢单推进策略</span><span class="scenario-desc">按 MEDDPICC 诊断缺口，制定未来 14 天 3 步必做动作</span></button>
+<button type="button" class="scenario-card" data-sc="review"><span class="scenario-title">复盘成败原因</span><span class="scenario-desc">提炼赢单打法或丢单根因，沉淀行业最佳实践</span></button>
+</div>
+</div>
+<label class="field">补充背景或特别要求（可选）<input id="ai-extra" maxlength="200" placeholder="例如：重点回应竞品 8 折低价策略，语气专业克制"></label>
+<div class="row">
+<button type="button" class="primary" id="btn-ai-send">发送给 Velai 当前会话生成方案</button>
+<button type="button" class="ghost" id="btn-ai-check" hidden>核对 AI 军师回复</button>
+<span id="ai-state" style="font-size:12.5px;color:var(--muted)"></span>
+</div>
+<div id="ai-result-box" hidden style="display:flex;flex-direction:column;gap:10px;padding-top:10px;border-top:1px dashed var(--border)">
+<pre class="ai-output" id="ai-output"></pre>
+<div class="row">
+<button type="button" class="primary sm" id="btn-ai-insert">一键插入会话输入框</button>
+<button type="button" class="ok sm" id="btn-ai-save-act">存入该客户互动记录</button>
+<button type="button" class="ghost sm" id="btn-ai-copy">复制结果</button>
+</div>
+</div>
+</div>
+</section>
+</main>
+</div>
+<div class="modal-backdrop" id="modal-acc" hidden><div class="modal">
+<div class="card-head" style="margin-bottom:0"><h2 class="card-title" id="m-acc-title">新建企业客户</h2><button type="button" class="ghost sm" data-close="modal-acc">关闭</button></div>
+<div class="form-grid">
+<label class="field">企业名称 *<input id="m-acc-name" maxlength="64"></label>
+<label class="field">所属行业 *<input id="m-acc-ind" maxlength="32"></label>
+<label class="field">企业规模<select id="m-acc-size"><option value="startup">初创 (Startup)</option><option value="smb">成长型 (SMB)</option><option value="midmarket">中大型 (Mid-Market)</option><option value="enterprise">大型集团 (Enterprise)</option></select></label>
+<label class="field">健康度评分 (0-100)<input id="m-acc-health" type="number" min="0" max="100" value="80"></label>
+<label class="field">关键联系人 *<input id="m-acc-contact" maxlength="40"></label>
+<label class="field">联系人职位<input id="m-acc-role" maxlength="40"></label>
+<label class="field">年潜在价值 (¥)<input id="m-acc-pot" type="number" min="0" max="999999999" value="500000"></label>
+<label class="field">标签（逗号分隔）<input id="m-acc-tags" placeholder="灯塔客户, 私有部署"></label>
+<label class="field full">风险提示与备注<textarea id="m-acc-risk" maxlength="240"></textarea></label>
+</div>
+<div class="row" style="justify-content:flex-end"><button type="button" class="ghost" data-close="modal-acc">取消</button><button type="button" class="primary" id="btn-m-acc-save">保存客户档案</button></div>
+</div></div>
+<div class="modal-backdrop" id="modal-deal" hidden><div class="modal">
+<div class="card-head" style="margin-bottom:0"><h2 class="card-title" id="m-deal-title">新建商机</h2><button type="button" class="ghost sm" data-close="modal-deal">关闭</button></div>
+<div class="form-grid">
+<label class="field full">商机名称 *<input id="m-deal-name" maxlength="80"></label>
+<label class="field">关联客户 *<select id="m-deal-acc"></select></label>
+<label class="field">所处阶段<select id="m-deal-stage"><option value="lead">线索 (15%)</option><option value="qualified">需求确认 (35%)</option><option value="proposal">方案评审 (60%)</option><option value="negotiation">商务报价 (80%)</option><option value="won">赢单 (100%)</option><option value="lost">丢单归档 (0%)</option></select></label>
+<label class="field">商机金额 (¥)<input id="m-deal-amt" type="number" min="0" max="999999999" value="300000"></label>
+<label class="field">预计赢率 (%)<input id="m-deal-prob" type="number" min="0" max="100" value="35"></label>
+<label class="field">预计成交日<input id="m-deal-date" type="date"></label>
+<label class="field">负责人<input id="m-deal-owner" maxlength="32" value="销售负责人"></label>
+<label class="field full">下一步关键动作<input id="m-deal-step" maxlength="160"></label>
+<label class="field full">丢单/复盘备注<input id="m-deal-loss" maxlength="160"></label>
+</div>
+<div class="row" style="justify-content:space-between"><button type="button" class="danger" id="btn-m-deal-del" hidden>删除商机</button><div class="row"><button type="button" class="ghost" data-close="modal-deal">取消</button><button type="button" class="primary" id="btn-m-deal-save">保存商机</button></div></div>
+</div></div>
+<div class="modal-backdrop" id="modal-io" hidden><div class="modal">
+<div class="card-head" style="margin-bottom:0"><h2 class="card-title">数据导入与导出（document.*）</h2><button type="button" class="ghost sm" data-close="modal-io">关闭</button></div>
+<div class="row"><select id="io-select" style="flex:1"></select><button type="button" class="primary sm" id="btn-io-export">导出 JSON</button></div>
+<label class="field">JSON 数据内容<textarea id="io-text" style="min-height:170px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px"></textarea></label>
+<div class="row" style="justify-content:space-between"><span id="io-msg" style="font-size:12px;color:var(--muted)"></span><div class="row"><button type="button" class="ghost sm" id="btn-io-copy">复制 JSON</button><button type="button" class="ok sm" id="btn-io-import">校验并导入</button></div></div>
+</div></div>
+<script>
+(() => {
+const plugin = globalThis.nmasPlugin;
+const $ = id => document.getElementById(id);
+const on = (id, ev, fn) => $(id).addEventListener(ev, fn);
+const STAGE_META = [
+{ id: 'lead', label: '线索', prob: 15, color: '#64748b', next: 'qualified' },
+{ id: 'qualified', label: '需求确认', prob: 35, color: '#0284c7', next: 'proposal' },
+{ id: 'proposal', label: '方案评审', prob: 60, color: '#7c3aed', next: 'negotiation' },
+{ id: 'negotiation', label: '商务报价', prob: 80, color: '#d97706', next: 'won' },
+{ id: 'won', label: '赢单', prob: 100, color: '#059669', next: null },
+];
+const STAGE_LABEL = { lead: '线索', qualified: '需求确认', proposal: '方案评审', negotiation: '商务报价', won: '赢单', lost: '丢单' };
+const SIZE_LABEL = { startup: '初创', smb: '成长型', midmarket: '中大型', enterprise: '大型集团' };
+const ACT_LABEL = { call: '电话', meeting: '会议', demo: '演示', quote: '报价', email: '邮件', ai_note: 'AI 策略' };
+const VIEW_TITLE = { pipeline: '商机漏斗看板', accounts: '客户 360° 档案', activities: '互动时间轴与跟进提醒', advisor: 'AI 销售军师工作台' };
+let state = { revision: 0, accounts: [], deals: [], activities: [], metrics: null };
+let selectedAccId = null, editingAccId = null, editingDealId = null;
+let showLost = false, activeScenario = 'email', canInsert = false, pendingWorkId = null, latestAiText = '', busy = false;
+const today = () => new Date().toISOString().slice(0, 10);
+const fmtMoney = n => { const v = Number(n) || 0; return Math.abs(v) >= 10000 ? `¥${(v / 10000).toFixed(v % 10000 === 0 ? 0 : 1)}万` : `¥${Math.round(v).toLocaleString('zh-CN')}`; };
+const fmtFull = n => `¥${Math.round(Number(n) || 0).toLocaleString('zh-CN')}`;
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const setStatus = (msg, err = false) => { $('status-text').textContent = msg; $('status-pill').dataset.error = String(err); };
+const runBusy = async fn => { if (busy) return; busy = true; try { await fn(); } catch (e) { setStatus(`操作失败：${e?.message || '未知错误'}`, true); } finally { busy = false; } };
+const uuid = () => { const b = crypto.getRandomValues(new Uint8Array(16)); b[6] = (b[6] & 15) | 64; b[8] = (b[8] & 63) | 128; const h = Array.from(b, x => x.toString(16).padStart(2, '0')).join(''); return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`; };
+const daysDiff = ds => ds ? Math.round((new Date(ds + 'T00:00:00Z') - new Date(today() + 'T00:00:00Z')) / 86400000) : null;
+function switchView(view) {
+$('view-heading').textContent = VIEW_TITLE[view] || view;
+document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+document.querySelectorAll('.view').forEach(el => { el.hidden = el.id !== `view-${view}`; });
+if (view === 'advisor') renderAdvisorContext();
+}
+async function loadSnapshot() {
+if (typeof plugin?.action !== 'function') { setStatus('请在 Velai Desktop 中打开此插件', true); return; }
+try {
+const caps = await plugin.action('host.capabilities', {}).catch(() => ({ actions: [] }));
+canInsert = Array.isArray(caps?.actions) && caps.actions.includes('host.draft.insert');
+state = await plugin.action('crm.snapshot', {});
+if (!selectedAccId || !state.accounts.some(a => a.id === selectedAccId)) selectedAccId = state.accounts[0]?.id ?? null;
+renderAll();
+setStatus(`已同步 · ${state.accounts.length} 客户 · ${state.deals.length} 商机 · Rev #${state.revision}`);
+} catch (e) { setStatus(`加载失败：${e?.message || '未知错误'}`, true); }
+}
+function renderAll() {
+renderKpis(); renderFunnelSvg(); renderForecastSvg(); renderKanban();
+renderAccounts(); renderActFormOpts(); renderTimeline(); renderAdvisorOpts(); renderAdvisorContext();
+}
+function renderKpis() {
+const m = state.metrics || { active_pipeline: 0, weighted_forecast: 0, won_amount: 0, lost_amount: 0, active_deal_count: 0, win_rate: 0, avg_health: 0, overdue_count: 0, due_soon_count: 0 };
+$('kpi-pipeline').textContent = fmtMoney(m.active_pipeline);
+$('kpi-active-cnt').textContent = `${m.active_deal_count} 笔`;
+$('kpi-weighted').textContent = fmtMoney(m.weighted_forecast);
+$('kpi-avg-prob').textContent = `综合赢率 ${m.active_pipeline > 0 ? Math.round((m.weighted_forecast / m.active_pipeline) * 100) : 0}%`;
+$('kpi-won').textContent = fmtMoney(m.won_amount);
+$('kpi-winrate').textContent = `赢率 ${m.win_rate}%`;
+$('kpi-lost-sub').textContent = `丢单归档 ${fmtMoney(m.lost_amount)}`;
+$('kpi-health').textContent = `${m.avg_health} 分`;
+$('kpi-overdue').textContent = `${m.overdue_count} 逾期`;
+$('kpi-soon-sub').textContent = `3 日内即将到期 ${m.due_soon_count} 项`;
+$('badge-deals').textContent = String(state.deals.length);
+$('badge-accounts').textContent = String(state.accounts.length);
+$('badge-alerts').textContent = String(m.overdue_count + m.due_soon_count);
+$('badge-alerts').classList.toggle('alert', m.overdue_count > 0);
+}
+function renderFunnelSvg() {
+const funnel = state.metrics?.funnel || [];
+const stages = STAGE_META.map(meta => ({ ...meta, ...(funnel.find(x => x.stage === meta.id) || { count: 0, amount: 0, weighted: 0 }) }));
+const maxAmt = Math.max(...stages.map(s => s.amount), 1);
+const W = 460, rowH = 38, padY = 12, H = padY * 2 + stages.length * rowH, cx = 195, maxW = 240, minW = 74;
+let body = `<defs>${stages.map((s, i) => `<linearGradient id="fg${i}" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="${s.color}" stop-opacity=".95"/><stop offset="100%" stop-color="${s.color}" stop-opacity=".72"/></linearGradient>`).join('')}</defs>`;
+stages.forEach((s, i) => {
+const y = padY + i * rowH, ratio = s.amount > 0 ? Math.max(0.25, s.amount / maxAmt) : 0.18;
+const topW = minW + (maxW - minW) * (1 - i * 0.15) * (0.45 + 0.55 * ratio), botW = Math.max(minW * 0.85, topW - 18);
+const prev = i > 0 ? stages[i - 1].amount : s.amount;
+const conv = i === 0 ? '100%' : (prev > 0 ? `${Math.min(999, Math.round((s.amount / prev) * 100))}%` : '—');
+body += `<text x="8" y="${y+21}" fill="var(--fg-2)" font-size="12" font-weight="600">${esc(s.label)}</text>`
++ `<polygon points="${(cx-topW/2).toFixed(1)},${y+3} ${(cx+topW/2).toFixed(1)},${y+3} ${(cx+botW/2).toFixed(1)},${y+rowH-5} ${(cx-botW/2).toFixed(1)},${y+rowH-5}" fill="url(#fg${i})"/>`
++ `<text x="${cx}" y="${y+21}" text-anchor="middle" fill="#fff" font-size="11.5" font-weight="700">${s.count} 笔 · ${esc(fmtMoney(s.amount))}</text>`
++ `<text x="348" y="${y+21}" fill="var(--muted)" font-size="11.5" font-weight="600">加权 ${esc(fmtMoney(s.weighted))}</text>`
++ `<text x="454" y="${y+21}" text-anchor="end" fill="${s.color}" font-size="11" font-weight="700">${conv}</text>`;
+});
+$('svg-funnel').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="销售转化漏斗图">${body}</svg>`;
+}
+function renderForecastSvg() {
+const funnel = state.metrics?.funnel || [];
+const stages = STAGE_META.map(meta => ({ ...meta, ...(funnel.find(x => x.stage === meta.id) || { count: 0, amount: 0, weighted: 0 }) }));
+const maxVal = Math.max(...stages.map(s => Math.max(s.amount, s.weighted)), 100000);
+const W = 430, H = 214, padL = 52, padR = 14, padT = 18, padB = 34, cW = W - padL - padR, cH = H - padT - padB, step = cW / stages.length;
+let svg = '';
+for (let t = 0; t <= 4; t++) {
+const y = padT + cH - (cH * t) / 4;
+svg += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="var(--border)" stroke-dasharray="${t ? '3 3' : ''}"/>`
++ `<text x="${padL-6}" y="${y+4}" text-anchor="end" fill="var(--muted)" font-size="10.5">${esc(fmtMoney((maxVal * t) / 4))}</text>`;
+}
+stages.forEach((s, i) => {
+const bx = padL + i * step + step * 0.18, bw = Math.max(12, step * 0.27);
+const hr = (s.amount / maxVal) * cH, hw = (s.weighted / maxVal) * cH;
+svg += `<rect x="${bx.toFixed(1)}" y="${(padT+cH-hr).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(2,hr).toFixed(1)}" rx="4" fill="var(--accent)" opacity=".88"><title>${esc(s.label)} 原始：${esc(fmtFull(s.amount))}</title></rect>`
++ `<rect x="${(bx+bw+4).toFixed(1)}" y="${(padT+cH-hw).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(2,hw).toFixed(1)}" rx="4" fill="var(--ok)" opacity=".92"><title>${esc(s.label)} 加权：${esc(fmtFull(s.weighted))}</title></rect>`
++ `<text x="${(bx+bw+2).toFixed(1)}" y="${H-12}" text-anchor="middle" fill="var(--fg-2)" font-size="11.5" font-weight="600">${esc(s.label)}</text>`;
+});
+$('svg-forecast').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="阶段金额与加权营收对比图">${svg}</svg>`;
+}
+function mkBtn(text, cls, fn) { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = text; b.addEventListener('click', fn); return b; }
+function renderKanban() {
+const kw = $('deal-search').value.trim().toLowerCase();
+const accMap = new Map(state.accounts.map(a => [a.id, a]));
+const hit = d => !kw || `${d.title} ${accMap.get(d.account_id)?.name || ''} ${d.owner}`.toLowerCase().includes(kw);
+const board = $('kanban-board'); board.replaceChildren();
+for (const meta of STAGE_META) {
+const deals = state.deals.filter(d => d.stage === meta.id && hit(d));
+const sum = deals.reduce((s, d) => s + (Number(d.amount) || 0), 0);
+const lane = document.createElement('div'); lane.className = 'lane';
+lane.innerHTML = `<div class="lane-head" data-stage="${meta.id}"><span class="lane-title">${esc(meta.label)} <span class="tag num">${deals.length}</span></span><span class="lane-sum num">${esc(fmtMoney(sum))}</span></div>`;
+if (!deals.length) lane.insertAdjacentHTML('beforeend', `<div style="font-size:12px;color:var(--muted);padding:18px 6px;text-align:center">暂无该阶段商机</div>`);
+for (const d of deals) {
+const card = document.createElement('article'); card.className = 'deal-card';
+card.innerHTML = `<div class="deal-acc"><span>${esc(accMap.get(d.account_id)?.name || d.account_id)}</span><span class="num">${d.probability}%</span></div>`
++ `<div class="deal-title">${esc(d.title)}</div>`
++ `<div class="deal-amt num"><span>${esc(fmtFull(d.amount))}</span><span style="font-size:11px;font-weight:500;color:var(--muted)">加权 ${esc(fmtMoney((d.amount * d.probability) / 100))}</span></div>`
++ `<div class="prob-bar"><div class="prob-fill" style="width:${d.probability}%"></div></div>`
++ `<div class="deal-meta"><span>预计成交 ${esc(d.close_date)}</span><span>${esc(d.owner || '未指派')}</span></div>`
++ (d.next_step ? `<div class="deal-step">下一步：${esc(d.next_step)}</div>` : '');
+const acts = document.createElement('div'); acts.className = 'deal-actions';
+if (meta.next) acts.appendChild(mkBtn(`推进 → ${STAGE_LABEL[meta.next]}`, 'primary sm', () => advanceStage(d, meta.next)));
+acts.append(mkBtn('AI 军师', 'ghost sm', () => openAdvisorFor(d.account_id, d.id)), mkBtn('编辑', 'ghost sm', () => openDealModal(d)));
+if (meta.id !== 'won') acts.appendChild(mkBtn('丢单', 'ghost sm', () => advanceStage(d, 'lost')));
+card.appendChild(acts); lane.appendChild(card);
+}
+board.appendChild(lane);
+}
+const lost = state.deals.filter(d => d.stage === 'lost' && hit(d));
+$('lost-count').textContent = String(lost.length);
+$('lost-archive').hidden = !showLost;
+const lostBox = $('lost-list'); lostBox.replaceChildren();
+for (const d of lost) {
+const c = document.createElement('div'); c.className = 'deal-card';
+c.innerHTML = `<div class="deal-acc"><span>${esc(accMap.get(d.account_id)?.name || d.account_id)}</span><span class="tag danger">丢单</span></div><div class="deal-title">${esc(d.title)}</div><div class="deal-meta"><span class="num">${esc(fmtFull(d.amount))}</span><span>${esc(d.close_date)}</span></div><div class="deal-step">${esc(d.loss_reason || '未填写丢单原因')}</div>`;
+const row = document.createElement('div'); row.className = 'deal-actions';
+row.append(mkBtn('AI 复盘', 'ghost sm', () => { activeScenario = 'review'; openAdvisorFor(d.account_id, d.id); }), mkBtn('编辑/重启', 'ghost sm', () => openDealModal(d)));
+c.appendChild(row); lostBox.appendChild(c);
+}
+}
+const advanceStage = (deal, nextStage) => runBusy(async () => {
+const res = await plugin.action('crm.deal.stage', { expected_revision: state.revision, id: deal.id, stage: nextStage });
+if (res.status === 'saved') { await loadSnapshot(); setStatus(`「${deal.title}」已推进至「${STAGE_LABEL[nextStage]}」（赢率 ${res.probability}%）`); }
+else setStatus(`推进未完成：${res.status}`, true);
+});
+function renderAccounts() {
+const kw = $('acc-search').value.trim().toLowerCase();
+const filtered = state.accounts.filter(a => !kw || `${a.name} ${a.industry} ${a.contact_name} ${a.tags.join(' ')}`.toLowerCase().includes(kw));
+const list = $('acc-list'); list.replaceChildren();
+if (!filtered.length) list.innerHTML = `<div style="padding:20px;text-align:center;color:var(--muted);font-size:12.5px">暂无匹配客户</div>`;
+for (const a of filtered) {
+const btn = document.createElement('button'); btn.type = 'button'; btn.className = `acc-item${a.id === selectedAccId ? ' active' : ''}`;
+const cls = a.health >= 80 ? 'ok' : a.health >= 65 ? 'warn' : 'danger';
+btn.innerHTML = `<div style="min-width:0"><div style="font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.name)}</div><div style="font-size:11.5px;color:var(--muted)">${esc(a.industry)} · ${esc(a.contact_name)} ${esc(a.contact_role)}</div></div><span class="tag ${cls} num">${a.health}</span>`;
+btn.addEventListener('click', () => { selectedAccId = a.id; renderAccounts(); });
+list.appendChild(btn);
+}
+const acc = state.accounts.find(a => a.id === selectedAccId);
+$('acc-empty').hidden = Boolean(acc); $('acc-detail').hidden = !acc;
+if (!acc) return;
+const r = 30, circ = 2 * Math.PI * r, dash = (acc.health / 100) * circ;
+const col = acc.health >= 80 ? 'var(--ok)' : acc.health >= 65 ? 'var(--warn)' : 'var(--danger)';
+$('acc-health-svg').innerHTML = `<svg viewBox="0 0 74 74" width="74" height="74"><circle cx="37" cy="37" r="${r}" fill="none" stroke="var(--border)" stroke-width="6.5"/><circle cx="37" cy="37" r="${r}" fill="none" stroke="${col}" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="${dash.toFixed(1)} ${circ.toFixed(1)}" transform="rotate(-90 37 37)"/><text x="37" y="36" text-anchor="middle" fill="var(--fg)" font-size="16" font-weight="800">${acc.health}</text><text x="37" y="50" text-anchor="middle" fill="var(--muted)" font-size="9.5">健康度</text></svg>`;
+$('acc-name').textContent = acc.name; $('acc-industry').textContent = acc.industry; $('acc-size').textContent = SIZE_LABEL[acc.size] || acc.size;
+$('acc-contact').textContent = `关键联系人：${acc.contact_name}${acc.contact_role ? `（${acc.contact_role}）` : ''} · 更新于 ${acc.updated_at}`;
+$('acc-tags').innerHTML = acc.tags.map(t => `<span class="tag">#${esc(t)}</span>`).join('');
+$('acc-potential').textContent = fmtFull(acc.annual_potential);
+$('acc-risk').textContent = acc.risk_note || '暂无特别风险备注。';
+const accDeals = state.deals.filter(d => d.account_id === acc.id);
+const accActs = state.activities.filter(x => x.account_id === acc.id).sort((a, b) => b.date.localeCompare(a.date));
+$('acc-deals-sum').textContent = fmtFull(accDeals.reduce((s, d) => s + (Number(d.amount) || 0), 0));
+$('acc-counts').textContent = `${accDeals.length} 商机 / ${accActs.length} 互动`;
+const dBox = $('acc-deals-list'); dBox.replaceChildren();
+if (!accDeals.length) dBox.innerHTML = `<div style="font-size:12.5px;color:var(--muted)">暂无关联商机</div>`;
+for (const d of accDeals) {
+const tagCls = d.stage === 'won' ? 'ok' : d.stage === 'lost' ? 'danger' : 'accent';
+dBox.insertAdjacentHTML('beforeend', `<div class="info-box" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><div style="font-weight:700">${esc(d.title)}</div><div style="font-size:12px;color:var(--muted)">预计成交 ${esc(d.close_date)} · ${esc(d.owner || '—')} · ${esc(d.next_step || '无下一步备注')}</div></div><div class="row"><span class="tag ${tagCls}">${esc(STAGE_LABEL[d.stage])} · ${d.probability}%</span><strong class="num">${esc(fmtFull(d.amount))}</strong></div></div>`);
+}
+const aBox = $('acc-acts-list'); aBox.replaceChildren();
+if (!accActs.length) aBox.innerHTML = `<div style="font-size:12.5px;color:var(--muted)">暂无互动记录</div>`;
+for (const act of accActs) aBox.appendChild(buildActRow(act, acc.name, false));
+}
+function buildActRow(act, accName, showAcc = true) {
+const diff = act.done ? null : daysDiff(act.next_due);
+const cls = act.done ? 'done' : (diff !== null && diff < 0 ? 'overdue' : (diff !== null && diff <= 3 ? 'soon' : ''));
+const row = document.createElement('div'); row.className = `act-row ${cls}`;
+const dueBadge = act.done ? `<span class="tag ok">已完成</span>`
+: diff !== null && diff < 0 ? `<span class="tag danger">已逾期 ${Math.abs(diff)} 天 (${esc(act.next_due)})</span>`
+: diff !== null && diff <= 3 ? `<span class="tag warn">${diff === 0 ? '今日到期' : `${diff} 天后到期`} (${esc(act.next_due)})</span>`
+: act.next_due ? `<span class="tag">下次跟进 ${esc(act.next_due)}</span>` : '';
+const deal = state.deals.find(d => d.id === act.deal_id);
+row.innerHTML = `<div class="row" style="justify-content:space-between"><div class="row"><span class="tag accent">${esc(ACT_LABEL[act.type] || act.type)}</span>${showAcc ? `<strong style="font-size:13px">${esc(accName)}</strong>` : ''}${deal ? `<span style="font-size:12px;color:var(--muted)">/ ${esc(deal.title)}</span>` : ''}<span style="font-size:12px;color:var(--muted)" class="num">${esc(act.date)}</span></div><div class="row">${dueBadge}</div></div><div style="font-size:13px;line-height:1.5">${esc(act.summary)}</div>${act.next_action ? `<div style="font-size:12px;color:var(--fg-2)"><strong>下一步行动：</strong>${esc(act.next_action)}</div>` : ''}`;
+const ctrl = document.createElement('div'); ctrl.className = 'row';
+ctrl.append(
+mkBtn(act.done ? '重新打开' : '标记完成', act.done ? 'ghost sm' : 'ok sm', () => runBusy(async () => {
+const res = await plugin.action('crm.activity.save', { expected_revision: state.revision, ...act, done: !act.done });
+if (res.status === 'saved') { await loadSnapshot(); setStatus(act.done ? '已重新打开跟进项' : '已标记跟进完成'); } else setStatus(`更新失败：${res.status}`, true);
+})),
+mkBtn('删除', 'ghost sm', () => runBusy(async () => {
+const res = await plugin.action('crm.activity.delete', { expected_revision: state.revision, id: act.id });
+if (res.status === 'deleted') { await loadSnapshot(); setStatus('已删除互动记录'); } else setStatus(`删除失败：${res.status}`, true);
+}))
+);
+row.appendChild(ctrl); return row;
+}
+function renderActFormOpts() {
+const sel = $('act-f-acc'), prev = sel.value;
+sel.innerHTML = state.accounts.length ? state.accounts.map(a => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('') : `<option value="">请先创建客户</option>`;
+if (prev && state.accounts.some(a => a.id === prev)) sel.value = prev;
+syncActDeals(); if (!$('act-f-date').value) $('act-f-date').value = today();
+}
+function syncActDeals() {
+const deals = state.deals.filter(d => d.account_id === $('act-f-acc').value);
+$('act-f-deal').innerHTML = `<option value="">不关联特定商机</option>` + deals.map(d => `<option value="${esc(d.id)}">${esc(d.title)} (${esc(STAGE_LABEL[d.stage])})</option>`).join('');
+}
+function renderTimeline() {
+const sf = $('act-filter-status').value, tf = $('act-filter-type').value;
+const accMap = new Map(state.accounts.map(a => [a.id, a.name]));
+const list = [...state.activities].filter(a => {
+if (tf && a.type !== tf) return false;
+const diff = a.done ? null : daysDiff(a.next_due);
+if (sf === 'done') return a.done;
+if (sf === 'open') return !a.done;
+if (sf === 'urgent') return !a.done && diff !== null && diff <= 3;
+return true;
+}).sort((a, b) => (a.done !== b.done ? (a.done ? 1 : -1) : (a.next_due || '9999-12-31').localeCompare(b.next_due || '9999-12-31') || b.date.localeCompare(a.date)));
+const box = $('act-timeline'); box.replaceChildren();
+if (!list.length) { box.innerHTML = `<div style="padding:24px;text-align:center;color:var(--muted)">当前筛选条件下暂无互动记录。</div>`; return; }
+for (const act of list) box.appendChild(buildActRow(act, accMap.get(act.account_id) || act.account_id, true));
+}
+function renderAdvisorOpts() {
+const sel = $('ai-acc'), prev = sel.value;
+sel.innerHTML = state.accounts.length ? state.accounts.map(a => `<option value="${esc(a.id)}">${esc(a.name)} (${esc(a.industry)})</option>`).join('') : `<option value="">请先创建或加载客户数据</option>`;
+if (prev && state.accounts.some(a => a.id === prev)) sel.value = prev;
+syncAdvisorDeals();
+}
+function syncAdvisorDeals() {
+const deals = state.deals.filter(d => d.account_id === $('ai-acc').value);
+$('ai-deal').innerHTML = `<option value="">综合分析该客户全部商机</option>` + deals.map(d => `<option value="${esc(d.id)}">${esc(d.title)} · ${esc(STAGE_LABEL[d.stage])} · ${esc(fmtMoney(d.amount))}</option>`).join('');
+}
+function openAdvisorFor(accId, dealId = '') {
+switchView('advisor');
+if (accId) $('ai-acc').value = accId;
+syncAdvisorDeals();
+if (dealId) $('ai-deal').value = dealId;
+document.querySelectorAll('.scenario-card').forEach(c => c.classList.toggle('active', c.dataset.sc === activeScenario));
+renderAdvisorContext();
+}
+function buildAdvisorCtx() {
+const acc = state.accounts.find(a => a.id === $('ai-acc').value);
+if (!acc) return null;
+const deal = state.deals.find(d => d.id === $('ai-deal').value);
+const recent = state.activities.filter(x => x.account_id === acc.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
+const lines = [
+`客户：${acc.name}（行业：${acc.industry}，规模：${SIZE_LABEL[acc.size]}，健康度：${acc.health}/100）`,
+`关键联系人：${acc.contact_name} ${acc.contact_role}；年潜在价值：${fmtFull(acc.annual_potential)}`,
+`风险/策略备注：${acc.risk_note || '无'}`,
+];
+if (deal) {
+lines.push(`聚焦商机：${deal.title}｜阶段：${STAGE_LABEL[deal.stage]}（赢率 ${deal.probability}%）｜金额：${fmtFull(deal.amount)}｜预计成交：${deal.close_date}`);
+if (deal.next_step) lines.push(`当前下一步：${deal.next_step}`);
+if (deal.loss_reason) lines.push(`丢单/复盘备注：${deal.loss_reason}`);
+} else {
+const ad = state.deals.filter(d => d.account_id === acc.id);
+if (ad.length) lines.push(`关联商机：${ad.map(d => `${d.title}(${STAGE_LABEL[d.stage]}/${fmtMoney(d.amount)})`).join('；')}`);
+}
+if (recent.length) {
+lines.push('近期互动记录：');
+recent.forEach(r => lines.push(`- [${r.date} ${ACT_LABEL[r.type]}] ${r.summary}${r.next_action ? `（下一步：${r.next_action}）` : ''}`));
+}
+return { acc, deal, text: lines.join('\n') };
+}
+function renderAdvisorContext() {
+const ctx = buildAdvisorCtx();
+$('ai-context-preview').textContent = ctx ? ctx.text : '请先在左侧加载演示数据或创建客户档案。';
+$('btn-ai-insert').hidden = !canInsert;
+}
+function openAccModal(acc = null) {
+editingAccId = acc?.id || null;
+$('m-acc-title').textContent = acc ? `编辑客户：${acc.name}` : '新建企业客户';
+$('m-acc-name').value = acc?.name ?? ''; $('m-acc-ind').value = acc?.industry ?? '';
+$('m-acc-size').value = acc?.size ?? 'midmarket'; $('m-acc-health').value = acc?.health ?? 80;
+$('m-acc-contact').value = acc?.contact_name ?? ''; $('m-acc-role').value = acc?.contact_role ?? '';
+$('m-acc-pot').value = acc?.annual_potential ?? 500000; $('m-acc-tags').value = acc ? acc.tags.join(', ') : '';
+$('m-acc-risk').value = acc?.risk_note ?? ''; $('modal-acc').hidden = false;
+}
+function openDealModal(deal = null, defaultAccId = null) {
+if (!state.accounts.length) { setStatus('请先创建至少一家企业客户再新建商机', true); return; }
+editingDealId = deal?.id || null;
+$('m-deal-title').textContent = deal ? '编辑商机' : '新建商机';
+$('m-deal-acc').innerHTML = state.accounts.map(a => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('');
+$('m-deal-name').value = deal?.title ?? ''; $('m-deal-acc').value = deal?.account_id ?? defaultAccId ?? state.accounts[0].id;
+$('m-deal-stage').value = deal?.stage ?? 'qualified'; $('m-deal-amt').value = deal?.amount ?? 300000;
+$('m-deal-prob').value = deal?.probability ?? 35; $('m-deal-date').value = deal?.close_date ?? today();
+$('m-deal-owner').value = deal?.owner ?? '张锐'; $('m-deal-step').value = deal?.next_step ?? '';
+$('m-deal-loss').value = deal?.loss_reason ?? ''; $('btn-m-deal-del').hidden = !deal; $('modal-deal').hidden = false;
+}
+document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
+document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => { $(b.dataset.close).hidden = true; }));
+on('btn-refresh', 'click', () => void loadSnapshot());
+const mqDark = matchMedia('(prefers-color-scheme: dark)');
+let userTheme = false;
+if (mqDark.matches) document.documentElement.dataset.theme = 'dark';
+mqDark.addEventListener?.('change', e => { if (!userTheme) document.documentElement.dataset.theme = e.matches ? 'dark' : 'light'; });
+on('btn-theme', 'click', () => { userTheme = true; document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; });
+on('btn-seed', 'click', () => runBusy(async () => {
+const res = await plugin.action('crm.demo.seed', { expected_revision: state.revision });
+if (res.status === 'seeded') { await loadSnapshot(); setStatus(`已加载 B2B SaaS 演示数据集（${res.counts.accounts} 客户 / ${res.counts.deals} 商机 / ${res.counts.activities} 互动）`); }
+else setStatus(`加载演示数据冲突：${res.status}`, true);
+}));
+on('deal-search', 'input', renderKanban); on('acc-search', 'input', renderAccounts);
+on('btn-toggle-lost', 'click', () => { showLost = !showLost; $('btn-toggle-lost').textContent = showLost ? '隐藏丢单归档' : '显示丢单归档'; renderKanban(); });
+on('btn-new-deal', 'click', () => openDealModal(null)); on('btn-new-acc', 'click', () => openAccModal(null));
+on('btn-acc-edit', 'click', () => { const a = state.accounts.find(x => x.id === selectedAccId); if (a) openAccModal(a); });
+on('btn-acc-ai', 'click', () => openAdvisorFor(selectedAccId));
+on('btn-acc-add-deal', 'click', () => openDealModal(null, selectedAccId));
+on('btn-acc-add-act', 'click', () => { switchView('activities'); if (selectedAccId) { $('act-f-acc').value = selectedAccId; syncActDeals(); } $('act-f-summary').focus(); });
+on('btn-acc-del', 'click', () => { if (!selectedAccId) return; void runBusy(async () => {
+const res = await plugin.action('crm.account.delete', { expected_revision: state.revision, id: selectedAccId });
+if (res.status === 'deleted') { selectedAccId = null; await loadSnapshot(); setStatus('已删除客户及其关联记录'); } else setStatus(`删除失败：${res.status}`, true);
+}); });
+on('btn-m-acc-save', 'click', () => runBusy(async () => {
+const name = $('m-acc-name').value.trim(), industry = $('m-acc-ind').value.trim(), contact = $('m-acc-contact').value.trim();
+if (!name || !industry || !contact) { setStatus('请填写企业名称、行业和关键联系人', true); return; }
+const id = editingAccId || `acc-${Date.now().toString(36)}`;
+const res = await plugin.action('crm.account.save', {
+expected_revision: state.revision, id, name, industry, size: $('m-acc-size').value,
+health: Math.max(0, Math.min(100, Math.round(Number($('m-acc-health').value) || 0))),
+contact_name: contact, contact_role: $('m-acc-role').value.trim(),
+annual_potential: Math.max(0, Number($('m-acc-pot').value) || 0),
+tags: $('m-acc-tags').value.split(/[,，]/).map(s => s.trim()).filter(Boolean).slice(0, 5),
+risk_note: $('m-acc-risk').value.trim(),
+});
+if (res.status === 'saved') { selectedAccId = id; $('modal-acc').hidden = true; await loadSnapshot(); setStatus('企业客户档案已保存'); }
+else setStatus(`保存未完成：${res.status}`, true);
+}));
+on('m-deal-stage', 'change', () => { $('m-deal-prob').value = ({ lead: 15, qualified: 35, proposal: 60, negotiation: 80, won: 100, lost: 0 })[$('m-deal-stage').value] ?? 35; });
+on('btn-m-deal-save', 'click', () => runBusy(async () => {
+const title = $('m-deal-name').value.trim(); if (!title) { setStatus('请填写商机名称', true); return; }
+const res = await plugin.action('crm.deal.save', {
+expected_revision: state.revision, id: editingDealId || `deal-${Date.now().toString(36)}`,
+account_id: $('m-deal-acc').value, title, stage: $('m-deal-stage').value,
+amount: Math.max(0, Number($('m-deal-amt').value) || 0),
+probability: Math.max(0, Math.min(100, Math.round(Number($('m-deal-prob').value) || 0))),
+close_date: $('m-deal-date').value || today(), owner: $('m-deal-owner').value.trim(),
+next_step: $('m-deal-step').value.trim(), loss_reason: $('m-deal-loss').value.trim(),
+});
+if (res.status === 'saved') { $('modal-deal').hidden = true; await loadSnapshot(); setStatus('商机已保存'); } else setStatus(`保存未完成：${res.status}`, true);
+}));
+on('btn-m-deal-del', 'click', () => { if (!editingDealId) return; void runBusy(async () => {
+const res = await plugin.action('crm.deal.delete', { expected_revision: state.revision, id: editingDealId });
+if (res.status === 'deleted') { $('modal-deal').hidden = true; await loadSnapshot(); setStatus('已删除商机'); } else setStatus(`删除失败：${res.status}`, true);
+}); });
+on('act-f-acc', 'change', syncActDeals); on('act-filter-status', 'change', renderTimeline); on('act-filter-type', 'change', renderTimeline);
+on('btn-act-submit', 'click', () => runBusy(async () => {
+const accId = $('act-f-acc').value, summary = $('act-f-summary').value.trim();
+if (!accId || !summary) { setStatus('请选择客户并填写互动摘要', true); return; }
+const res = await plugin.action('crm.activity.save', {
+expected_revision: state.revision, id: `act-${Date.now().toString(36)}`, account_id: accId,
+deal_id: $('act-f-deal').value || '', type: $('act-f-type').value, date: $('act-f-date').value || today(),
+summary, next_action: $('act-f-next').value.trim(), next_due: $('act-f-due').value || '', done: false,
+});
+if (res.status === 'saved') { $('act-f-summary').value = ''; $('act-f-next').value = ''; await loadSnapshot(); setStatus('互动跟进已记录'); }
+else setStatus(`记录未完成：${res.status}`, true);
+}));
+on('ai-acc', 'change', () => { syncAdvisorDeals(); renderAdvisorContext(); });
+on('ai-deal', 'change', renderAdvisorContext);
+document.querySelectorAll('.scenario-card').forEach(btn => btn.addEventListener('click', () => {
+activeScenario = btn.dataset.sc;
+document.querySelectorAll('.scenario-card').forEach(c => c.classList.toggle('active', c === btn));
+}));
+on('btn-ai-send', 'click', async () => {
+const ctx = buildAdvisorCtx(); if (!ctx) { setStatus('请先选择企业客户', true); return; }
+const scText = {
+email: '请作为顶级 B2B 软件销售顾问，起草一封高转化跟进邮件，含吸引高管打开的主题行、切中痛点的正文与明确 CTA。',
+objection: '请针对价格、竞品、法务合规或审批异议，生成 LAER 异议应对脚本与建议附带的证明材料。',
+strategy: '请基于 MEDDPICC 诊断商机缺口，输出未来 14 天 3 个必做赢单推进动作与高层对齐话术。',
+review: '请深度复盘上述客户/商机的赢单要素或丢单根因，提炼 3 条可复制的同行业打法。',
+}[activeScenario];
+const extra = $('ai-extra').value.trim();
+let prompt = `${scText}\n${extra ? `补充要求：${extra}\n` : ''}\n--- CRM 客户与商机上下文 ---\n${ctx.text}`;
+if (Array.from(prompt).length > 2000) prompt = Array.from(prompt).slice(0, 2000).join('');
+pendingWorkId = uuid(); latestAiText = '';
+$('btn-ai-check').hidden = false; $('ai-result-box').hidden = true;
+$('ai-state').textContent = '正在向 Velai 当前会话派发 AI 销售军师请求…';
+try {
+await plugin.action('session.turn.request', { prompt, work_id: pendingWorkId });
+$('ai-state').textContent = '已派发给当前会话，待回复完成后点击「核对 AI 军师回复」。';
+} catch (e) { $('ai-state').textContent = e?.message === 'cancelled' ? '已取消派发，请先选择一个会话。' : `派发未确认（${e?.message || 'unknown'}），请到原会话查看。`; }
+});
+on('btn-ai-check', 'click', async () => {
+if (!pendingWorkId) return;
+$('ai-state').textContent = '正在核对会话结果…';
+try {
+const r = await plugin.action('session.turn.result', { work_id: pendingWorkId });
+if (r.state === 'completed' && !r.truncated && typeof r.text === 'string' && r.text.trim()) {
+latestAiText = r.text.trim(); $('ai-output').textContent = latestAiText;
+$('ai-result-box').hidden = false; $('btn-ai-insert').hidden = !canInsert;
+$('ai-state').textContent = '已获取完整 AI 销售建议，可一键插入输入框或存入互动记录。';
+} else $('ai-state').textContent = `当前状态：${r.state}${r.truncated ? '（内容过长被截断，请回原会话查看）' : ''}`;
+} catch (e) { $('ai-state').textContent = `核对失败：${e?.message || '请回到原会话查看'}`; }
+});
+on('btn-ai-insert', 'click', async () => {
+if (!latestAiText) return;
+try { const r = await plugin.action('host.draft.insert', { text: latestAiText }); setStatus(r?.inserted ? '已一键插入 Velai 会话输入框' : '未能确认插入', !r?.inserted); }
+catch (e) { setStatus(`插入失败：${e?.message || ''}`, true); }
+});
+on('btn-ai-save-act', 'click', () => { if (!latestAiText || !$('ai-acc').value) return; void runBusy(async () => {
+const res = await plugin.action('crm.activity.save', {
+expected_revision: state.revision, id: `act-ai-${Date.now().toString(36)}`, account_id: $('ai-acc').value,
+deal_id: $('ai-deal').value || '', type: 'ai_note', date: today(), summary: latestAiText.slice(0, 390),
+next_action: '按 AI 军师建议推进下一步沟通', next_due: today(), done: false,
+});
+if (res.status === 'saved') { await loadSnapshot(); setStatus('已存入客户互动记录'); } else setStatus(`存入失败：${res.status}`, true);
+}); });
+on('btn-ai-copy', 'click', async () => { if (!latestAiText) return; try { await navigator.clipboard.writeText(latestAiText); setStatus('已复制 AI 军师方案'); } catch { setStatus('请手动选中复制'); } });
+on('btn-io', 'click', async () => {
+$('modal-io').hidden = false; $('io-msg').textContent = '';
+try { const r = await plugin.action('document.list', {}); $('io-select').innerHTML = (r.items || []).map(it => `<option value="${esc(it.id)}">${esc(it.label)}</option>`).join(''); }
+catch (e) { $('io-msg').textContent = `获取列表失败：${e?.message || ''}`; }
+});
+on('btn-io-export', 'click', async () => {
+const id = $('io-select').value; if (!id) return;
+try { const r = await plugin.action('document.export', { id }); if (r.text) { $('io-text').value = r.text; $('io-msg').textContent = `已导出 ${r.filename}（${r.text.length} 字符）`; } else $('io-msg').textContent = `导出失败：${r.error || ''}`; }
+catch (e) { $('io-msg').textContent = `导出失败：${e?.message || ''}`; }
+});
+on('btn-io-import', 'click', async () => {
+const text = $('io-text').value.trim(); if (!text) { $('io-msg').textContent = '请先粘贴 JSON'; return; }
+try { const r = await plugin.action('document.import', { text }); if (r.imported) { await loadSnapshot(); $('io-msg').textContent = '导入成功，工作台数据已刷新。'; } else $('io-msg').textContent = `导入失败：${r.reason || ''}`; }
+catch (e) { $('io-msg').textContent = `导入失败：${e?.message || ''}`; }
+});
+on('btn-io-copy', 'click', async () => { try { await navigator.clipboard.writeText($('io-text').value); $('io-msg').textContent = '已复制 JSON'; } catch { $('io-msg').textContent = '请手动全选复制'; } });
+const actTypeOpts = Object.entries(ACT_LABEL).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+$('act-f-type').innerHTML = actTypeOpts;
+$('act-filter-type').innerHTML = `<option value="">全部互动类型</option>${actTypeOpts}`;
+void loadSnapshot();
+})();
+</script>
+</body>
+</html>

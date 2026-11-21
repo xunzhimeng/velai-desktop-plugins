@@ -1,0 +1,504 @@
+{
+  "manifest_version": 1,
+  "plugin_id": "course-knowledge-os",
+  "name": "AI 知识图谱与间隔重复学习系统",
+  "version": "1.0.0",
+  "host_api": 1,
+  "backend": "backend/index.js",
+  "page": "ui/index.html",
+  "ui": {
+    "icon": "text",
+    "surfaces": ["workspace", "chat", "assistant"]
+  },
+  "permissions": ["data.read", "data.write", "tasks.start", "tasks.read", "tasks.cancel"],
+  "actions": [
+    {
+      "id": "study.state",
+      "title": "读取知识库与复习状态",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "today": { "type": "string", "minLength": 10, "maxLength": 10 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["revision", "today", "decks", "cards", "review_log", "stats"],
+        "properties": {
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "today": { "type": "string", "minLength": 10, "maxLength": 10 },
+          "decks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "name", "color", "description"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 40 },
+                "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+                "color": { "type": "string", "minLength": 4, "maxLength": 16 },
+                "description": { "type": "string", "maxLength": 160 }
+              }
+            }
+          },
+          "cards": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "deck_id",
+                "kind",
+                "front",
+                "back",
+                "tags",
+                "links",
+                "ease_factor",
+                "interval_days",
+                "repetitions",
+                "due_date",
+                "last_reviewed",
+                "lapses"
+              ],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 40 },
+                "deck_id": { "type": "string", "minLength": 1, "maxLength": 40 },
+                "kind": { "type": "string", "enum": ["concept", "qa", "code"] },
+                "front": { "type": "string", "minLength": 1, "maxLength": 320 },
+                "back": { "type": "string", "minLength": 1, "maxLength": 800 },
+                "tags": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 24 } },
+                "links": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 40 } },
+                "ease_factor": { "type": "number", "minimum": 1.3, "maximum": 3.5 },
+                "interval_days": { "type": "integer", "minimum": 0, "maximum": 3650 },
+                "repetitions": { "type": "integer", "minimum": 0, "maximum": 999 },
+                "due_date": { "type": "string", "minLength": 10, "maxLength": 10 },
+                "last_reviewed": { "type": "string", "maxLength": 10 },
+                "lapses": { "type": "integer", "minimum": 0, "maximum": 999 }
+              }
+            }
+          },
+          "review_log": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["date", "card_id", "deck_id", "rating", "interval_days"],
+              "properties": {
+                "date": { "type": "string", "minLength": 10, "maxLength": 10 },
+                "card_id": { "type": "string", "minLength": 1, "maxLength": 40 },
+                "deck_id": { "type": "string", "minLength": 1, "maxLength": 40 },
+                "rating": { "type": "integer", "minimum": 1, "maximum": 4 },
+                "interval_days": { "type": "integer", "minimum": 0, "maximum": 3650 }
+              }
+            }
+          },
+          "stats": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "total_cards",
+              "due_count",
+              "total_links",
+              "mastery_rate",
+              "streak_days",
+              "reviewed_today",
+              "tiers"
+            ],
+            "properties": {
+              "total_cards": { "type": "integer", "minimum": 0, "maximum": 999 },
+              "due_count": { "type": "integer", "minimum": 0, "maximum": 999 },
+              "total_links": { "type": "integer", "minimum": 0, "maximum": 9999 },
+              "mastery_rate": { "type": "number", "minimum": 0, "maximum": 100 },
+              "streak_days": { "type": "integer", "minimum": 0, "maximum": 999 },
+              "reviewed_today": { "type": "integer", "minimum": 0, "maximum": 999 },
+              "tiers": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["new_count", "learning", "reviewing", "mastered"],
+                "properties": {
+                  "new_count": { "type": "integer", "minimum": 0, "maximum": 999 },
+                  "learning": { "type": "integer", "minimum": 0, "maximum": 999 },
+                  "reviewing": { "type": "integer", "minimum": 0, "maximum": 999 },
+                  "mastered": { "type": "integer", "minimum": 0, "maximum": 999 }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "study.deck.save",
+      "title": "保存学科卡组",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id", "name", "color", "description"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 40 },
+          "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+          "color": { "type": "string", "minLength": 4, "maxLength": 16 },
+          "description": { "type": "string", "maxLength": 160 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "study.deck.delete",
+      "title": "删除学科卡组",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 40 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["deleted", "not_found", "conflict"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "study.card.save",
+      "title": "保存知识闪卡",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id", "deck_id", "kind", "front", "back", "tags", "links"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 40 },
+          "deck_id": { "type": "string", "minLength": 1, "maxLength": 40 },
+          "kind": { "type": "string", "enum": ["concept", "qa", "code"] },
+          "front": { "type": "string", "minLength": 1, "maxLength": 320 },
+          "back": { "type": "string", "minLength": 1, "maxLength": 800 },
+          "tags": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 24 } },
+          "links": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 40 } },
+          "due_date": { "type": "string", "minLength": 10, "maxLength": 10 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "deck_not_found", "conflict", "limit", "invalid_input"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "card_id": { "type": "string", "minLength": 1, "maxLength": 40 }
+        }
+      }
+    },
+    {
+      "id": "study.card.delete",
+      "title": "删除知识闪卡",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 40 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["deleted", "not_found", "conflict"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "study.review.submit",
+      "title": "提交 SM-2 复习评分",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "card_id", "rating"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "card_id": { "type": "string", "minLength": 1, "maxLength": 40 },
+          "rating": { "type": "integer", "minimum": 1, "maximum": 4 },
+          "today": { "type": "string", "minLength": 10, "maxLength": 10 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["reviewed", "not_found", "conflict", "invalid_input"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "next_interval_days": { "type": "integer", "minimum": 0, "maximum": 3650 },
+          "next_due_date": { "type": "string", "minLength": 10, "maxLength": 10 },
+          "ease_factor": { "type": "number", "minimum": 1.3, "maximum": 3.5 },
+          "repetitions": { "type": "integer", "minimum": 0, "maximum": 999 }
+        }
+      }
+    },
+    {
+      "id": "study.demo.load",
+      "title": "载入大模型与分布式架构演示卡组",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "today": { "type": "string", "minLength": 10, "maxLength": 10 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision", "decks_count", "cards_count"],
+        "properties": {
+          "status": { "type": "string", "enum": ["loaded", "conflict"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "decks_count": { "type": "integer", "minimum": 0, "maximum": 99 },
+          "cards_count": { "type": "integer", "minimum": 0, "maximum": 999 }
+        }
+      }
+    },
+    {
+      "id": "document.list",
+      "title": "列出可导出的知识卡组",
+      "permissions": ["data.read"],
+      "input_schema": { "type": "object", "additionalProperties": false, "required": [], "properties": {} },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "label"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 64 },
+                "label": { "type": "string", "minLength": 1, "maxLength": 120 }
+              }
+            }
+          },
+          "error": { "type": "string", "maxLength": 64 }
+        }
+      }
+    },
+    {
+      "id": "document.export",
+      "title": "导出知识库 JSON",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "maxLength": 64 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "filename": { "type": "string", "maxLength": 80 },
+          "text": { "type": "string", "maxLength": 12288 },
+          "error": { "type": "string", "maxLength": 64 }
+        }
+      }
+    },
+    {
+      "id": "document.import",
+      "title": "导入知识库 JSON",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text"],
+        "properties": {
+          "text": { "type": "string", "minLength": 2, "maxLength": 12288 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["imported"],
+        "properties": {
+          "imported": { "type": "boolean" },
+          "reason": { "type": "string", "maxLength": 64 },
+          "added_decks": { "type": "integer", "minimum": 0, "maximum": 99 },
+          "added_cards": { "type": "integer", "minimum": 0, "maximum": 999 }
+        }
+      }
+    },
+    {
+      "id": "session.turn.request",
+      "title": "向当前会话发起费曼导师或制卡请求",
+      "permissions": ["tasks.start"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["prompt", "work_id"],
+        "properties": {
+          "prompt": { "type": "string", "minLength": 1, "maxLength": 2048 },
+          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["task_id", "state"],
+        "properties": {
+          "task_id": { "type": "string", "minLength": 36, "maxLength": 36 },
+          "state": { "type": "string", "enum": ["dispatching"] }
+        }
+      }
+    },
+    {
+      "id": "session.turn.result",
+      "title": "核对 AI 费曼导师返回结果",
+      "permissions": ["tasks.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["work_id"],
+        "properties": {
+          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["work_id", "state", "truncated"],
+        "properties": {
+          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 },
+          "state": {
+            "type": "string",
+            "enum": ["dispatching", "running", "waiting", "completed", "cancelled", "failed", "unknown", "unavailable"]
+          },
+          "truncated": { "type": "boolean" }
+        }
+      }
+    }
+  ],
+  "tools": [
+    {
+      "id": "study.due",
+      "title": "查询今日待复习卡片与掌握率",
+      "description": "获取今日待复习的间隔重复知识闪卡清单、双链关系以及整体记忆掌握率统计。",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "deck_id": { "type": "string", "maxLength": 40, "description": "按卡组 ID 筛选待复习卡片" },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 20, "description": "最多返回的待复习卡片条数" },
+          "today": { "type": "string", "minLength": 10, "maxLength": 10, "description": "指定日期 YYYY-MM-DD" }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status", "today", "due_count", "total_cards", "mastery_rate", "due_cards"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["ready", "empty"] },
+          "today": { "type": "string", "minLength": 10, "maxLength": 10 },
+          "due_count": { "type": "integer", "minimum": 0, "maximum": 999 },
+          "total_cards": { "type": "integer", "minimum": 0, "maximum": 999 },
+          "mastery_rate": { "type": "number", "minimum": 0, "maximum": 100 },
+          "due_cards": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "deck_id", "deck_name", "kind", "front", "interval_days", "ease_factor", "due_date", "links"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 40 },
+                "deck_id": { "type": "string", "minLength": 1, "maxLength": 40 },
+                "deck_name": { "type": "string", "minLength": 1, "maxLength": 60 },
+                "kind": { "type": "string", "enum": ["concept", "qa", "code"] },
+                "front": { "type": "string", "minLength": 1, "maxLength": 320 },
+                "interval_days": { "type": "integer", "minimum": 0, "maximum": 3650 },
+                "ease_factor": { "type": "number", "minimum": 1.3, "maximum": 3.5 },
+                "due_date": { "type": "string", "minLength": 10, "maxLength": 10 },
+                "links": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 40 } }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "study.card.add",
+      "title": "新增双链知识闪卡",
+      "description": "向指定学科卡组新增一张支持 SM-2 间隔重复与双链前置关系的知识闪卡。",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["deck_id", "front", "back"],
+        "properties": {
+          "deck_id": { "type": "string", "minLength": 1, "maxLength": 40, "description": "所属学科卡组 ID" },
+          "front": { "type": "string", "minLength": 1, "maxLength": 320, "description": "闪卡正面（概念标题或核心问题）" },
+          "back": { "type": "string", "minLength": 1, "maxLength": 800, "description": "闪卡背面（精炼解答或代码片段）" },
+          "kind": { "type": "string", "enum": ["concept", "qa", "code"], "description": "卡片类型" },
+          "tags": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 24 }, "description": "标签列表" },
+          "links": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 40 }, "description": "关联前置卡片 ID 列表" }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status", "revision"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["created", "deck_not_found", "limit", "invalid_input", "conflict"] },
+          "card_id": { "type": "string", "minLength": 1, "maxLength": 40 },
+          "due_date": { "type": "string", "minLength": 10, "maxLength": 10 },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    }
+  ],
+  "data": [
+    { "collection": "decks", "scope": "account", "schema_version": 1 },
+    { "collection": "cards", "scope": "account", "schema_version": 1 },
+    { "collection": "review_log", "scope": "account", "schema_version": 1 }
+  ],
+  "http": [],
+  "tasks": [],
+  "files": []
+}

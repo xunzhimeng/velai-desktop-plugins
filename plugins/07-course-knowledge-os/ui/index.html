@@ -1,0 +1,925 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 知识图谱与间隔重复学习系统</title>
+<style>
+:root{
+color-scheme:light dark;
+--bg:#f6f7fb;--surface:#ffffff;--s2:#f0f2f8;--s3:#e7ebf4;
+--fg:#111827;--fg2:#374151;--muted:#6b7280;
+--border:#dfe4ef;--b2:#c8d1e4;
+--accent:#4f46e5;--accent-s:rgba(79,70,229,.11);--accent-fg:#fff;
+--ok:#059669;--ok-s:rgba(5,150,105,.12);
+--warn:#d97706;--warn-s:rgba(217,119,6,.13);
+--danger:#dc2626;--danger-s:rgba(220,38,38,.12);
+--info:#0284c7;--info-s:rgba(2,132,199,.12);
+--sh1:0 1px 2px rgba(15,23,42,.05);--sh2:0 12px 30px rgba(15,23,42,.1);
+--r:12px;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+font:13.5px/1.55 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+:root:not([data-theme="light"]){--bg:#0c0f17;--surface:#131824;--s2:#1a2132;--s3:#222b40;--fg:#f3f4f6;--fg2:#d1d5db;--muted:#94a3b8;--border:#252f45;--b2:#33415c;--accent:#818cf8;--accent-s:rgba(129,140,248,.16);--accent-fg:#0c0f17;--ok:#34d399;--ok-s:rgba(52,211,153,.15);--warn:#fbbf24;--warn-s:rgba(251,191,36,.15);--danger:#f87171;--danger-s:rgba(248,113,113,.15);--info:#38bdf8;--info-s:rgba(56,189,248,.15);--sh1:0 1px 2px rgba(0,0,0,.35);--sh2:0 14px 36px rgba(0,0,0,.48)}
+}
+:root[data-theme="dark"]{--bg:#0c0f17;--surface:#131824;--s2:#1a2132;--s3:#222b40;--fg:#f3f4f6;--fg2:#d1d5db;--muted:#94a3b8;--border:#252f45;--b2:#33415c;--accent:#818cf8;--accent-s:rgba(129,140,248,.16);--accent-fg:#0c0f17;--ok:#34d399;--ok-s:rgba(52,211,153,.15);--warn:#fbbf24;--warn-s:rgba(251,191,36,.15);--danger:#f87171;--danger-s:rgba(248,113,113,.15);--info:#38bdf8;--info-s:rgba(56,189,248,.15);--sh1:0 1px 2px rgba(0,0,0,.35);--sh2:0 14px 36px rgba(0,0,0,.48)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+.app{display:grid;grid-template-columns:222px minmax(0,1fr);height:100vh}
+@media (max-width:780px){
+.app{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}
+.sidebar{flex-direction:row !important;align-items:center;overflow-x:auto;border-right:none !important;border-bottom:1px solid var(--border);padding:8px 12px !important}
+.nav-list,.sidebar-foot{flex-direction:row !important;margin-top:0 !important}
+.brand-sub{display:none}
+}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:15px 12px;display:flex;flex-direction:column;gap:14px;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 6px}
+.brand-icon{width:34px;height:34px;border-radius:10px;flex-shrink:0;background:linear-gradient(135deg,#4f46e5,#06b6d4);display:grid;place-items:center;color:#fff;box-shadow:0 4px 12px rgba(79,70,229,.3)}
+.brand-title{font-weight:700;font-size:14px;letter-spacing:-.01em;line-height:1.2}
+.brand-sub{font-size:11px;color:var(--muted)}
+.nav-list{display:flex;flex-direction:column;gap:4px}
+.nav-btn{display:flex;align-items:center;gap:9px;width:100%;padding:9px 10px;border-radius:9px;border:1px solid transparent;background:transparent;cursor:pointer;text-align:left;font-weight:500;color:var(--fg2);transition:.14s}
+.nav-btn:hover{background:var(--s2);color:var(--fg)}
+.nav-btn.active{background:var(--accent-s);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 28%,transparent);font-weight:600}
+.nav-badge{margin-left:auto;font-size:11px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--s2);color:var(--muted)}
+.nav-btn.active .nav-badge{background:var(--accent);color:var(--accent-fg)}
+.sidebar-foot{margin-top:auto;display:flex;flex-direction:column;gap:6px;padding-top:10px;border-top:1px solid var(--border)}
+.main-col{display:flex;flex-direction:column;min-width:0;height:100%;overflow:hidden}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.kpi-strip{display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex:1}
+.kpi-chip{display:flex;align-items:center;gap:8px;padding:6px 11px;border-radius:10px;background:var(--s2);border:1px solid var(--border);min-width:114px}
+.kpi-val{font-size:16px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi-lbl{font-size:11px;color:var(--muted);line-height:1.2}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block}
+.status-bar{padding:5px 18px;font-size:12px;color:var(--muted);background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.status-bar[data-kind="error"]{color:var(--danger);background:var(--danger-s)}
+.status-bar[data-kind="ok"]{color:var(--ok)}
+.workspace{flex:1;overflow-y:auto;padding:16px 18px 24px}
+.view[hidden],[hidden]{display:none !important}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--fg);cursor:pointer;font-weight:500;transition:.12s;white-space:nowrap}
+.btn:hover:not(:disabled){background:var(--s2);border-color:var(--b2)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.primary:hover:not(:disabled){filter:brightness(1.07)}
+.btn.ghost{background:transparent;border-color:transparent}
+.btn.ghost:hover:not(:disabled){background:var(--s2)}
+.btn.danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 35%,var(--border))}
+.btn.danger:hover:not(:disabled){background:var(--danger-s)}
+.btn.sm{padding:4px 9px;font-size:12px;border-radius:7px}
+input[type="text"],input[type="search"],select,textarea{width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--fg);outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-s)}
+textarea{resize:vertical;min-height:82px}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--sh1)}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px}
+.panel-title{font-size:14px;font-weight:700;margin:0}
+.muted{color:var(--muted);font-size:12px}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:600;background:var(--s2);color:var(--fg2);border:1px solid var(--border)}
+.pill.click{cursor:pointer}
+.pill.click:hover{border-color:var(--accent);color:var(--accent)}
+.review-wrap{max-width:780px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.progress-track{height:7px;border-radius:99px;background:var(--s2);overflow:hidden}
+.progress-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),#06b6d4);transition:width .25s ease}
+.fc-stage{perspective:1200px}
+.flashcard{width:100%;min-height:300px;border-radius:16px;border:1px solid var(--border);background:var(--surface);box-shadow:var(--sh2);padding:22px 26px;display:flex;flex-direction:column;justify-content:space-between;transition:transform .25s ease,border-color .2s;cursor:pointer;transform-style:preserve-3d}
+.flashcard:hover{border-color:var(--b2);transform:translateY(-1px)}
+.flashcard.flipped{border-color:color-mix(in srgb,var(--accent) 48%,var(--border))}
+.fc-front{font-size:19.5px;font-weight:700;line-height:1.45;letter-spacing:-.01em;margin:18px 0 12px}
+.fc-div{height:1px;background:var(--border);margin:12px 0}
+.fc-back{background:var(--s2);border:1px solid var(--border);border-radius:11px;padding:14px 16px;white-space:pre-wrap;word-break:break-word;font-size:13.8px;line-height:1.65;animation:reveal .22s ease}
+.fc-back.code{font-family:var(--mono);font-size:12.5px}
+@keyframes reveal{from{opacity:0;transform:rotateX(-12deg) translateY(6px)}to{opacity:1;transform:none}}
+.rate-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media (max-width:560px){.rate-grid{grid-template-columns:repeat(2,1fr)}}
+.rate-btn{display:flex;flex-direction:column;align-items:center;gap:3px;padding:11px 8px;border-radius:11px;border:1px solid var(--border);background:var(--surface);cursor:pointer;transition:.12s}
+.rate-btn:hover:not(:disabled){transform:translateY(-1px)}
+.rate-btn strong{font-size:13.5px}
+.rate-btn span{font-size:11.5px;color:var(--muted)}
+.rate-btn.r1{border-color:color-mix(in srgb,var(--danger) 42%,var(--border))}.rate-btn.r1:hover{background:var(--danger-s)}.rate-btn.r1 strong{color:var(--danger)}
+.rate-btn.r2{border-color:color-mix(in srgb,var(--warn) 45%,var(--border))}.rate-btn.r2:hover{background:var(--warn-s)}.rate-btn.r2 strong{color:var(--warn)}
+.rate-btn.r3{border-color:color-mix(in srgb,var(--info) 45%,var(--border))}.rate-btn.r3:hover{background:var(--info-s)}.rate-btn.r3 strong{color:var(--info)}
+.rate-btn.r4{border-color:color-mix(in srgb,var(--ok) 45%,var(--border))}.rate-btn.r4:hover{background:var(--ok-s)}.rate-btn.r4 strong{color:var(--ok)}
+.graph-layout{display:grid;grid-template-columns:minmax(0,1fr) 308px;gap:14px;min-height:500px}
+@media (max-width:960px){.graph-layout{grid-template-columns:1fr}}
+.graph-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;min-height:485px}
+.graph-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.graph-svg{width:100%;flex:1;min-height:435px;display:block;background:var(--bg)}
+.inspector{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:11px;overflow-y:auto;max-height:550px}
+.mgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.mbox{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:7px 9px}
+.mbox b{display:block;font-size:13.5px;font-variant-numeric:tabular-nums}
+.mbox span{font-size:11px;color:var(--muted)}
+.charts-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:14px;margin-bottom:14px}
+@media (max-width:880px){.charts-grid{grid-template-columns:1fr}}
+.deck-strip{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.deck-chip{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:10px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-weight:500}
+.deck-chip.active{border-color:var(--accent);background:var(--accent-s);color:var(--accent)}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(285px,1fr));gap:11px}
+.kcard{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:13px;display:flex;flex-direction:column;gap:8px}
+.kcard:hover{border-color:var(--b2);box-shadow:var(--sh1)}
+.kcard-front{font-weight:600;font-size:13.5px;line-height:1.4}
+.kcard-back{font-size:12.5px;color:var(--fg2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.mbar{height:5px;border-radius:99px;background:var(--s2);overflow:hidden}
+.mbar > i{display:block;height:100%;border-radius:99px}
+.ai-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+@media (max-width:880px){.ai-grid{grid-template-columns:1fr}}
+.mode-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.mode-card{padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--s2);cursor:pointer;text-align:left}
+.mode-card.active{border-color:var(--accent);background:var(--accent-s)}
+.mode-card b{display:block;font-size:12.5px}
+.mode-card span{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.ai-out{white-space:pre-wrap;word-break:break-word;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--s2);max-height:280px;overflow-y:auto;font-size:13px;line-height:1.6}
+.draft-card{border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--s2);display:flex;flex-direction:column;gap:5px}
+.modal-bg{position:fixed;inset:0;background:rgba(10,14,24,.56);display:grid;place-items:center;padding:16px;z-index:40}
+.modal{width:min(550px,100%);max-height:90vh;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;box-shadow:var(--sh2);display:flex;flex-direction:column;gap:12px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field > span{font-size:12px;font-weight:600;color:var(--fg2)}
+.link-picker{display:flex;flex-wrap:wrap;gap:6px;max-height:120px;overflow-y:auto;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--s2)}
+.link-opt{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:3px 8px;border-radius:7px;border:1px solid var(--border);background:var(--surface);cursor:pointer}
+.link-opt input{width:auto;margin:0}
+.empty{text-align:center;padding:38px 20px;border:1px dashed var(--b2);border-radius:var(--r);background:var(--surface);display:flex;flex-direction:column;align-items:center;gap:10px}
+.kbd{font-family:var(--mono);font-size:11px;padding:1px 5px;border-radius:5px;border:1px solid var(--b2);background:var(--s2)}
+</style>
+</head>
+<body>
+<div class="app">
+ <aside class="sidebar">
+  <div class="brand">
+   <div class="brand-icon" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">
+     <circle cx="6" cy="6" r="2.6"/><circle cx="18" cy="7" r="2.6"/><circle cx="12" cy="18" r="2.6"/>
+     <path d="M8.3 7.1 15.5 7M7.2 8.4l3.6 7.2M16.7 9.4l-3.4 6.3"/>
+    </svg>
+   </div>
+   <div><div class="brand-title">Knowledge OS</div><div class="brand-sub">SM-2 间隔重复 · 知识图谱</div></div>
+  </div>
+  <nav class="nav-list" aria-label="主导航">
+   <button class="nav-btn active" data-view="review" type="button">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M7 20h10M9 9h6M9 13h4"/></svg>
+    <span>今日复习</span><span class="nav-badge" id="badge-due">0</span>
+   </button>
+   <button class="nav-btn" data-view="graph" type="button">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="19" cy="18" r="2.5"/><path d="M7.3 11 16.7 7M7.3 13l9.4 4"/></svg>
+    <span>知识图谱</span><span class="nav-badge" id="badge-links">0</span>
+   </button>
+   <button class="nav-btn" data-view="library" type="button">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    <span>卡组与知识库</span><span class="nav-badge" id="badge-cards">0</span>
+   </button>
+   <button class="nav-btn" data-view="feynman" type="button">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0-4 10.5V17h8v-3.5A6 6 0 0 0 12 3z"/><path d="M9 21h6"/></svg>
+    <span>AI 费曼导师</span><span class="nav-badge">AI</span>
+   </button>
+  </nav>
+  <div class="sidebar-foot">
+   <button id="btn-demo" class="btn sm" type="button">载入大模型演示卡组</button>
+   <button id="btn-io" class="btn sm" type="button">导入 / 导出 JSON</button>
+   <button id="btn-theme" class="btn sm ghost" type="button">切换明暗主题</button>
+  </div>
+ </aside>
+ <div class="main-col">
+  <header class="topbar">
+   <div class="kpi-strip">
+    <div class="kpi-chip"><span class="dot" style="background:var(--danger)"></span><div><div class="kpi-val" id="kpi-due">0</div><div class="kpi-lbl">今日待复习</div></div></div>
+    <div class="kpi-chip"><span class="dot" style="background:var(--accent)"></span><div><div class="kpi-val" id="kpi-cards">0</div><div class="kpi-lbl">知识卡 / 双链</div></div></div>
+    <div class="kpi-chip"><span class="dot" style="background:var(--ok)"></span><div><div class="kpi-val" id="kpi-mastery">0%</div><div class="kpi-lbl">综合掌握度</div></div></div>
+    <div class="kpi-chip"><span class="dot" style="background:var(--warn)"></span><div><div class="kpi-val" id="kpi-streak">0 天</div><div class="kpi-lbl">连续学习 · 今日 <b id="kpi-today">0</b></div></div></div>
+   </div>
+   <button id="btn-new-card" class="btn primary sm" type="button">+ 新建知识卡</button>
+  </header>
+  <div id="status-bar" class="status-bar" role="status"><span id="status-text">正在初始化知识库…</span><span id="rev-tag">rev #0</span></div>
+  <main class="workspace">
+   <section id="view-review" class="view">
+    <div class="review-wrap">
+     <div class="row" style="justify-content:space-between">
+      <div class="row" id="review-deck-pills"></div>
+      <span class="muted" id="review-counter">队列 0 / 0</span>
+     </div>
+     <div class="progress-track"><div id="review-progress" class="progress-fill" style="width:0%"></div></div>
+     <div id="review-stage"></div>
+    </div>
+   </section>
+   <section id="view-graph" class="view" hidden>
+    <div class="graph-layout">
+     <div class="graph-wrap">
+      <div class="graph-bar"><div class="row" id="graph-legend"></div><button id="btn-graph-clear" class="btn sm" type="button">重置高亮</button></div>
+      <svg id="graph-svg" class="graph-svg" viewBox="0 0 760 470" aria-label="知识图谱网络"></svg>
+     </div>
+     <aside id="graph-inspector" class="inspector"></aside>
+    </div>
+   </section>
+   <section id="view-library" class="view" hidden>
+    <div class="charts-grid">
+     <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">近 42 天学习热力图</h2><span class="muted" id="heatmap-summary">共 0 次复习</span></div>
+      <svg id="svg-heatmap" width="100%" viewBox="0 0 540 120" aria-label="学习热力图"></svg>
+     </div>
+     <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">记忆掌握度分布</h2><span class="muted">SM-2 间隔分层</span></div>
+      <svg id="svg-mastery" width="100%" viewBox="0 0 380 120" aria-label="掌握度分布柱状图"></svg>
+     </div>
+    </div>
+    <div class="panel" style="margin-bottom:14px">
+     <div class="panel-head"><h2 class="panel-title">学科卡组</h2><button id="btn-new-deck" class="btn sm" type="button">+ 新建卡组</button></div>
+     <div id="deck-strip" class="deck-strip"></div>
+     <div class="row">
+      <div style="flex:1;min-width:180px"><input id="lib-search" type="search" placeholder="搜索正面概念、答案或标签…"></div>
+      <select id="lib-kind" style="width:124px"><option value="">全部类型</option><option value="concept">概念卡</option><option value="qa">问答题</option><option value="code">代码题</option></select>
+      <select id="lib-due" style="width:128px"><option value="">全部状态</option><option value="due">今日待复习</option><option value="mastered">已掌握 (>=21天)</option></select>
+     </div>
+    </div>
+    <div id="card-grid" class="card-grid"></div>
+   </section>
+   <section id="view-feynman" class="view" hidden>
+    <div class="ai-grid">
+     <div class="panel">
+      <div class="panel-head"><h2 class="panel-title">AI 费曼导师与自动制卡</h2><span class="pill">session.turn.*</span></div>
+      <div class="mode-tabs" id="ai-mode-tabs">
+       <button class="mode-card active" data-mode="feynman" type="button"><b>费曼深度追问</b><span>3 个苏格拉底式盲区拷问</span></button>
+       <button class="mode-card" data-mode="extract" type="button"><b>提炼 3 张闪卡</b><span>自动生成并一键采纳入库</span></button>
+       <button class="mode-card" data-mode="analogy" type="button"><b>生成类比解释</b><span>直觉模型并追加到背面</span></button>
+      </div>
+      <div class="field" style="margin-bottom:10px"><span>关联已有知识卡（可选）</span><select id="ai-card-select"></select></div>
+      <div class="field" style="margin-bottom:12px"><span>粘贴学习笔记或核心知识点</span><textarea id="ai-notes" rows="6" maxlength="1600" placeholder="粘贴论文摘要、课程笔记或概念理解，交由 Velai 当前会话深度解析…"></textarea></div>
+      <div class="row">
+       <button id="btn-ai-send" class="btn primary" type="button">发送给当前会话执行</button>
+       <button id="btn-ai-check" class="btn" type="button" hidden>核对 AI 返回结果</button>
+      </div>
+     </div>
+     <div class="panel" style="display:flex;flex-direction:column;gap:10px">
+      <div class="panel-head" style="margin-bottom:0"><h2 class="panel-title">审阅与采纳工作区</h2><span class="muted" id="ai-state-badge">等待派发</span></div>
+      <div id="ai-raw-preview" class="ai-out">选择左侧模式并点击「发送给当前会话执行」，等待 Velai 会话完成后点击核对，即可审阅并一键采纳入库。</div>
+      <div id="ai-adopt-area" hidden style="display:flex;flex-direction:column;gap:10px">
+       <div id="ai-draft-list" style="display:flex;flex-direction:column;gap:8px"></div>
+       <div class="row">
+        <select id="ai-target-deck" style="flex:1;min-width:140px"></select>
+        <button id="btn-ai-adopt-cards" class="btn primary" type="button" hidden>采纳选中闪卡入库</button>
+        <button id="btn-ai-append-card" class="btn primary" type="button" hidden>追加到所选卡片背面</button>
+       </div>
+      </div>
+     </div>
+    </div>
+   </section>
+  </main>
+ </div>
+</div>
+<div id="modal-card" class="modal-bg" hidden>
+ <div class="modal" role="dialog" aria-modal="true">
+  <div class="panel-head" style="margin-bottom:0"><h2 id="modal-card-title" class="panel-title">新建知识闪卡</h2><button class="btn sm ghost" data-close="modal-card" type="button">关闭</button></div>
+  <div class="row">
+   <label class="field" style="flex:1"><span>所属卡组</span><select id="fc-deck"></select></label>
+   <label class="field" style="width:128px"><span>卡片类型</span><select id="fc-kind"><option value="concept">概念卡</option><option value="qa">问答题</option><option value="code">代码题</option></select></label>
+  </div>
+  <label class="field"><span>正面：核心概念 / 问题</span><textarea id="fc-front" rows="2" maxlength="320" placeholder="例如：FlashAttention 为何能减少 HBM 读写？"></textarea></label>
+  <label class="field"><span>背面：精炼解析 / 代码答案</span><textarea id="fc-back" rows="4" maxlength="800" placeholder="关键原理、推导或代码片段…"></textarea></label>
+  <label class="field"><span>标签（逗号分隔，最多 6 个）</span><input id="fc-tags" type="text" placeholder="CUDA, Attention, 推理优化"></label>
+  <div class="field"><span>双链关联前置/相关知识卡</span><div id="fc-links" class="link-picker"></div></div>
+  <div class="row" style="justify-content:flex-end">
+   <button id="btn-fc-delete" class="btn danger" type="button" hidden style="margin-right:auto">删除卡片</button>
+   <button class="btn" data-close="modal-card" type="button">取消</button>
+   <button id="btn-fc-save" class="btn primary" type="button">保存卡片</button>
+  </div>
+ </div>
+</div>
+<div id="modal-deck" class="modal-bg" hidden>
+ <div class="modal" role="dialog" aria-modal="true">
+  <div class="panel-head" style="margin-bottom:0"><h2 id="modal-deck-title" class="panel-title">新建学科卡组</h2><button class="btn sm ghost" data-close="modal-deck" type="button">关闭</button></div>
+  <div class="row">
+   <label class="field" style="flex:1"><span>卡组名称</span><input id="dk-name" type="text" maxlength="60" placeholder="例如：深度学习编译器"></label>
+   <label class="field" style="width:92px"><span>主题色</span><input id="dk-color" type="color" value="#6366f1" style="height:35px;padding:3px"></label>
+  </div>
+  <label class="field"><span>简介</span><input id="dk-desc" type="text" maxlength="160" placeholder="简述学科知识范围与目标"></label>
+  <div class="row" style="justify-content:flex-end">
+   <button id="btn-dk-delete" class="btn danger" type="button" hidden style="margin-right:auto">删除卡组</button>
+   <button class="btn" data-close="modal-deck" type="button">取消</button>
+   <button id="btn-dk-save" class="btn primary" type="button">保存卡组</button>
+  </div>
+ </div>
+</div>
+<div id="modal-io" class="modal-bg" hidden>
+ <div class="modal" role="dialog" aria-modal="true">
+  <div class="panel-head" style="margin-bottom:0"><h2 class="panel-title">导入 / 导出知识库 JSON</h2><button class="btn sm ghost" data-close="modal-io" type="button">关闭</button></div>
+  <div class="row">
+   <select id="io-export-select" style="flex:1"></select>
+   <button id="btn-do-export" class="btn" type="button">导出 JSON</button>
+   <button id="btn-copy-io" class="btn" type="button">复制</button>
+  </div>
+  <label class="field"><span>JSON 内容</span><textarea id="io-text" rows="9" style="font-family:var(--mono);font-size:12px" placeholder='{"format":"velai-course-knowledge-os","version":1,...}'></textarea></label>
+  <div class="row" style="justify-content:flex-end"><button class="btn" data-close="modal-io" type="button">关闭</button><button id="btn-do-import" class="btn primary" type="button">导入并合并</button></div>
+ </div>
+</div>
+<script>
+(() => {
+ const plugin = globalThis.nmasPlugin;
+ const $ = id => document.getElementById(id);
+ const SVG_NS = 'http://www.w3.org/2000/svg';
+ const KIND_LABEL = { concept: '概念卡', qa: '问答题', code: '代码题' };
+ const S = {
+  revision: 0, today: new Date().toISOString().slice(0, 10),
+  decks: [], cards: [], review_log: [],
+  stats: { total_cards: 0, due_count: 0, total_links: 0, mastery_rate: 0, streak_days: 0, reviewed_today: 0, tiers: { new_count: 0, learning: 0, reviewing: 0, mastered: 0 } },
+  view: 'review', busy: false, reviewDeck: '', flipped: false, doneCount: 0, pinnedId: null,
+  graphSel: null, libDeck: '', editCardId: null, editDeckId: null,
+  aiMode: 'feynman', aiWorkId: null, aiText: '', aiDrafts: [],
+ };
+ function el(tag, props, ...kids) {
+  const n = document.createElement(tag);
+  if (props) for (const [k, v] of Object.entries(props)) {
+   if (k === 'cls') n.className = v;
+   else if (k === 'on') for (const [ev, fn] of Object.entries(v)) n.addEventListener(ev, fn);
+   else if (k === 'css') n.style.cssText = v;
+   else n[k] = v;
+  }
+  for (const c of kids) if (c != null) n.append(typeof c === 'string' ? document.createTextNode(c) : c);
+  return n;
+ }
+ function svg(tag, attrs, text) {
+  const n = document.createElementNS(SVG_NS, tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v));
+  if (text != null) n.textContent = String(text);
+  return n;
+ }
+ const setStatus = (t, k = '') => { $('status-text').textContent = t; $('status-bar').dataset.kind = k; $('rev-tag').textContent = `rev #${S.revision}`; };
+ const addDays = (ymd, d) => { const [y, m, dd] = ymd.split('-').map(Number); return new Date(Date.UTC(y, m - 1, dd + d)).toISOString().slice(0, 10); };
+ const deckOf = id => S.decks.find(d => d.id === id) || { id, name: id, color: '#6366f1', description: '' };
+ const dotPill = (color, label) => el('span', { cls: 'pill' }, el('span', { cls: 'dot', css: `background:${color}` }), label);
+ const scoreOf = c => {
+  if (c.repetitions === 0 && !c.last_reviewed) return 0;
+  if (c.interval_days >= 21) return Math.min(100, Math.max(85, Math.round(85 + (c.ease_factor - 1.3) * 7)));
+  if (c.interval_days >= 6) return Math.min(84, Math.max(55, Math.round(55 + (c.interval_days - 6) * 2)));
+  return c.interval_days >= 1 ? Math.min(54, Math.max(25, Math.round(25 + c.interval_days * 5))) : 15;
+ };
+ function previewInt(c, r) {
+  if (r === 1) return '今天重学';
+  const q = r === 2 ? 3 : r === 3 ? 4 : 5;
+  const ef = Math.max(1.3, Math.min(3.5, Math.round((c.ease_factor + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02))) * 100) / 100));
+  const rep = c.repetitions, iv = c.interval_days;
+  const d = r === 2 ? (rep === 0 ? 1 : rep === 1 ? 4 : Math.max(iv + 1, Math.round(iv * 1.2)))
+   : r === 3 ? (rep === 0 ? 1 : rep === 1 ? 6 : Math.max(iv + 1, Math.round(iv * ef)))
+   : (rep === 0 ? 4 : rep === 1 ? 10 : Math.max(iv + 2, Math.round(iv * ef * 1.3)));
+  return `${d} 天后`;
+ }
+ function uuid() {
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
+  const h = Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
+ }
+ function dueQueue() {
+  let q = S.cards.filter(c => c.due_date <= S.today && (!S.reviewDeck || c.deck_id === S.reviewDeck))
+   .sort((a, b) => (a.due_date === b.due_date ? a.interval_days - b.interval_days : a.due_date.localeCompare(b.due_date)));
+  if (S.pinnedId) { const p = S.cards.find(c => c.id === S.pinnedId); if (p) q = [p, ...q.filter(c => c.id !== p.id)]; }
+  return q;
+ }
+ function switchView(v) {
+  S.view = v;
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  document.querySelectorAll('.view').forEach(s => { s.hidden = s.id !== `view-${v}`; });
+  render();
+ }
+ function render() {
+  const st = S.stats;
+  $('kpi-due').textContent = st.due_count;
+  $('kpi-cards').textContent = `${st.total_cards} / ${st.total_links}`;
+  $('kpi-mastery').textContent = `${Math.round(st.mastery_rate)}%`;
+  $('kpi-streak').textContent = `${st.streak_days} 天`;
+  $('kpi-today').textContent = st.reviewed_today;
+  $('badge-due').textContent = st.due_count;
+  $('badge-links').textContent = st.total_links;
+  $('badge-cards').textContent = st.total_cards;
+  if (S.view === 'review') renderReview();
+  else if (S.view === 'graph') renderGraph();
+  else if (S.view === 'library') renderLibrary();
+  else renderAiSelectors();
+ }
+ /* View 1: SM-2 Review */
+ function renderReview() {
+  const pills = $('review-deck-pills');
+  pills.replaceChildren();
+  const addPill = (id, label) => pills.appendChild(el('button', {
+   type: 'button', cls: `btn sm${S.reviewDeck === id ? ' primary' : ''}`,
+   on: { click: () => { S.reviewDeck = id; S.pinnedId = null; S.flipped = false; renderReview(); } },
+  }, label));
+  addPill('', '全部卡组');
+  for (const d of S.decks) addPill(d.id, `${d.name} (${S.cards.filter(c => c.deck_id === d.id && c.due_date <= S.today).length})`);
+  const q = dueQueue();
+  const total = q.length + S.doneCount;
+  $('review-counter').textContent = `待复习 ${q.length} 张 · 本轮已完成 ${S.doneCount} 张`;
+  $('review-progress').style.width = `${total === 0 ? 100 : Math.round((S.doneCount / total) * 100)}%`;
+  const stage = $('review-stage');
+  stage.replaceChildren();
+  if (!S.cards.length) {
+   stage.appendChild(el('div', { cls: 'empty' },
+    el('h3', { css: 'margin:0' }, '知识库为空'),
+    el('p', { cls: 'muted', css: 'margin:0' }, '可一键载入「大模型系统与分布式架构」演示卡组（3 卡组、8 张互链知识卡），或手动创建。'),
+    el('div', { cls: 'row' },
+     el('button', { cls: 'btn primary', type: 'button', on: { click: () => void loadDemo() } }, '一键载入演示卡组'),
+     el('button', { cls: 'btn', type: 'button', on: { click: () => openDeckModal(null) } }, '+ 新建学科卡组')
+    )
+   ));
+   return;
+  }
+  if (!q.length) {
+   stage.appendChild(el('div', { cls: 'empty' },
+    el('h3', { css: 'margin:0' }, '今日复习队列已全部清空！'),
+    el('p', { cls: 'muted', css: 'margin:0' }, '全部到期闪卡均已按 SuperMemo SM-2 安排好下次复习日期。'),
+    el('div', { cls: 'row' },
+     el('button', { cls: 'btn primary', type: 'button', on: { click: () => switchView('graph') } }, '探索知识图谱'),
+     el('button', { cls: 'btn', type: 'button', on: { click: () => switchView('feynman') } }, '打开 AI 费曼导师')
+    )
+   ));
+   return;
+  }
+  const c = q[0], dk = deckOf(c.deck_id);
+  const fc = el('div', { cls: `flashcard${S.flipped ? ' flipped' : ''}`, on: { click: e => { if (!e.target.closest('button')) { S.flipped = !S.flipped; renderReview(); } } } });
+  const leftMeta = el('div', { cls: 'row' }, dotPill(dk.color, dk.name), el('span', { cls: 'pill' }, KIND_LABEL[c.kind] || c.kind));
+  for (const t of c.tags.slice(0, 3)) leftMeta.appendChild(el('span', { cls: 'pill' }, `#${t}`));
+  const rightMeta = el('div', { cls: 'row' },
+   el('span', { cls: 'muted' }, `EF ${c.ease_factor.toFixed(2)} · 间隔 ${c.interval_days}d · ${c.repetitions}次`),
+   el('button', { type: 'button', cls: 'btn sm ghost', on: { click: () => openAiForCard(c.id, 'feynman') } }, 'AI 追问')
+  );
+  fc.append(el('div', { cls: 'row', css: 'justify-content:space-between' }, leftMeta, rightMeta), el('div', { cls: 'fc-front' }, c.front));
+  if (S.flipped) {
+   fc.append(el('div', { cls: 'fc-div' }), el('div', { cls: `fc-back${c.kind === 'code' ? ' code' : ''}` }, c.back));
+  } else {
+   fc.append(el('div', { cls: 'row', css: 'justify-content:center;margin-top:14px' },
+    el('button', { type: 'button', cls: 'btn primary', on: { click: () => { S.flipped = true; renderReview(); } } }, '翻转查看答案与解析 (Space)')
+   ));
+  }
+  if (c.links.length) {
+   const lr = el('div', { cls: 'row', css: 'margin-top:14px' }, el('span', { cls: 'muted' }, '双链前置：'));
+   for (const lid of c.links) {
+    const tg = S.cards.find(x => x.id === lid);
+    if (tg) lr.appendChild(el('button', { type: 'button', cls: 'pill click', on: { click: () => { S.graphSel = tg.id; switchView('graph'); } } }, `↗ ${tg.front.slice(0, 18)}${tg.front.length > 18 ? '…' : ''}`));
+   }
+   fc.appendChild(lr);
+  }
+  stage.appendChild(el('div', { cls: 'fc-stage' }, fc));
+  if (S.flipped) {
+   const grid = el('div', { cls: 'rate-grid' });
+   for (const [r, cls, title] of [[1,'r1','1 重来 Again'],[2,'r2','2 困难 Hard'],[3,'r3','3 良好 Good'],[4,'r4','4 简单 Easy']]) {
+    grid.appendChild(el('button', { type: 'button', cls: `rate-btn ${cls}`, disabled: S.busy, on: { click: () => void submitReview(c.id, r) } },
+     el('strong', null, title), el('span', null, previewInt(c, r))
+    ));
+   }
+   stage.appendChild(grid);
+  } else {
+   stage.appendChild(el('div', { cls: 'muted', css: 'text-align:center' }, '快捷键：', el('span', { cls: 'kbd' }, 'Space'), ' 翻转 · ', el('span', { cls: 'kbd' }, '1-4'), ' 提交 SM-2 评分'));
+  }
+ }
+ /* View 2: Pure SVG Knowledge Graph */
+ function layoutGraph() {
+  const W = 760, H = 470, cx = W / 2, cy = H / 2;
+  const deckIdx = new Map(S.decks.map((d, i) => [d.id, i]));
+  const dCount = Math.max(1, S.decks.length);
+  const byDeck = new Map(), pos = new Map();
+  for (const c of S.cards) { if (!byDeck.has(c.deck_id)) byDeck.set(c.deck_id, []); byDeck.get(c.deck_id).push(c); }
+  for (const [did, arr] of byDeck) {
+   const a0 = ((deckIdx.get(did) ?? 0) / dCount) * Math.PI * 2 - Math.PI / 2;
+   const cr = dCount === 1 ? 0 : 132;
+   const gx = cx + Math.cos(a0) * cr, gy = cy + Math.sin(a0) * cr * 0.78;
+   arr.forEach((c, i) => {
+    const a = a0 + (i / Math.max(1, arr.length)) * Math.PI * 2;
+    const r = arr.length === 1 ? 0 : 62 + (i % 2) * 18;
+    pos.set(c.id, { x: gx + Math.cos(a) * r, y: gy + Math.sin(a) * r });
+   });
+  }
+  const ids = S.cards.map(c => c.id);
+  for (let it = 0; it < 50; it++) {
+   const disp = new Map(ids.map(id => [id, { x: 0, y: 0 }]));
+   for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
+    const a = pos.get(ids[i]), b = pos.get(ids[j]);
+    const dx = a.x - b.x, dy = a.y - b.y, d = Math.hypot(dx, dy) || 0.1;
+    if (d < 135) { const f = (135 - d) * 0.14; disp.get(ids[i]).x += (dx / d) * f; disp.get(ids[i]).y += (dy / d) * f; disp.get(ids[j]).x -= (dx / d) * f; disp.get(ids[j]).y -= (dy / d) * f; }
+   }
+   for (const c of S.cards) for (const lid of c.links) {
+    const a = pos.get(c.id), b = pos.get(lid); if (!b) continue;
+    const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1;
+    if (d > 145) { const f = (d - 145) * 0.04; disp.get(c.id).x += (dx / d) * f; disp.get(c.id).y += (dy / d) * f; disp.get(lid).x -= (dx / d) * f; disp.get(lid).y -= (dy / d) * f; }
+   }
+   for (const id of ids) {
+    const p = pos.get(id), dp = disp.get(id);
+    p.x = Math.max(76, Math.min(W - 76, p.x + dp.x + (cx - p.x) * 0.015));
+    p.y = Math.max(58, Math.min(H - 58, p.y + dp.y + (cy - p.y) * 0.015));
+   }
+  }
+  return pos;
+ }
+ function renderGraph() {
+  const leg = $('graph-legend'); leg.replaceChildren();
+  for (const d of S.decks) leg.appendChild(dotPill(d.color, d.name));
+  const root = $('graph-svg'); root.replaceChildren();
+  if (!S.cards.length) {
+   root.appendChild(svg('text', { x: 380, y: 235, 'text-anchor': 'middle', fill: 'currentColor', opacity: .55, 'font-size': 14 }, '暂无知识节点，请先载入演示卡组或新建卡片'));
+   renderInspector(null);
+   return;
+  }
+  const defs = svg('defs');
+  const pat = svg('pattern', { id: 'gdot', width: 22, height: 22, patternUnits: 'userSpaceOnUse' });
+  pat.appendChild(svg('circle', { cx: 2, cy: 2, r: 1, fill: 'currentColor', opacity: .14 }));
+  defs.appendChild(pat);
+  for (const [id, col] of [['am', '#94a3b8'], ['aa', '#6366f1']]) {
+   const m = svg('marker', { id, viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto' });
+   m.appendChild(svg('path', { d: 'M0,1 L9,5 L0,9 z', fill: col }));
+   defs.appendChild(m);
+  }
+  root.append(defs, svg('rect', { width: 760, height: 470, fill: 'url(#gdot)' }));
+  const pos = layoutGraph();
+  const sel = S.graphSel && S.cards.some(c => c.id === S.graphSel) ? S.graphSel : null;
+  const near = new Set();
+  if (sel) { near.add(sel); for (const c of S.cards) { if (c.id === sel) c.links.forEach(l => near.add(l)); if (c.links.includes(sel)) near.add(c.id); } }
+  const eg = svg('g');
+  for (const c of S.cards) {
+   const a = pos.get(c.id);
+   for (const lid of c.links) {
+    const b = pos.get(lid); if (!b) continue;
+    const hi = !sel || c.id === sel || lid === sel;
+    const mx = (a.x + b.x) / 2 + (b.y - a.y) * 0.12, my = (a.y + b.y) / 2 - (b.x - a.x) * 0.12;
+    eg.appendChild(svg('path', {
+     d: `M${a.x.toFixed(1)} ${a.y.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${b.x.toFixed(1)} ${b.y.toFixed(1)}`,
+     fill: 'none', stroke: hi && sel ? '#6366f1' : '#94a3b8', 'stroke-width': hi && sel ? 2.4 : 1.5,
+     opacity: hi ? (sel ? .92 : .48) : .12, 'marker-end': hi && sel ? 'url(#aa)' : 'url(#am)',
+    }));
+   }
+  }
+  root.appendChild(eg);
+  const ng = svg('g');
+  for (const c of S.cards) {
+   const p = pos.get(c.id), dk = deckOf(c.deck_id), sc = scoreOf(c), r = 15 + Math.round((sc / 100) * 11);
+   const isSel = c.id === sel, g = svg('g', { transform: `translate(${p.x.toFixed(1)},${p.y.toFixed(1)})`, opacity: (!sel || near.has(c.id)) ? 1 : .22, style: 'cursor:pointer' });
+   if (isSel) g.appendChild(svg('circle', { r: r + 8, fill: dk.color, opacity: .2 }));
+   const rr = r + 3.5, circ = 2 * Math.PI * rr;
+   g.appendChild(svg('circle', { r: rr, fill: 'none', stroke: dk.color, opacity: .22, 'stroke-width': 2.5 }));
+   if (sc > 0) g.appendChild(svg('circle', { r: rr, fill: 'none', stroke: dk.color, 'stroke-width': 2.8, 'stroke-dasharray': `${(circ * sc / 100).toFixed(1)} ${circ.toFixed(1)}`, transform: 'rotate(-90)' }));
+   g.appendChild(svg('circle', { r, fill: dk.color, stroke: isSel ? '#fff' : 'rgba(255,255,255,.65)', 'stroke-width': isSel ? 2.8 : 1.5 }));
+   g.appendChild(svg('text', { y: 4, 'text-anchor': 'middle', fill: '#fff', 'font-size': 10, 'font-weight': 700 }, `${sc}%`));
+   if (c.due_date <= S.today) g.appendChild(svg('circle', { cx: r - 2, cy: -(r - 2), r: 4.5, fill: '#ef4444', stroke: '#fff', 'stroke-width': 1.5 }));
+   const txt = c.front.replace(/[？?。：:]/g, '').slice(0, 12);
+   g.appendChild(svg('text', { y: r + 17, 'text-anchor': 'middle', fill: 'currentColor', 'font-size': 11, 'font-weight': isSel ? 700 : 500 }, txt + (c.front.length > 12 ? '…' : '')));
+   g.addEventListener('click', () => { S.graphSel = c.id; renderGraph(); });
+   ng.appendChild(g);
+  }
+  root.appendChild(ng);
+  renderInspector(sel ? S.cards.find(c => c.id === sel) : null);
+ }
+ function renderInspector(c) {
+  const box = $('graph-inspector'); box.replaceChildren();
+  if (!c) {
+   box.append(el('div', { cls: 'panel-title' }, '节点透视面板'), el('p', { cls: 'muted' }, '点击左侧知识图谱任意节点，高亮相邻双链子图并可直接编辑、复习或发起 AI 费曼追问。'));
+   return;
+  }
+  const dk = deckOf(c.deck_id), sc = scoreOf(c);
+  const mg = el('div', { cls: 'mgrid' });
+  for (const [k, v] of [['掌握度', `${sc}%`], ['下次复习', c.due_date <= S.today ? '今日到期' : c.due_date], ['SM-2 易度', c.ease_factor.toFixed(2)], ['当前间隔', `${c.interval_days}天 (${c.repetitions}次)`]]) {
+   mg.appendChild(el('div', { cls: 'mbox' }, el('span', null, k), el('b', null, v)));
+  }
+  const rel = S.cards.filter(o => o.id !== c.id && (c.links.includes(o.id) || o.links.includes(c.id)));
+  const relRow = el('div', { cls: 'row' });
+  if (!rel.length) relRow.appendChild(el('span', { cls: 'muted' }, '暂无相邻节点'));
+  for (const nb of rel) relRow.appendChild(el('button', { type: 'button', cls: 'pill click', on: { click: () => { S.graphSel = nb.id; renderGraph(); } } }, nb.front.slice(0, 16) + (nb.front.length > 16 ? '…' : '')));
+  box.append(
+   el('div', { cls: 'row' }, dotPill(dk.color, dk.name), el('span', { cls: 'pill' }, KIND_LABEL[c.kind])),
+   el('div', { css: 'font-weight:700;font-size:14.5px' }, c.front),
+   el('div', { cls: `fc-back${c.kind === 'code' ? ' code' : ''}`, css: 'font-size:12.5px' }, c.back),
+   mg,
+   el('div', null, el('div', { cls: 'muted', css: 'margin-bottom:5px' }, '相邻双链知识网'), relRow),
+   el('div', { cls: 'row', css: 'margin-top:auto' },
+    el('button', { type: 'button', cls: 'btn primary sm', on: { click: () => { S.pinnedId = c.id; S.reviewDeck = ''; S.flipped = false; switchView('review'); } } }, '立即复习'),
+    el('button', { type: 'button', cls: 'btn sm', on: { click: () => openCardModal(c.id) } }, '编辑'),
+    el('button', { type: 'button', cls: 'btn sm', on: { click: () => openAiForCard(c.id, 'feynman') } }, '费曼追问')
+   )
+  );
+ }
+ /* View 3: Library & SVG Charts */
+ function renderLibrary() {
+  // Heatmap
+  const hm = $('svg-heatmap'); hm.replaceChildren();
+  const cntMap = new Map();
+  for (const l of S.review_log) cntMap.set(l.date, (cntMap.get(l.date) || 0) + 1);
+  $('heatmap-summary').textContent = `近 42 天累计 ${S.review_log.length} 次复习`;
+  const start = addDays(S.today, -41), pal = ['rgba(148,163,184,.18)', '#a5b4fc', '#818cf8', '#4f46e5', '#10b981'];
+  for (let i = 0; i < 42; i++) {
+   const d = addDays(start, i), n = cntMap.get(d) || 0, lvl = n === 0 ? 0 : n === 1 ? 1 : n === 2 ? 2 : n <= 4 ? 3 : 4;
+   const r = svg('rect', { x: 14 + Math.floor(i / 3) * 19, y: 14 + (i % 3) * 19, width: 15, height: 15, rx: 3.5, fill: pal[lvl] });
+   r.appendChild(svg('title', null, `${d}：${n} 次复习`));
+   hm.appendChild(r);
+  }
+  hm.append(
+   svg('text', { x: 14, y: 88, fill: 'currentColor', opacity: .55, 'font-size': 10.5 }, start.slice(5)),
+   svg('text', { x: 276, y: 88, 'text-anchor': 'end', fill: 'currentColor', opacity: .55, 'font-size': 10.5 }, `${S.today.slice(5)} (今日)`),
+   svg('text', { x: 344, y: 38, fill: 'currentColor', opacity: .65, 'font-size': 11 }, '活跃度图例')
+  );
+  pal.forEach((col, i) => hm.appendChild(svg('rect', { x: 344 + i * 20, y: 46, width: 14, height: 14, rx: 3, fill: col })));
+  hm.append(svg('text', { x: 344, y: 76, fill: 'currentColor', opacity: .5, 'font-size': 10 }, '0 次'), svg('text', { x: 438, y: 76, 'text-anchor': 'end', fill: 'currentColor', opacity: .5, 'font-size': 10 }, '5+ 次'));
+  // Mastery bar chart
+  const mc = $('svg-mastery'); mc.replaceChildren();
+  const tr = S.stats.tiers;
+  const bars = [['未学习', tr.new_count, '#94a3b8'], ['学习中', tr.learning, '#f59e0b'], ['巩固中', tr.reviewing, '#3b82f6'], ['已掌握', tr.mastered, '#10b981']];
+  const maxV = Math.max(1, ...bars.map(b => b[1]));
+  mc.appendChild(svg('line', { x1: 18, y1: 90, x2: 362, y2: 90, stroke: 'currentColor', opacity: .16 }));
+  bars.forEach(([lbl, val, col], i) => {
+   const x = 34 + i * 86, h = Math.max(4, Math.round((val / maxV) * 64)), y = 90 - h;
+   mc.append(
+    svg('rect', { x, y, width: 46, height: h, rx: 6, fill: col, opacity: .9 }),
+    svg('text', { x: x + 23, y: y - 6, 'text-anchor': 'middle', fill: 'currentColor', 'font-size': 12, 'font-weight': 700 }, val),
+    svg('text', { x: x + 23, y: 108, 'text-anchor': 'middle', fill: 'currentColor', opacity: .68, 'font-size': 11 }, lbl)
+   );
+  });
+  // Deck strip
+  const strip = $('deck-strip'); strip.replaceChildren();
+  const mkDeck = (id, name, color, count, edit) => el('button', {
+   type: 'button', cls: `deck-chip${S.libDeck === id ? ' active' : ''}`, title: edit ? '单击筛选，双击编辑卡组' : '',
+   on: { click: () => { S.libDeck = id; renderLibrary(); }, ...(edit ? { dblclick: () => openDeckModal(id) } : {}) },
+  }, color ? el('span', { cls: 'dot', css: `background:${color}` }) : null, `${name} (${count})`);
+  strip.appendChild(mkDeck('', '全部卡组', null, S.cards.length, false));
+  for (const d of S.decks) strip.appendChild(mkDeck(d.id, d.name, d.color, S.cards.filter(c => c.deck_id === d.id).length, true));
+  // Filtered cards
+  const kw = $('lib-search').value.trim().toLowerCase(), kf = $('lib-kind').value, df = $('lib-due').value;
+  const shown = S.cards.filter(c => (!S.libDeck || c.deck_id === S.libDeck) && (!kf || c.kind === kf) && (df !== 'due' || c.due_date <= S.today) && (df !== 'mastered' || c.interval_days >= 21) && (!kw || `${c.front} ${c.back} ${c.tags.join(' ')}`.toLowerCase().includes(kw)));
+  const grid = $('card-grid'); grid.replaceChildren();
+  if (!shown.length) {
+   grid.appendChild(el('div', { cls: 'empty', css: 'grid-column:1/-1' }, el('p', { cls: 'muted' }, S.cards.length ? '没有匹配筛选条件的卡片。' : '暂无知识卡，点击右上角新建或左下角载入演示卡组。')));
+   return;
+  }
+  for (const c of shown) {
+   const dk = deckOf(c.deck_id), sc = scoreOf(c);
+   const col = sc >= 85 ? 'var(--ok)' : sc >= 55 ? 'var(--info)' : 'var(--warn)';
+   grid.appendChild(el('article', { cls: 'kcard' },
+    el('div', { cls: 'row', css: 'justify-content:space-between' }, dotPill(dk.color, dk.name), el('span', { cls: 'pill' }, KIND_LABEL[c.kind])),
+    el('div', { cls: 'kcard-front' }, c.front),
+    el('div', { cls: 'kcard-back' }, c.back),
+    el('div', { cls: 'mbar' }, el('i', { css: `width:${sc}%;background:${col}` })),
+    el('div', { cls: 'row', css: 'justify-content:space-between;margin-top:auto' },
+     el('span', { cls: 'muted' }, `掌握 ${sc}% · 双链 ${c.links.length} · ${c.due_date <= S.today ? '今日到期' : c.due_date}`),
+     el('div', { cls: 'row' },
+      el('button', { type: 'button', cls: 'btn sm ghost', on: { click: () => { S.graphSel = c.id; switchView('graph'); } } }, '图谱'),
+      el('button', { type: 'button', cls: 'btn sm', on: { click: () => openCardModal(c.id) } }, '编辑')
+     )
+    )
+   ));
+  }
+ }
+ /* View 4: AI Feynman Tutor */
+ function renderAiSelectors() {
+  const sel = $('ai-card-select'), prev = sel.value;
+  sel.replaceChildren(el('option', { value: '' }, '— 手动输入下方学习笔记 / 主题 —'));
+  for (const c of S.cards) sel.appendChild(el('option', { value: c.id }, `[${deckOf(c.deck_id).name}] ${c.front.slice(0, 42)}`));
+  if (prev && S.cards.some(c => c.id === prev)) sel.value = prev;
+  const td = $('ai-target-deck'), pd = td.value;
+  td.replaceChildren();
+  for (const d of S.decks) td.appendChild(el('option', { value: d.id }, `入库到：${d.name}`));
+  if (pd && S.decks.some(d => d.id === pd)) td.value = pd;
+ }
+ function openAiForCard(id, mode) {
+  S.aiMode = mode;
+  document.querySelectorAll('#ai-mode-tabs .mode-card').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  switchView('feynman');
+  $('ai-card-select').value = id;
+  const c = S.cards.find(x => x.id === id);
+  if (c) $('ai-notes').value = `概念/问题：${c.front}\n\n当前笔记：${c.back}`;
+ }
+ function parseCards(text) {
+  const m = text.match(/\[[\s\S]*\]/);
+  if (m) {
+   try {
+    const arr = JSON.parse(m[0]);
+    if (Array.isArray(arr)) {
+     const ok = arr.filter(x => x && typeof x.front === 'string' && typeof x.back === 'string').slice(0, 5)
+      .map(x => ({ front: x.front.trim().slice(0, 300), back: x.back.trim().slice(0, 760), kind: ['concept','qa','code'].includes(x.kind) ? x.kind : 'qa', checked: true }));
+     if (ok.length) return ok;
+    }
+   } catch {}
+  }
+  const out = [];
+  for (const blk of text.split(/\n(?=(?:\d+[.、]\s*)?(?:Q|问|正面)[：:])/i)) {
+   const qm = blk.match(/(?:Q|问|正面)[：:]\s*([^\n]+)/i), am = blk.match(/(?:A|答|背面)[：:]\s*([\s\S]+)/i);
+   if (qm && am) out.push({ front: qm[1].trim().slice(0, 300), back: am[1].trim().slice(0, 760), kind: 'qa', checked: true });
+  }
+  return out.slice(0, 5);
+ }
+ function renderAiAdopt() {
+  const area = $('ai-adopt-area'), list = $('ai-draft-list'); list.replaceChildren();
+  area.hidden = !S.aiText.trim();
+  if (!S.aiText.trim()) return;
+  if (S.aiMode === 'extract') {
+   S.aiDrafts = parseCards(S.aiText);
+   $('btn-ai-adopt-cards').hidden = !S.aiDrafts.length;
+   $('ai-target-deck').hidden = !S.aiDrafts.length;
+   $('btn-ai-append-card').hidden = true;
+   if (!S.aiDrafts.length) { list.appendChild(el('p', { cls: 'muted' }, '未检测到结构化闪卡数组，可直接复制上方文本新建卡片。')); return; }
+   S.aiDrafts.forEach((d, i) => {
+    const cb = el('input', { type: 'checkbox', checked: d.checked, css: 'width:auto', on: { change: () => { d.checked = cb.checked; } } });
+    list.appendChild(el('div', { cls: 'draft-card' }, el('label', { cls: 'row', css: 'cursor:pointer' }, cb, el('strong', null, `闪卡 #${i + 1}：${d.front}`)), el('div', { cls: 'muted' }, d.back)));
+   });
+  } else {
+   $('btn-ai-adopt-cards').hidden = true;
+   $('ai-target-deck').hidden = true;
+   $('btn-ai-append-card').hidden = !$('ai-card-select').value;
+  }
+ }
+ /* Modals */
+ function openCardModal(id) {
+  if (!S.decks.length) { setStatus('请先创建至少一个卡组，或载入演示数据。', 'error'); openDeckModal(null); return; }
+  S.editCardId = id;
+  const c = id ? S.cards.find(x => x.id === id) : null;
+  $('modal-card-title').textContent = c ? '编辑知识闪卡' : '新建知识闪卡';
+  $('btn-fc-delete').hidden = !c;
+  const ds = $('fc-deck'); ds.replaceChildren();
+  for (const d of S.decks) ds.appendChild(el('option', { value: d.id }, d.name));
+  ds.value = c?.deck_id || S.libDeck || S.decks[0].id;
+  $('fc-kind').value = c?.kind || 'concept';
+  $('fc-front').value = c?.front || '';
+  $('fc-back').value = c?.back || '';
+  $('fc-tags').value = c ? c.tags.join(', ') : '';
+  const pk = $('fc-links'); pk.replaceChildren();
+  const others = S.cards.filter(x => x.id !== id);
+  if (!others.length) pk.appendChild(el('span', { cls: 'muted' }, '暂无其他卡片可关联'));
+  for (const o of others) pk.appendChild(el('label', { cls: 'link-opt' }, el('input', { type: 'checkbox', value: o.id, checked: Boolean(c?.links.includes(o.id)) }), o.front.slice(0, 22) + (o.front.length > 22 ? '…' : '')));
+  $('modal-card').hidden = false;
+ }
+ function openDeckModal(id) {
+  S.editDeckId = id;
+  const d = id ? S.decks.find(x => x.id === id) : null;
+  $('modal-deck-title').textContent = d ? '编辑学科卡组' : '新建学科卡组';
+  $('btn-dk-delete').hidden = !d;
+  $('dk-name').value = d?.name || '';
+  $('dk-color').value = d?.color || '#6366f1';
+  $('dk-desc').value = d?.description || '';
+  $('modal-deck').hidden = false;
+ }
+ /* Backend Actions */
+ async function busyRun(errLabel, fn) {
+  if (S.busy) return;
+  S.busy = true;
+  try { await fn(); } catch (e) { setStatus(`${errLabel}：${e?.message || '未知错误'}`, 'error'); } finally { S.busy = false; }
+ }
+ async function refresh(msg) {
+  if (typeof plugin?.action !== 'function') { setStatus('请在 Velai Desktop 中打开此插件。', 'error'); return; }
+  try {
+   const r = await plugin.action('study.state', {});
+   Object.assign(S, { revision: r.revision, today: r.today, decks: r.decks, cards: r.cards, review_log: r.review_log, stats: r.stats });
+   render();
+   setStatus(msg || `已同步 ${S.decks.length} 卡组 · ${S.cards.length} 卡片（待复习 ${S.stats.due_count}）`);
+  } catch (e) { setStatus(`读取失败：${e?.message || '未知错误'}`, 'error'); }
+ }
+ const submitReview = (cardId, rating) => busyRun('评分失败', async () => {
+  const r = await plugin.action('study.review.submit', { expected_revision: S.revision, card_id: cardId, rating, today: S.today });
+  if (r.status === 'reviewed') {
+   S.flipped = false; S.pinnedId = null; if (rating > 1) S.doneCount += 1;
+   await refresh(`SM-2 已更新：下次 ${r.next_interval_days === 0 ? '今天重学' : `${r.next_interval_days}天后(${r.next_due_date})`}，EF ${r.ease_factor.toFixed(2)}`);
+  } else { setStatus(`提交未完成：${r.status}`, 'error'); await refresh(); }
+ });
+ const loadDemo = () => busyRun('载入演示失败', async () => {
+  const r = await plugin.action('study.demo.load', { expected_revision: S.revision });
+  if (r.status === 'loaded') { S.doneCount = 0; S.flipped = false; S.graphSel = 'kv-cache'; await refresh(`已载入演示：${r.decks_count} 卡组、${r.cards_count} 张双链知识卡。`); }
+  else { setStatus(`载入冲突：${r.status}`, 'error'); await refresh(); }
+ });
+ /* Wiring */
+ document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
+ document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => { $(b.dataset.close).hidden = true; }));
+ $('btn-demo').addEventListener('click', () => void loadDemo());
+ $('btn-new-card').addEventListener('click', () => openCardModal(null));
+ $('btn-new-deck').addEventListener('click', () => openDeckModal(null));
+ $('btn-graph-clear').addEventListener('click', () => { S.graphSel = null; renderGraph(); });
+ $('btn-theme').addEventListener('click', () => {
+  const r = document.documentElement;
+  r.dataset.theme = (r.dataset.theme === 'dark' || (!r.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches)) ? 'light' : 'dark';
+ });
+ for (const [id, ev] of [['lib-search','input'],['lib-kind','change'],['lib-due','change']]) $(id).addEventListener(ev, renderLibrary);
+ $('btn-io').addEventListener('click', async () => {
+  $('modal-io').hidden = false;
+  const sel = $('io-export-select'); sel.replaceChildren();
+  try {
+   const items = (await plugin.action('document.list', {})).items || [];
+   if (!items.length) sel.appendChild(el('option', { value: 'all' }, '暂无可导出数据'));
+   for (const it of items) sel.appendChild(el('option', { value: it.id }, it.label));
+  } catch (e) { setStatus(`读取导出列表失败：${e?.message || '未知错误'}`, 'error'); }
+ });
+ $('btn-do-export').addEventListener('click', async () => {
+  try {
+   const r = await plugin.action('document.export', { id: $('io-export-select').value || 'all' });
+   if (r.error) setStatus(`导出失败：${r.error}`, 'error');
+   else { $('io-text').value = r.text || ''; setStatus(`已导出 ${r.filename}`, 'ok'); }
+  } catch (e) { setStatus(`导出异常：${e?.message || '未知错误'}`, 'error'); }
+ });
+ $('btn-copy-io').addEventListener('click', async () => {
+  const t = $('io-text').value; if (!t) return;
+  try { await navigator.clipboard.writeText(t); setStatus('JSON 已复制。', 'ok'); } catch { $('io-text').select(); setStatus('请按 Ctrl/Cmd+C 复制。'); }
+ });
+ $('btn-do-import').addEventListener('click', async () => {
+  const t = $('io-text').value.trim(); if (!t) return;
+  try {
+   const r = await plugin.action('document.import', { text: t });
+   if (r.imported) { $('modal-io').hidden = true; await refresh(`导入成功：+${r.added_decks || 0} 卡组、+${r.added_cards || 0} 卡片。`); }
+   else setStatus(`导入失败：${r.reason || '格式无效'}`, 'error');
+  } catch (e) { setStatus(`导入异常：${e?.message || '未知错误'}`, 'error'); }
+ });
+ $('btn-fc-save').addEventListener('click', () => {
+  const front = $('fc-front').value.trim(), back = $('fc-back').value.trim();
+  if (!front || !back) { setStatus('请填写正面与背面内容。', 'error'); return; }
+  void busyRun('保存异常', async () => {
+   const r = await plugin.action('study.card.save', {
+    expected_revision: S.revision, id: S.editCardId || `card-${Date.now().toString(36)}`,
+    deck_id: $('fc-deck').value, kind: $('fc-kind').value, front, back,
+    tags: $('fc-tags').value.split(/[,，]/).map(s => s.trim()).filter(Boolean).slice(0, 6),
+    links: Array.from($('fc-links').querySelectorAll('input:checked')).map(i => i.value),
+   });
+   if (r.status === 'saved') { $('modal-card').hidden = true; await refresh('知识闪卡已保存。'); }
+   else setStatus(`保存失败：${r.status}`, 'error');
+  });
+ });
+ $('btn-fc-delete').addEventListener('click', () => S.editCardId && void busyRun('删除异常', async () => {
+  const r = await plugin.action('study.card.delete', { expected_revision: S.revision, id: S.editCardId });
+  if (r.status === 'deleted') { $('modal-card').hidden = true; if (S.graphSel === S.editCardId) S.graphSel = null; await refresh('已删除卡片并清理失效双链。'); }
+  else setStatus(`删除失败：${r.status}`, 'error');
+ }));
+ $('btn-dk-save').addEventListener('click', () => {
+  const name = $('dk-name').value.trim();
+  if (!name) { setStatus('请填写卡组名称。', 'error'); return; }
+  void busyRun('保存异常', async () => {
+   const r = await plugin.action('study.deck.save', { expected_revision: S.revision, id: S.editDeckId || `deck-${Date.now().toString(36)}`, name, color: $('dk-color').value || '#6366f1', description: $('dk-desc').value.trim() });
+   if (r.status === 'saved') { $('modal-deck').hidden = true; await refresh(`卡组「${name}」已保存。`); }
+   else setStatus(`保存失败：${r.status}`, 'error');
+  });
+ });
+ $('btn-dk-delete').addEventListener('click', () => S.editDeckId && void busyRun('删除异常', async () => {
+  const r = await plugin.action('study.deck.delete', { expected_revision: S.revision, id: S.editDeckId });
+  if (r.status === 'deleted') { $('modal-deck').hidden = true; S.libDeck = ''; await refresh('已删除卡组。'); }
+  else setStatus(`删除失败：${r.status}`, 'error');
+ }));
+ document.querySelectorAll('#ai-mode-tabs .mode-card').forEach(b => b.addEventListener('click', () => {
+  S.aiMode = b.dataset.mode;
+  document.querySelectorAll('#ai-mode-tabs .mode-card').forEach(x => x.classList.toggle('active', x === b));
+  renderAiAdopt();
+ }));
+ $('ai-card-select').addEventListener('change', () => {
+  const c = S.cards.find(x => x.id === $('ai-card-select').value);
+  if (c) $('ai-notes').value = `概念/问题：${c.front}\n\n当前笔记：${c.back}`;
+  renderAiAdopt();
+ });
+ $('btn-ai-send').addEventListener('click', async () => {
+  const notes = $('ai-notes').value.trim();
+  if (!notes) { setStatus('请先选择卡片或粘贴学习笔记。', 'error'); return; }
+  const prompt = S.aiMode === 'feynman' ? `请作为费曼导师，针对以下知识点提出 3 个直击本质的深度追问及判断要点（简洁纯文本）：\n\n${notes}`
+   : S.aiMode === 'extract' ? `请从以下学习笔记提炼 3 张高价值间隔重复闪卡，严格只输出 JSON 数组 [{"front":"问题","back":"解答","kind":"concept|qa|code"}]：\n\n${notes}`
+   : `请用生动直观的工程类比与心智模型解释以下概念（250字内，纯文本）：\n\n${notes}`;
+  if (Array.from(prompt).length > 2048) { setStatus('输入过长，请精简至 1500 字以内。', 'error'); return; }
+  S.aiWorkId = uuid(); S.aiText = '';
+  $('btn-ai-check').hidden = false; $('ai-adopt-area').hidden = true;
+  $('ai-state-badge').textContent = '派发中…'; $('ai-raw-preview').textContent = '正在向 Velai 当前会话派发请求…';
+  try {
+   await plugin.action('session.turn.request', { prompt, work_id: S.aiWorkId });
+   $('ai-state-badge').textContent = '已派发'; $('ai-raw-preview').textContent = '已发送至当前会话，回复完毕后点击「核对 AI 返回结果」。';
+  } catch (e) {
+   $('ai-state-badge').textContent = '派发未确认';
+   $('ai-raw-preview').textContent = e?.message === 'cancelled' ? '已取消派发，请先选择一个会话。' : `派发失败：${e?.message || '请回到原会话核对'}`;
+  }
+ });
+ $('btn-ai-check').addEventListener('click', async () => {
+  if (!S.aiWorkId) return;
+  $('ai-state-badge').textContent = '核对中…';
+  try {
+   const r = await plugin.action('session.turn.result', { work_id: S.aiWorkId });
+   if (r.state === 'completed' && !r.truncated && typeof r.text === 'string' && r.text.trim()) {
+    S.aiText = r.text.trim(); $('ai-state-badge').textContent = '已获取结果'; $('ai-raw-preview').textContent = S.aiText; renderAiAdopt();
+   } else {
+    $('ai-state-badge').textContent = `状态：${r.state}`;
+    $('ai-raw-preview').textContent = `当前状态：${r.state}${r.truncated ? '（内容被截断，请回会话查看）' : '，稍后可再次核对。'}`;
+   }
+  } catch (e) { $('ai-state-badge').textContent = '核对失败'; $('ai-raw-preview').textContent = `核对失败：${e?.message || '请回到原会话查看'}`; }
+ });
+ $('btn-ai-adopt-cards').addEventListener('click', () => {
+  const deckId = $('ai-target-deck').value, chosen = S.aiDrafts.filter(d => d.checked);
+  if (!deckId || !chosen.length) { setStatus('请选择目标卡组与至少一张闪卡。', 'error'); return; }
+  void busyRun('入库失败', async () => {
+   let n = 0, rev = S.revision, lid = $('ai-card-select').value;
+   for (let i = 0; i < chosen.length; i++) {
+    const d = chosen[i];
+    const r = await plugin.action('study.card.save', { expected_revision: rev, id: `ai-${Date.now().toString(36)}-${i}`, deck_id: deckId, kind: d.kind, front: d.front, back: d.back, tags: ['AI制卡'], links: lid ? [lid] : [] });
+    if (r.status === 'saved') { rev = r.revision; n += 1; } else break;
+   }
+   await refresh(`已采纳并入库 ${n} 张 AI 闪卡！`); $('ai-adopt-area').hidden = true;
+  });
+ });
+ $('btn-ai-append-card').addEventListener('click', () => {
+  const c = S.cards.find(x => x.id === $('ai-card-select').value);
+  if (!c || !S.aiText) return;
+  void busyRun('写入异常', async () => {
+   const r = await plugin.action('study.card.save', { expected_revision: S.revision, id: c.id, deck_id: c.deck_id, kind: c.kind, front: c.front, back: `${c.back}\n\n[AI 费曼补充]\n${S.aiText}`.slice(0, 800), tags: c.tags, links: c.links });
+   if (r.status === 'saved') { await refresh('已追加写入卡片背面。'); $('ai-adopt-area').hidden = true; }
+   else setStatus(`写入失败：${r.status}`, 'error');
+  });
+ });
+ document.addEventListener('keydown', e => {
+  if (S.view !== 'review' || !$('modal-card').hidden || !$('modal-deck').hidden || !$('modal-io').hidden) return;
+  if (['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) return;
+  const q = dueQueue(); if (!q.length) return;
+  if (e.code === 'Space') { e.preventDefault(); S.flipped = !S.flipped; renderReview(); }
+  else if (S.flipped && ['1','2','3','4'].includes(e.key)) { e.preventDefault(); void submitReview(q[0].id, Number(e.key)); }
+ });
+ void refresh();
+})();
+</script>
+</body>
+</html>

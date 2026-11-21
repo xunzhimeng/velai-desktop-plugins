@@ -1,0 +1,935 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>系统架构与 API 契约设计台</title>
+<style>
+:root{color-scheme:light dark;--bg:#f5f7fb;--surface:#ffffff;--s2:#eef1f8;--s3:#e3e8f4;--fg:#0f172a;--fg2:#334155;--muted:#64748b;--border:#dce2ee;--b2:#c2cce0;--accent:#2563eb;--accent-s:rgba(37,99,235,.11);--accent-fg:#fff;--ok:#059669;--ok-s:rgba(5,150,105,.12);--warn:#d97706;--warn-s:rgba(217,119,6,.13);--danger:#dc2626;--danger-s:rgba(220,38,38,.12);--purple:#7c3aed;--purple-s:rgba(124,58,237,.12);--sh1:0 1px 2px rgba(15,23,42,.05);--sh2:0 12px 30px rgba(15,23,42,.11);--r:12px;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font:13.5px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b0f18;--surface:#121826;--s2:#1a2235;--s3:#232e47;--fg:#f1f5f9;--fg2:#cbd5e1;--muted:#94a3b8;--border:#243049;--b2:#344566;--accent:#60a5fa;--accent-s:rgba(96,165,250,.15);--accent-fg:#0b0f18;--ok:#34d399;--ok-s:rgba(52,211,153,.15);--warn:#fbbf24;--warn-s:rgba(251,191,36,.15);--danger:#f87171;--danger-s:rgba(248,113,113,.16);--purple:#a78bfa;--purple-s:rgba(167,139,250,.16);--sh1:0 1px 2px rgba(0,0,0,.35);--sh2:0 14px 36px rgba(0,0,0,.48)}}
+:root[data-theme="dark"]{--bg:#0b0f18;--surface:#121826;--s2:#1a2235;--s3:#232e47;--fg:#f1f5f9;--fg2:#cbd5e1;--muted:#94a3b8;--border:#243049;--b2:#344566;--accent:#60a5fa;--accent-s:rgba(96,165,250,.15);--accent-fg:#0b0f18;--ok:#34d399;--ok-s:rgba(52,211,153,.15);--warn:#fbbf24;--warn-s:rgba(251,191,36,.15);--danger:#f87171;--danger-s:rgba(248,113,113,.16);--purple:#a78bfa;--purple-s:rgba(167,139,250,.16);--sh1:0 1px 2px rgba(0,0,0,.35);--sh2:0 14px 36px rgba(0,0,0,.48)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+[hidden]{display:none!important}
+.app{display:grid;grid-template-columns:220px minmax(0,1fr);height:100vh}
+@media (max-width:780px){.app{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}.sidebar{flex-direction:row!important;align-items:center;overflow-x:auto;border-right:none!important;border-bottom:1px solid var(--border);padding:8px 12px!important}.nav-list,.sidebar-foot{flex-direction:row!important;margin-top:0!important}.brand-sub{display:none}}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:15px 12px;display:flex;flex-direction:column;gap:14px;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 6px}
+.brand-ic{width:34px;height:34px;border-radius:10px;flex-shrink:0;background:linear-gradient(135deg,#2563eb,#7c3aed);display:grid;place-items:center;color:#fff;box-shadow:0 4px 12px rgba(37,99,235,.32)}
+.brand-t{font-weight:700;font-size:14px;line-height:1.2;letter-spacing:-.01em}
+.brand-sub{font-size:11px;color:var(--muted)}
+.nav-list{display:flex;flex-direction:column;gap:4px}
+.nav-btn{display:flex;align-items:center;gap:9px;width:100%;padding:9px 10px;border-radius:9px;border:1px solid transparent;background:transparent;cursor:pointer;text-align:left;font-weight:500;color:var(--fg2);transition:.14s}
+.nav-btn:hover{background:var(--s2);color:var(--fg)}
+.nav-btn.active{background:var(--accent-s);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 28%,transparent);font-weight:600}
+.nav-badge{margin-left:auto;font-size:11px;font-weight:600;padding:1px 7px;border-radius:999px;background:var(--s2);color:var(--muted)}
+.nav-btn.active .nav-badge{background:var(--accent);color:var(--accent-fg)}
+.sidebar-foot{margin-top:auto;display:flex;flex-direction:column;gap:6px;padding-top:10px;border-top:1px solid var(--border)}
+.main-col{display:flex;flex-direction:column;min-width:0;height:100%;overflow:hidden}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.kpi-strip{display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex:1}
+.kpi-chip{display:flex;align-items:center;gap:8px;padding:6px 11px;border-radius:10px;background:var(--s2);border:1px solid var(--border);min-width:112px}
+.kpi-chip.click{cursor:pointer}
+.kpi-chip.alert{background:var(--danger-s);border-color:color-mix(in srgb,var(--danger) 45%,var(--border))}
+.kpi-val{font-size:15.5px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi-lbl{font-size:11px;color:var(--muted);line-height:1.2}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block}
+.status-bar{padding:5px 18px;font-size:12px;color:var(--muted);background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.status-bar[data-kind="error"]{color:var(--danger);background:var(--danger-s)}
+.status-bar[data-kind="ok"]{color:var(--ok)}
+.workspace{flex:1;overflow-y:auto;padding:15px 18px 24px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:6.5px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--fg);cursor:pointer;font-weight:500;transition:.12s;white-space:nowrap}
+.btn:hover:not(:disabled){background:var(--s2);border-color:var(--b2)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.primary:hover:not(:disabled){filter:brightness(1.07)}
+.btn.ghost{background:transparent;border-color:transparent}
+.btn.ghost:hover:not(:disabled){background:var(--s2)}
+.btn.danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 35%,var(--border))}
+.btn.danger:hover:not(:disabled){background:var(--danger-s)}
+.btn.sm{padding:4px 9px;font-size:12px;border-radius:7px}
+input[type="text"],input[type="search"],input[type="number"],select,textarea{width:100%;padding:6.5px 9px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--fg);outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-s)}
+textarea{resize:vertical;min-height:72px}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--sh1)}
+.phead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.ptitle{font-size:14px;font-weight:700;margin:0}
+.muted{color:var(--muted);font-size:12px}
+.mono{font-family:var(--mono)}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:600;background:var(--s2);color:var(--fg2);border:1px solid var(--border)}
+.pill.ok{background:var(--ok-s);color:var(--ok);border-color:transparent}
+.pill.warn{background:var(--warn-s);color:var(--warn);border-color:transparent}
+.pill.danger{background:var(--danger-s);color:var(--danger);border-color:transparent}
+.pill.purple{background:var(--purple-s);color:var(--purple);border-color:transparent}
+.pill.info{background:var(--accent-s);color:var(--accent);border-color:transparent}
+
+.m-badge{display:inline-block;min-width:54px;text-align:center;font-family:var(--mono);font-size:11px;font-weight:700;padding:2px 6px;border-radius:6px}
+.m-GET{background:var(--accent-s);color:var(--accent)}
+.m-POST{background:var(--ok-s);color:var(--ok)}
+.m-PUT{background:var(--warn-s);color:var(--warn)}
+.m-PATCH{background:var(--purple-s);color:var(--purple)}
+.m-DELETE{background:var(--danger-s);color:var(--danger)}
+
+.banner-warn{padding:10px 14px;border-radius:10px;border:1px solid color-mix(in srgb,var(--danger) 45%,var(--border));background:var(--danger-s);color:var(--danger);margin-bottom:12px;font-size:12.5px;display:flex;flex-direction:column;gap:4px}
+.topo-layout{display:grid;grid-template-columns:minmax(0,1fr) 316px;gap:14px;min-height:500px}
+@media (max-width:960px){.topo-layout{grid-template-columns:1fr}}
+.canvas-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;min-height:490px}
+.canvas-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.topo-svg{width:100%;flex:1;min-height:445px;display:block;background:var(--bg)}
+.inspector{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:11px;overflow-y:auto;max-height:560px}
+.mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.mbox{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:7px;text-align:center}
+.mbox b{display:block;font-size:15px;font-variant-numeric:tabular-nums}
+.mbox span{font-size:11px;color:var(--muted)}
+.edge-item{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:6px 8px;border-radius:8px;background:var(--s2);border:1px solid var(--border);font-size:12px}
+.edge-item.cyc{border-color:var(--danger);background:var(--danger-s)}
+
+.split{display:grid;grid-template-columns:minmax(250px,340px) minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:860px){.split{grid-template-columns:1fr}}
+.item-list{display:flex;flex-direction:column;gap:6px;max-height:520px;overflow-y:auto}
+.list-row{width:100%;text-align:left;padding:9px 11px;border-radius:10px;border:1px solid var(--border);background:var(--surface);cursor:pointer;display:flex;flex-direction:column;gap:4px;transition:.12s}
+.list-row:hover{border-color:var(--b2);background:var(--s2)}
+.list-row.active{border-color:var(--accent);background:var(--accent-s)}
+.sub-table{display:flex;flex-direction:column;gap:6px}
+.sub-row{display:grid;gap:6px;align-items:center}
+.param-row{grid-template-columns:1.1fr .8fr .8fr auto 1.3fr auto}
+.err-row{grid-template-columns:88px 1fr auto}
+.field-row{grid-template-columns:1fr .85fr .9fr auto 1.2fr auto}
+@media (max-width:700px){.param-row,.field-row{grid-template-columns:1fr 1fr}}
+.code-box{margin:0;padding:14px;border-radius:10px;border:1px solid var(--border);background:var(--s2);font-family:var(--mono);font-size:12px;line-height:1.58;overflow:auto;max-height:490px;white-space:pre;tab-size:2}
+.seg{display:inline-flex;padding:3px;border-radius:9px;background:var(--s2);border:1px solid var(--border);gap:3px}
+.seg button{border:none;background:transparent;padding:5px 11px;border-radius:7px;cursor:pointer;font-weight:600;font-size:12.5px;color:var(--fg2)}
+.seg button.active{background:var(--surface);color:var(--accent);box-shadow:var(--sh1)}
+
+.modal-bg{position:fixed;inset:0;background:rgba(10,14,24,.56);display:grid;place-items:center;padding:16px;z-index:40}
+.modal{width:min(540px,100%);max-height:90vh;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;box-shadow:var(--sh2);display:flex;flex-direction:column;gap:12px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field>span{font-size:12px;font-weight:600;color:var(--fg2)}
+.empty{text-align:center;padding:34px 18px;border:1px dashed var(--b2);border-radius:var(--r);background:var(--surface);display:flex;flex-direction:column;align-items:center;gap:10px}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-ic" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">
+          <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="8.5" y="14" width="7" height="7" rx="1.5"/>
+          <path d="M10 6.5h4M6.5 10v2.5L12 14M17.5 10v2.5L12 14"/>
+        </svg>
+      </div>
+      <div><div class="brand-t">API Arch Studio</div><div class="brand-sub">项目级架构 · API 契约台</div></div>
+    </div>
+    <nav class="nav-list" aria-label="主导航">
+      <button class="nav-btn active" data-view="topology" type="button">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="6" height="6" rx="1"/><rect x="15" y="4" width="6" height="6" rx="1"/><rect x="9" y="14" width="6" height="6" rx="1"/><path d="M9 7h6M6 10v2l6 2M18 10v2l-6 2"/></svg>
+        <span>架构拓扑画布</span><span class="nav-badge" id="bd-svc">0</span>
+      </button>
+      <button class="nav-btn" data-view="endpoints" type="button">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        <span>API 契约目录</span><span class="nav-badge" id="bd-ep">0</span>
+      </button>
+      <button class="nav-btn" data-view="codegen" type="button">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m8 6-6 6 6 6M16 6l6 6-6 6M13 4l-2 16"/></svg>
+        <span>契约代码生成</span><span class="nav-badge">3.0</span>
+      </button>
+      <button class="nav-btn" data-view="schemas" type="button">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/></svg>
+        <span>数据模型 Schema</span><span class="nav-badge" id="bd-sc">0</span>
+      </button>
+    </nav>
+    <div class="sidebar-foot">
+      <button id="btn-demo" class="btn sm" type="button">载入电商风控演示</button>
+      <button id="btn-io" class="btn sm" type="button">导入 / 导出 JSON</button>
+      <button id="btn-theme" class="btn sm ghost" type="button">切换明暗主题</button>
+    </div>
+  </aside>
+
+  <div class="main-col">
+    <header class="topbar">
+      <div class="kpi-strip">
+        <div class="kpi-chip"><span class="dot" style="background:var(--accent)"></span><div><div class="kpi-val" id="kpi-svc">0 / 0</div><div class="kpi-lbl">服务节点 / 依赖边</div></div></div>
+        <div class="kpi-chip"><span class="dot" style="background:var(--ok)"></span><div><div class="kpi-val" id="kpi-ep">0</div><div class="kpi-lbl">API 契约 · Stable <b id="kpi-stable">0%</b></div></div></div>
+        <div class="kpi-chip"><span class="dot" style="background:var(--purple)"></span><div><div class="kpi-val" id="kpi-sc">0</div><div class="kpi-lbl">共享 Schema 模型</div></div></div>
+        <div class="kpi-chip click" id="kpi-cycle-chip"><span class="dot" id="kpi-cycle-dot" style="background:var(--ok)"></span><div><div class="kpi-val" id="kpi-cycle">0 环依赖</div><div class="kpi-lbl" id="kpi-cycle-sub">架构依赖健康</div></div></div>
+      </div>
+      <div class="row">
+        <button id="btn-add-svc" class="btn sm" type="button">+ 服务节点</button>
+        <button id="btn-add-edge" class="btn sm" type="button">+ 依赖连线</button>
+        <button id="btn-add-ep" class="btn primary sm" type="button">+ 新增 API</button>
+      </div>
+    </header>
+    <div id="status-bar" class="status-bar" role="status"><span id="status-text">正在读取项目架构…</span><span id="rev-tag">rev #0</span></div>
+
+    <main class="workspace">
+      <!-- View 1: Microservice Topology SVG Canvas -->
+      <section id="view-topology" class="view">
+        <div id="cycle-banner" class="banner-warn" hidden></div>
+        <div class="topo-layout">
+          <div class="canvas-wrap">
+            <div class="canvas-bar">
+              <div class="row">
+                <span class="pill"><span class="dot" style="background:#2563eb"></span>Gateway</span>
+                <span class="pill"><span class="dot" style="background:#059669"></span>Service</span>
+                <span class="pill"><span class="dot" style="background:#d97706"></span>Queue</span>
+                <span class="pill"><span class="dot" style="background:#7c3aed"></span>DB</span>
+                <span class="pill"><span class="dot" style="background:#64748b"></span>External</span>
+              </div>
+              <span class="muted">点击节点查看耦合度与入/出边</span>
+            </div>
+            <svg id="topo-svg" class="topo-svg" viewBox="0 0 820 460" aria-label="微服务架构拓扑画布"></svg>
+          </div>
+          <aside id="topo-inspector" class="inspector"></aside>
+        </div>
+      </section>
+
+      <!-- View 2: API Endpoint Catalog & Editor -->
+      <section id="view-endpoints" class="view" hidden>
+        <div class="panel" style="margin-bottom:12px">
+          <div class="row">
+            <div style="flex:1;min-width:170px"><input id="ep-search" type="search" placeholder="搜索路径、接口名称或 ID…"></div>
+            <select id="ep-filter-svc" style="width:150px"></select>
+            <select id="ep-filter-method" style="width:112px"><option value="">全部方法</option><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select>
+            <select id="ep-filter-status" style="width:120px"><option value="">全部状态</option><option value="draft">draft</option><option value="review">review</option><option value="stable">stable</option><option value="deprecated">deprecated</option></select>
+          </div>
+        </div>
+        <div class="split">
+          <div class="panel">
+            <div class="phead"><h2 class="ptitle">接口列表 (<span id="ep-count">0</span>)</h2><button id="btn-ep-new2" class="btn sm" type="button">+ 新建</button></div>
+            <div id="ep-list" class="item-list"></div>
+          </div>
+          <div id="ep-editor" class="panel"></div>
+        </div>
+      </section>
+
+      <!-- View 3: OpenAPI 3.0 & TypeScript Codegen -->
+      <section id="view-codegen" class="view" hidden>
+        <div class="panel">
+          <div class="phead">
+            <div class="row">
+              <div class="seg" id="cg-tabs">
+                <button class="active" data-target="openapi" type="button">OpenAPI 3.0.3 JSON</button>
+                <button data-target="typescript" type="button">TypeScript Interfaces</button>
+              </div>
+              <select id="cg-service" style="width:170px"></select>
+            </div>
+            <div class="row">
+              <span class="muted" id="cg-meta">—</span>
+              <button id="btn-cg-refresh" class="btn sm" type="button">重新编译</button>
+              <button id="btn-cg-copy" class="btn sm" type="button">复制代码</button>
+              <button id="btn-cg-insert" class="btn primary sm" type="button" hidden>插入会话让 AI 评审</button>
+            </div>
+          </div>
+          <pre id="cg-code" class="code-box">// 正在编译契约代码…</pre>
+        </div>
+      </section>
+
+      <!-- View 4: Data Model Schema Center -->
+      <section id="view-schemas" class="view" hidden>
+        <div class="split">
+          <div class="panel">
+            <div class="phead"><h2 class="ptitle">共享模型 (<span id="sc-count">0</span>)</h2><button id="btn-sc-new" class="btn sm primary" type="button">+ 新建 Schema</button></div>
+            <div id="sc-list" class="item-list"></div>
+          </div>
+          <div id="sc-editor" class="panel"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- Service Modal -->
+<div id="modal-svc" class="modal-bg" hidden>
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="phead" style="margin-bottom:0"><h2 id="ms-title" class="ptitle">新增微服务节点</h2><button class="btn sm ghost" data-close="modal-svc" type="button">关闭</button></div>
+    <div class="row">
+      <label class="field" style="flex:1"><span>服务 ID (英文/短横线)</span><input id="ms-id" type="text" maxlength="40" placeholder="例如：inventory-svc"></label>
+      <label class="field" style="flex:1"><span>服务名称</span><input id="ms-name" type="text" maxlength="60" placeholder="例如：库存扣减服务"></label>
+    </div>
+    <div class="row">
+      <label class="field" style="flex:1"><span>节点类型</span><select id="ms-kind"><option value="gateway">Gateway 网关</option><option value="service">Service 微服务</option><option value="queue">Queue 消息队列</option><option value="db">DB 数据库</option><option value="external">External 外部依赖</option></select></label>
+      <label class="field" style="width:120px"><span>拓扑层级 (0-3)</span><select id="ms-tier"><option value="0">0 · 接入层</option><option value="1">1 · 核心域</option><option value="2">2 · 支撑/异步</option><option value="3">3 · 存储/外部</option></select></label>
+      <label class="field" style="flex:1"><span>负责人 / 团队</span><input id="ms-owner" type="text" maxlength="40" placeholder="Commerce"></label>
+    </div>
+    <label class="field"><span>职责说明</span><textarea id="ms-desc" rows="2" maxlength="180" placeholder="简述服务边界、核心 SLA 或关键职责"></textarea></label>
+    <div class="row" style="justify-content:flex-end">
+      <button id="btn-ms-del" class="btn danger" type="button" hidden style="margin-right:auto">删除服务</button>
+      <button class="btn" data-close="modal-svc" type="button">取消</button>
+      <button id="btn-ms-save" class="btn primary" type="button">保存节点</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edge Modal -->
+<div id="modal-edge" class="modal-bg" hidden>
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="phead" style="margin-bottom:0"><h2 class="ptitle">新增服务依赖边</h2><button class="btn sm ghost" data-close="modal-edge" type="button">关闭</button></div>
+    <div class="row">
+      <label class="field" style="flex:1"><span>调用方 (From)</span><select id="me-from"></select></label>
+      <label class="field" style="flex:1"><span>被调用方 (To)</span><select id="me-to"></select></label>
+    </div>
+    <div class="row">
+      <label class="field" style="width:130px"><span>协议</span><select id="me-proto"><option>HTTP</option><option>gRPC</option><option>Event</option><option>SQL</option><option>Cache</option></select></label>
+      <label class="field" style="flex:1"><span>调用语义说明</span><input id="me-label" type="text" maxlength="60" placeholder="例如：扣减库存 RPC"></label>
+    </div>
+    <div class="row" style="justify-content:flex-end"><button class="btn" data-close="modal-edge" type="button">取消</button><button id="btn-me-save" class="btn primary" type="button">添加依赖边</button></div>
+  </div>
+</div>
+
+<!-- Import / Export Modal -->
+<div id="modal-io" class="modal-bg" hidden>
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="phead" style="margin-bottom:0"><h2 class="ptitle">导入 / 导出项目架构快照 JSON</h2><button class="btn sm ghost" data-close="modal-io" type="button">关闭</button></div>
+    <div class="row">
+      <select id="io-select" style="flex:1"></select>
+      <button id="btn-io-exp" class="btn" type="button">导出</button>
+      <button id="btn-io-copy" class="btn" type="button">复制</button>
+    </div>
+    <label class="field"><span>JSON 内容</span><textarea id="io-text" rows="9" class="mono" style="font-size:12px" placeholder='{"format":"velai-api-arch-studio","version":1,...}'></textarea></label>
+    <div class="row" style="justify-content:flex-end"><button class="btn" data-close="modal-io" type="button">关闭</button><button id="btn-io-imp" class="btn primary" type="button">导入并合并</button></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const plugin = globalThis.nmasPlugin;
+  const $ = id => document.getElementById(id);
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const KIND_META = {
+    gateway: { label: 'Gateway', color: '#2563eb' },
+    service: { label: 'Service', color: '#059669' },
+    queue: { label: 'Queue', color: '#d97706' },
+    db: { label: 'DB', color: '#7c3aed' },
+    external: { label: 'External', color: '#64748b' },
+  };
+  const STATUS_CLS = { draft: '', review: 'warn', stable: 'ok', deprecated: 'danger' };
+
+  const S = {
+    revision: 0, services: [], edges: [], endpoints: [], schemas: [],
+    analysis: { metrics: [], cycles: [], cycle_edge_ids: [], warnings: [], stable_ratio: 0 },
+    view: 'topology', busy: false, canInsert: false,
+    selSvcId: null, selEpId: null, selScId: null,
+    editSvcId: null, cgTarget: 'openapi', cgCode: '',
+    epDraft: null, scDraft: null,
+  };
+
+  function el(tag, props, ...kids) {
+    const n = document.createElement(tag);
+    if (props) for (const [k, v] of Object.entries(props)) {
+      if (k === 'cls') n.className = v;
+      else if (k === 'on') for (const [ev, fn] of Object.entries(v)) n.addEventListener(ev, fn);
+      else if (k === 'css') n.style.cssText = v;
+      else n[k] = v;
+    }
+    for (const c of kids) if (c != null) n.append(typeof c === 'string' ? document.createTextNode(c) : c);
+    return n;
+  }
+  function svg(tag, attrs, text) {
+    const n = document.createElementNS(SVG_NS, tag);
+    if (attrs) for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v));
+    if (text != null) n.textContent = String(text);
+    return n;
+  }
+  const setStatus = (t, k = '') => { $('status-text').textContent = t; $('status-bar').dataset.kind = k; $('rev-tag').textContent = `rev #${S.revision}`; };
+  const svcOf = id => S.services.find(s => s.id === id);
+  const metricOf = id => S.analysis.metrics.find(m => m.service_id === id) || { fan_in: 0, fan_out: 0, endpoint_count: 0, in_cycle: false };
+
+  async function busyRun(errLabel, fn) {
+    if (S.busy) return;
+    S.busy = true;
+    try { await fn(); } catch (e) { setStatus(`${errLabel}：${e?.message || '未知错误'}`, 'error'); } finally { S.busy = false; }
+  }
+
+  function switchView(v) {
+    S.view = v;
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+    document.querySelectorAll('.view').forEach(s => { s.hidden = s.id !== `view-${v}`; });
+    render();
+    if (v === 'codegen') void runCodegen();
+  }
+
+  function render() {
+    $('kpi-svc').textContent = `${S.services.length} / ${S.edges.length}`;
+    $('kpi-ep').textContent = S.endpoints.length;
+    $('kpi-stable').textContent = `${S.analysis.stable_ratio}%`;
+    $('kpi-sc').textContent = S.schemas.length;
+    $('bd-svc').textContent = S.services.length;
+    $('bd-ep').textContent = S.endpoints.length;
+    $('bd-sc').textContent = S.schemas.length;
+
+    const cycN = S.analysis.cycles.length;
+    $('kpi-cycle').textContent = cycN ? `${cycN} 条循环依赖` : '0 循环依赖';
+    $('kpi-cycle-sub').textContent = cycN ? '点击查看标红路径' : '依赖拓扑无环';
+    $('kpi-cycle-dot').style.background = cycN ? 'var(--danger)' : 'var(--ok)';
+    $('kpi-cycle-chip').classList.toggle('alert', cycN > 0);
+
+    if (S.view === 'topology') renderTopology();
+    else if (S.view === 'endpoints') renderEndpoints();
+    else if (S.view === 'codegen') renderCodegenFilters();
+    else renderSchemas();
+  }
+
+  /* ========== VIEW 1: TOPOLOGY SVG CANVAS ========== */
+  function renderTopology() {
+    const banner = $('cycle-banner');
+    banner.replaceChildren();
+    if (S.analysis.warnings.length) {
+      banner.hidden = false;
+      banner.appendChild(el('strong', null, `架构诊断告警 (${S.analysis.warnings.length})`));
+      for (const w of S.analysis.warnings) banner.appendChild(el('div', null, `• ${w}`));
+    } else {
+      banner.hidden = true;
+    }
+
+    const root = $('topo-svg'); root.replaceChildren();
+    if (!S.services.length) {
+      root.appendChild(svg('text', { x: 410, y: 220, 'text-anchor': 'middle', fill: 'currentColor', opacity: .55, 'font-size': 14 }, '当前项目暂无服务拓扑，点击左下角「载入电商风控演示」或右上角「+ 服务节点」开始设计。'));
+      renderTopoInspector();
+      return;
+    }
+
+    const defs = svg('defs');
+    const pat = svg('pattern', { id: 'bgrid', width: 20, height: 20, patternUnits: 'userSpaceOnUse' });
+    pat.appendChild(svg('circle', { cx: 2, cy: 2, r: 1, fill: 'currentColor', opacity: .13 }));
+    defs.appendChild(pat);
+    for (const [id, col] of [['arr-norm', '#64748b'], ['arr-hi', '#2563eb'], ['arr-cyc', '#dc2626']]) {
+      const m = svg('marker', { id, viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 6.5, markerHeight: 6.5, orient: 'auto' });
+      m.appendChild(svg('path', { d: 'M0,1 L9,5 L0,9 z', fill: col }));
+      defs.appendChild(m);
+    }
+    root.append(defs, svg('rect', { width: 820, height: 460, fill: 'url(#bgrid)' }));
+
+    // Group services into 4 vertical tiers
+    const tiers = [[], [], [], []];
+    for (const s of S.services) tiers[Math.max(0, Math.min(3, s.tier))].push(s);
+    const tierNames = ['Tier 0 · 接入网关', 'Tier 1 · 核心服务', 'Tier 2 · 支撑 / 异步', 'Tier 3 · 存储 / 外部'];
+    const colX = [108, 310, 514, 714], nodeW = 152, nodeH = 74;
+    const pos = new Map();
+
+    tiers.forEach((arr, t) => {
+      root.appendChild(svg('text', { x: colX[t], y: 24, 'text-anchor': 'middle', fill: 'currentColor', opacity: .45, 'font-size': 11, 'font-weight': 600 }, tierNames[t]));
+      if (t > 0) root.appendChild(svg('line', { x1: colX[t] - 101, y1: 34, x2: colX[t] - 101, y2: 446, stroke: 'currentColor', opacity: .07, 'stroke-dasharray': '4 4' }));
+      const span = 396, step = arr.length ? span / arr.length : 0;
+      arr.forEach((s, idx) => {
+        pos.set(s.id, { x: colX[t], y: 54 + step * (idx + 0.5) });
+      });
+    });
+
+    const cycEdges = new Set(S.analysis.cycle_edge_ids);
+    const sel = S.selSvcId && svcOf(S.selSvcId) ? S.selSvcId : null;
+
+    // Draw edges
+    const eg = svg('g');
+    S.edges.forEach((e, idx) => {
+      const a = pos.get(e.from), b = pos.get(e.to); if (!a || !b) return;
+      const isCyc = cycEdges.has(e.id);
+      const isRel = !sel || e.from === sel || e.to === sel;
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const sx = a.x + (Math.abs(dx) > 40 ? (dx > 0 ? nodeW / 2 : -nodeW / 2) : 0);
+      const sy = a.y + (Math.abs(dx) <= 40 ? (dy > 0 ? nodeH / 2 : -nodeH / 2) : 0);
+      const tx = b.x - (Math.abs(dx) > 40 ? (dx > 0 ? nodeW / 2 + 4 : -(nodeW / 2 + 4)) : 0);
+      const ty = b.y - (Math.abs(dx) <= 40 ? (dy > 0 ? nodeH / 2 + 4 : -(nodeH / 2 + 4)) : 0);
+
+      // Offset parallel/reverse edges so bidirectional cycles are clearly separated
+      const revExists = S.edges.some(o => o.from === e.to && o.to === e.from);
+      const bend = revExists ? (e.from < e.to ? -40 : 40) : ((idx % 2 ? 1 : -1) * 14);
+      const mx = (sx + tx) / 2 + (Math.abs(dx) <= 40 ? bend * 1.4 : 0);
+      const my = (sy + ty) / 2 + (Math.abs(dx) > 40 ? bend : 0);
+      const stroke = isCyc ? '#dc2626' : (sel && isRel ? '#2563eb' : '#64748b');
+
+      eg.appendChild(svg('path', {
+        d: `M${sx.toFixed(1)} ${sy.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${tx.toFixed(1)} ${ty.toFixed(1)}`,
+        fill: 'none', stroke, 'stroke-width': isCyc ? 2.6 : (sel && isRel ? 2.2 : 1.6),
+        'stroke-dasharray': isCyc ? '6 3' : (e.protocol === 'Event' ? '4 3' : ''),
+        opacity: isRel || isCyc ? .95 : .2,
+        'marker-end': isCyc ? 'url(#arr-cyc)' : (sel && isRel ? 'url(#arr-hi)' : 'url(#arr-norm)'),
+      }));
+
+      // Protocol badge at midpoint
+      const lx = 0.25 * sx + 0.5 * mx + 0.25 * tx, ly = 0.25 * sy + 0.5 * my + 0.25 * ty;
+      const bgW = e.protocol.length * 7 + 14;
+      const grp = svg('g', { opacity: isRel || isCyc ? 1 : .22 });
+      grp.appendChild(svg('rect', { x: lx - bgW / 2, y: ly - 9, width: bgW, height: 18, rx: 5, fill: isCyc ? '#dc2626' : '#1e293b' }));
+      grp.appendChild(svg('text', { x: lx, y: ly + 3.5, 'text-anchor': 'middle', fill: '#fff', 'font-size': 9.5, 'font-weight': 700 }, e.protocol));
+      grp.appendChild(svg('title', null, `${e.from} → ${e.to} [${e.protocol}] ${e.label}`));
+      eg.appendChild(grp);
+    });
+    root.appendChild(eg);
+
+    // Draw service nodes
+    const ng = svg('g');
+    for (const s of S.services) {
+      const p = pos.get(s.id), km = KIND_META[s.kind] || KIND_META.service, m = metricOf(s.id);
+      const x = p.x - nodeW / 2, y = p.y - nodeH / 2, isSel = s.id === sel;
+      const g = svg('g', { transform: `translate(${x.toFixed(1)},${y.toFixed(1)})`, style: 'cursor:pointer' });
+
+      if (m.in_cycle) {
+        g.appendChild(svg('rect', { x: -4, y: -4, width: nodeW + 8, height: nodeH + 8, rx: 13, fill: '#dc2626', opacity: .16 }));
+      }
+      g.appendChild(svg('rect', {
+        width: nodeW, height: nodeH, rx: 10, fill: 'var(--surface)',
+        stroke: m.in_cycle ? '#dc2626' : (isSel ? 'var(--accent)' : 'var(--border)'),
+        'stroke-width': m.in_cycle || isSel ? 2.4 : 1.3,
+      }));
+      // Left color stripe
+      g.appendChild(svg('rect', { x: 0, y: 0, width: 6, height: nodeH, rx: 3, fill: m.in_cycle ? '#dc2626' : km.color }));
+      // Kind tag
+      g.appendChild(svg('text', { x: 14, y: 17, fill: m.in_cycle ? '#dc2626' : km.color, 'font-size': 9.5, 'font-weight': 700 }, m.in_cycle ? `${km.label} · CYCLE!` : km.label));
+      g.appendChild(svg('text', { x: nodeW - 8, y: 17, 'text-anchor': 'end', fill: 'currentColor', opacity: .55, 'font-size': 9.5 }, `${m.endpoint_count} API`));
+      // Service name & id
+      const nm = s.name.length > 11 ? s.name.slice(0, 11) + '…' : s.name;
+      g.appendChild(svg('text', { x: 14, y: 36, fill: 'currentColor', 'font-size': 12.5, 'font-weight': 700 }, nm));
+      g.appendChild(svg('text', { x: 14, y: 50, fill: 'currentColor', opacity: .55, 'font-size': 10, 'font-family': 'ui-monospace,monospace' }, s.id));
+      // Fan-in / Fan-out bar
+      g.appendChild(svg('text', { x: 14, y: 65, fill: 'currentColor', opacity: .75, 'font-size': 9.5, 'font-weight': 600 }, `IN:${m.fan_in}  OUT:${m.fan_out}`));
+      if (s.owner) g.appendChild(svg('text', { x: nodeW - 8, y: 65, 'text-anchor': 'end', fill: 'currentColor', opacity: .48, 'font-size': 9.5 }, s.owner.slice(0, 10)));
+
+      g.addEventListener('click', () => { S.selSvcId = s.id; renderTopology(); });
+      ng.appendChild(g);
+    }
+    root.appendChild(ng);
+    renderTopoInspector();
+  }
+
+  function renderTopoInspector() {
+    const box = $('topo-inspector'); box.replaceChildren();
+    const s = S.selSvcId ? svcOf(S.selSvcId) : null;
+    if (!s) {
+      box.append(
+        el('div', { cls: 'ptitle' }, '节点耦合度与依赖透视'),
+        el('p', { cls: 'muted' }, '点击左侧拓扑画布中的任意服务节点，查看扇入/扇出耦合度、上下游调用链，并支持一键断开循环依赖边。')
+      );
+      if (S.services.length === 0) {
+        box.appendChild(el('button', { type: 'button', cls: 'btn primary', on: { click: () => void loadDemo() } }, '载入分布式电商风控演示'));
+      }
+      return;
+    }
+    const km = KIND_META[s.kind] || KIND_META.service, m = metricOf(s.id);
+    const cycEdges = new Set(S.analysis.cycle_edge_ids);
+    const relEdges = S.edges.filter(e => e.from === s.id || e.to === s.id);
+    const svcEps = S.endpoints.filter(ep => ep.service_id === s.id);
+
+    const eList = el('div', { css: 'display:flex;flex-direction:column;gap:6px' });
+    if (!relEdges.length) eList.appendChild(el('span', { cls: 'muted' }, '暂无关联依赖边'));
+    for (const e of relEdges) {
+      const isOut = e.from === s.id, isCyc = cycEdges.has(e.id);
+      eList.appendChild(el('div', { cls: `edge-item${isCyc ? ' cyc' : ''}` },
+        el('div', null,
+          el('div', { css: 'font-weight:600' }, `${isOut ? '→ ' + e.to : '← ' + e.from} `, el('span', { cls: 'pill' }, e.protocol)),
+          el('div', { cls: 'muted' }, e.label || (isCyc ? '位于循环依赖环上' : ''))
+        ),
+        el('button', { type: 'button', cls: 'btn sm danger', title: '断开此依赖边', on: { click: () => void deleteEdge(e.id) } }, '断开')
+      ));
+    }
+
+    const epWrap = el('div', { cls: 'row' });
+    if (!svcEps.length) epWrap.appendChild(el('span', { cls: 'muted' }, '暂无 API 契约'));
+    for (const ep of svcEps) {
+      epWrap.appendChild(el('button', { type: 'button', cls: 'btn sm', on: { click: () => { S.selEpId = ep.id; S.epDraft = null; switchView('endpoints'); } } }, `${ep.method} ${ep.path}`));
+    }
+
+    box.append(
+      el('div', { cls: 'row', css: 'justify-content:space-between' },
+        el('span', { cls: 'pill' }, el('span', { cls: 'dot', css: `background:${km.color}` }), km.label),
+        m.in_cycle ? el('span', { cls: 'pill danger' }, '环依赖节点') : el('span', { cls: 'pill ok' }, '无环')
+      ),
+      el('div', null, el('div', { css: 'font-weight:700;font-size:15px' }, s.name), el('div', { cls: 'muted mono' }, `${s.id}${s.owner ? ' · ' + s.owner : ''}`)),
+      s.description ? el('div', { cls: 'muted', css: 'font-size:12.5px;color:var(--fg2)' }, s.description) : null,
+      el('div', { cls: 'mgrid' },
+        el('div', { cls: 'mbox' }, el('b', null, String(m.fan_in)), el('span', null, '入度 Fan-in')),
+        el('div', { cls: 'mbox' }, el('b', null, String(m.fan_out)), el('span', null, '出度 Fan-out')),
+        el('div', { cls: 'mbox' }, el('b', null, String(m.endpoint_count)), el('span', null, 'API 数'))
+      ),
+      el('div', null, el('div', { cls: 'muted', css: 'margin-bottom:5px;font-weight:600' }, `依赖连线 (${relEdges.length})`), eList),
+      el('div', null, el('div', { cls: 'muted', css: 'margin-bottom:5px;font-weight:600' }, `所属 API (${svcEps.length})`), epWrap),
+      el('div', { cls: 'row', css: 'margin-top:auto' },
+        el('button', { type: 'button', cls: 'btn sm primary', on: { click: () => openServiceModal(s.id) } }, '编辑节点'),
+        el('button', { type: 'button', cls: 'btn sm', on: { click: () => openEdgeModal(s.id) } }, '+ 出边')
+      )
+    );
+  }
+
+  /* ========== VIEW 2: API ENDPOINTS CATALOG & EDITOR ========== */
+  function renderEndpoints() {
+    const sf = $('ep-filter-svc'), prevSf = sf.value;
+    sf.replaceChildren(el('option', { value: '' }, '全部服务'));
+    for (const s of S.services) sf.appendChild(el('option', { value: s.id }, s.name));
+    if (prevSf && svcOf(prevSf)) sf.value = prevSf;
+
+    const kw = $('ep-search').value.trim().toLowerCase(), fSvc = sf.value, fM = $('ep-filter-method').value, fSt = $('ep-filter-status').value;
+    const shown = S.endpoints.filter(ep => (!fSvc || ep.service_id === fSvc) && (!fM || ep.method === fM) && (!fSt || ep.status === fSt) && (!kw || `${ep.path} ${ep.summary} ${ep.id}`.toLowerCase().includes(kw)));
+    $('ep-count').textContent = shown.length;
+
+    const list = $('ep-list'); list.replaceChildren();
+    if (!shown.length) list.appendChild(el('p', { cls: 'muted' }, S.endpoints.length ? '没有匹配的接口。' : '暂无 API 契约，点击「+ 新增 API」创建。'));
+    for (const ep of shown) {
+      const svc = svcOf(ep.service_id);
+      list.appendChild(el('button', {
+        type: 'button', cls: `list-row${ep.id === S.selEpId ? ' active' : ''}`,
+        on: { click: () => { S.selEpId = ep.id; S.epDraft = structuredClone(ep); renderEndpoints(); } },
+      },
+        el('div', { cls: 'row' }, el('span', { cls: `m-badge m-${ep.method}` }, ep.method), el('span', { cls: 'mono', css: 'font-size:12.5px;font-weight:600;word-break:break-all' }, ep.path)),
+        el('div', { cls: 'row', css: 'justify-content:space-between' },
+          el('span', { cls: 'muted' }, `${ep.summary} · ${svc ? svc.name : ep.service_id}`),
+          el('span', { cls: `pill ${STATUS_CLS[ep.status] || ''}` }, ep.status)
+        )
+      ));
+    }
+
+    if (!S.epDraft && S.selEpId) {
+      const found = S.endpoints.find(x => x.id === S.selEpId);
+      if (found) S.epDraft = structuredClone(found);
+    }
+    if (!S.epDraft && shown.length) {
+      S.selEpId = shown[0].id;
+      S.epDraft = structuredClone(shown[0]);
+    }
+    renderEndpointEditor();
+  }
+
+  function renderEndpointEditor() {
+    const box = $('ep-editor'); box.replaceChildren();
+    const d = S.epDraft;
+    if (!d) {
+      box.appendChild(el('div', { cls: 'empty' }, el('p', { cls: 'muted' }, '从左侧选择一条 API 契约编辑，或点击右上角「+ 新增 API」。')));
+      return;
+    }
+    const isNew = !S.endpoints.some(x => x.id === d.id);
+    const mkSel = (opts, val, onCh) => {
+      const s = el('select', { on: { change: e => onCh(e.target.value) } });
+      for (const [ov, ol] of opts) s.appendChild(el('option', { value: ov, selected: ov === val }, ol));
+      return s;
+    };
+    const svcOpts = S.services.map(s => [s.id, `${s.name} (${s.id})`]);
+    const scOpts = [['', '— 无 Schema —'], ...S.schemas.map(sc => [sc.id, `${sc.id} (${sc.name})`])];
+
+    const paramList = el('div', { cls: 'sub-table' });
+    d.params.forEach((p, idx) => {
+      paramList.appendChild(el('div', { cls: 'sub-row param-row' },
+        el('input', { type: 'text', value: p.name, placeholder: '参数名', on: { input: e => { p.name = e.target.value; } } }),
+        mkSel([['path','path'],['query','query'],['header','header']], p.in, v => { p.in = v; }),
+        mkSel([['string','string'],['integer','integer'],['number','number'],['boolean','boolean']], p.type, v => { p.type = v; }),
+        el('label', { cls: 'row', css: 'gap:3px;font-size:11.5px' }, el('input', { type: 'checkbox', checked: p.required, css: 'width:auto', on: { change: e => { p.required = e.target.checked; } } }), '必填'),
+        el('input', { type: 'text', value: p.description, placeholder: '说明', on: { input: e => { p.description = e.target.value; } } }),
+        el('button', { type: 'button', cls: 'btn sm danger', on: { click: () => { d.params.splice(idx, 1); renderEndpointEditor(); } } }, '×')
+      ));
+    });
+
+    const errList = el('div', { cls: 'sub-table' });
+    d.error_codes.forEach((er, idx) => {
+      errList.appendChild(el('div', { cls: 'sub-row err-row' },
+        el('input', { type: 'number', min: 400, max: 599, value: er.code, on: { input: e => { er.code = Number(e.target.value) || 400; } } }),
+        el('input', { type: 'text', value: er.message, placeholder: '错误语义', on: { input: e => { er.message = e.target.value; } } }),
+        el('button', { type: 'button', cls: 'btn sm danger', on: { click: () => { d.error_codes.splice(idx, 1); renderEndpointEditor(); } } }, '×')
+      ));
+    });
+
+    box.append(
+      el('div', { cls: 'phead' },
+        el('h2', { cls: 'ptitle' }, isNew ? '新建 API 契约' : `编辑契约 · ${d.id}`),
+        el('div', { cls: 'row' },
+          !isNew ? el('button', { type: 'button', cls: 'btn sm danger', on: { click: () => void deleteEndpoint(d.id) } }, '删除') : null,
+          el('button', { type: 'button', cls: 'btn sm primary', on: { click: () => void saveEndpoint() } }, '保存契约')
+        )
+      ),
+      el('div', { cls: 'row', css: 'margin-bottom:10px' },
+        el('label', { cls: 'field', css: 'width:105px' }, el('span', null, '方法'), mkSel(['GET','POST','PUT','PATCH','DELETE'].map(x => [x, x]), d.method, v => { d.method = v; })),
+        el('label', { cls: 'field', css: 'flex:1;min-width:180px' }, el('span', null, '接口路径'), el('input', { type: 'text', cls: 'mono', value: d.path, placeholder: '/v1/orders/{orderId}', on: { input: e => { d.path = e.target.value; } } })),
+        el('label', { cls: 'field', css: 'width:165px' }, el('span', null, '所属服务'), mkSel(svcOpts, d.service_id, v => { d.service_id = v; }))
+      ),
+      el('div', { cls: 'row', css: 'margin-bottom:10px' },
+        el('label', { cls: 'field', css: 'flex:1;min-width:170px' }, el('span', null, '接口摘要'), el('input', { type: 'text', value: d.summary, placeholder: '简述接口业务语义', on: { input: e => { d.summary = e.target.value; } } })),
+        el('label', { cls: 'field', css: 'width:118px' }, el('span', null, '鉴权'), mkSel(['none','bearer','api_key','mtls','oauth2'].map(x => [x, x]), d.auth, v => { d.auth = v; })),
+        el('label', { cls: 'field', css: 'width:118px' }, el('span', null, '状态'), mkSel(['draft','review','stable','deprecated'].map(x => [x, x]), d.status, v => { d.status = v; }))
+      ),
+      el('div', { cls: 'row', css: 'margin-bottom:12px' },
+        el('label', { cls: 'field', css: 'flex:1' }, el('span', null, 'Request Schema'), mkSel(scOpts, d.request_schema, v => { d.request_schema = v; })),
+        el('label', { cls: 'field', css: 'flex:1' }, el('span', null, 'Response Schema'), mkSel(scOpts, d.response_schema, v => { d.response_schema = v; }))
+      ),
+      el('div', { css: 'margin-bottom:12px' },
+        el('div', { cls: 'phead', css: 'margin-bottom:6px' }, el('span', { css: 'font-size:12.5px;font-weight:700' }, `请求参数 (${d.params.length})`), el('button', { type: 'button', cls: 'btn sm', on: { click: () => { d.params.push({ name: '', in: 'query', type: 'string', required: false, description: '' }); renderEndpointEditor(); } } }, '+ 添加参数')),
+        paramList
+      ),
+      el('div', null,
+        el('div', { cls: 'phead', css: 'margin-bottom:6px' }, el('span', { css: 'font-size:12.5px;font-weight:700' }, `错误码定义 (${d.error_codes.length})`), el('button', { type: 'button', cls: 'btn sm', on: { click: () => { d.error_codes.push({ code: 400, message: '' }); renderEndpointEditor(); } } }, '+ 添加错误码')),
+        errList
+      )
+    );
+  }
+
+  /* ========== VIEW 3: CODEGEN ========== */
+  function renderCodegenFilters() {
+    const sel = $('cg-service'), prev = sel.value;
+    sel.replaceChildren(el('option', { value: '' }, '全部服务契约'));
+    for (const s of S.services) sel.appendChild(el('option', { value: s.id }, s.name));
+    if (prev && svcOf(prev)) sel.value = prev;
+    $('btn-cg-insert').hidden = !S.canInsert;
+  }
+
+  async function runCodegen() {
+    renderCodegenFilters();
+    try {
+      const r = await plugin.action('arch.codegen', { target: S.cgTarget, service_id: $('cg-service').value || '' });
+      S.cgCode = r.code;
+      $('cg-code').textContent = r.code;
+      $('cg-meta').textContent = `${r.endpoint_count} 接口 · ${r.schema_count} Schema · ${r.code.length} 字符${r.truncated ? ' (已截断)' : ''}`;
+    } catch (e) {
+      $('cg-code').textContent = `// 编译失败：${e?.message || '未知错误'}`;
+    }
+  }
+
+  /* ========== VIEW 4: SCHEMA CENTER ========== */
+  function renderSchemas() {
+    $('sc-count').textContent = S.schemas.length;
+    const list = $('sc-list'); list.replaceChildren();
+    if (!S.schemas.length) list.appendChild(el('p', { cls: 'muted' }, '暂无共享模型，点击「+ 新建 Schema」创建。'));
+    for (const sc of S.schemas) {
+      const refs = S.endpoints.filter(ep => ep.request_schema === sc.id || ep.response_schema === sc.id).length;
+      list.appendChild(el('button', {
+        type: 'button', cls: `list-row${sc.id === S.selScId ? ' active' : ''}`,
+        on: { click: () => { S.selScId = sc.id; S.scDraft = structuredClone(sc); renderSchemas(); } },
+      },
+        el('div', { cls: 'row', css: 'justify-content:space-between' }, el('strong', { cls: 'mono' }, sc.id), el('span', { cls: 'pill purple' }, sc.kind)),
+        el('div', { cls: 'muted' }, `${sc.name} · ${sc.fields.length} 字段 · 被 ${refs} 个接口引用`)
+      ));
+    }
+    if (!S.scDraft && S.selScId) { const f = S.schemas.find(x => x.id === S.selScId); if (f) S.scDraft = structuredClone(f); }
+    if (!S.scDraft && S.schemas.length) { S.selScId = S.schemas[0].id; S.scDraft = structuredClone(S.schemas[0]); }
+    renderSchemaEditor();
+  }
+
+  function renderSchemaEditor() {
+    const box = $('sc-editor'); box.replaceChildren();
+    const d = S.scDraft;
+    if (!d) { box.appendChild(el('div', { cls: 'empty' }, el('p', { cls: 'muted' }, '选择左侧 Schema 或点击「+ 新建 Schema」定义共享 DTO / Entity。'))); return; }
+    const isNew = !S.schemas.some(x => x.id === d.id);
+    const flist = el('div', { cls: 'sub-table' });
+    d.fields.forEach((f, idx) => {
+      const tSel = el('select', { on: { change: e => { f.type = e.target.value; renderSchemaEditor(); } } });
+      for (const tp of ['string','integer','number','boolean','object','array']) tSel.appendChild(el('option', { value: tp, selected: tp === f.type }, tp));
+      flist.appendChild(el('div', { cls: 'sub-row field-row' },
+        el('input', { type: 'text', cls: 'mono', value: f.name, placeholder: '字段名', on: { input: e => { f.name = e.target.value; } } }),
+        tSel,
+        el('input', { type: 'text', value: f.type === 'array' ? f.item_type : f.ref, placeholder: f.type === 'array' ? '元素类型/Schema' : '引用 Schema ID', on: { input: e => { if (f.type === 'array') f.item_type = e.target.value; else f.ref = e.target.value; } } }),
+        el('label', { cls: 'row', css: 'gap:3px;font-size:11.5px' }, el('input', { type: 'checkbox', checked: f.required, css: 'width:auto', on: { change: e => { f.required = e.target.checked; } } }), '必填'),
+        el('input', { type: 'text', value: f.description, placeholder: '字段说明', on: { input: e => { f.description = e.target.value; } } }),
+        el('button', { type: 'button', cls: 'btn sm danger', on: { click: () => { d.fields.splice(idx, 1); renderSchemaEditor(); } } }, '×')
+      ));
+    });
+
+    const tsLines = [`export interface ${d.id || 'UnnamedSchema'} {`, ...d.fields.map(f => `  ${f.name || 'field'}${f.required ? '' : '?'}: ${f.ref || (f.type === 'array' ? `${f.item_type || 'string'}[]` : (f.type === 'integer' ? 'number' : f.type))};${f.description ? ` // ${f.description}` : ''}`), '}'];
+
+    box.append(
+      el('div', { cls: 'phead' },
+        el('h2', { cls: 'ptitle' }, isNew ? '新建 Schema 模型' : `编辑模型 · ${d.id}`),
+        el('div', { cls: 'row' },
+          !isNew ? el('button', { type: 'button', cls: 'btn sm danger', on: { click: () => void deleteSchema(d.id) } }, '删除') : null,
+          el('button', { type: 'button', cls: 'btn sm primary', on: { click: () => void saveSchema() } }, '保存模型')
+        )
+      ),
+      el('div', { cls: 'row', css: 'margin-bottom:10px' },
+        el('label', { cls: 'field', css: 'flex:1' }, el('span', null, 'Schema ID (PascalCase)'), el('input', { type: 'text', cls: 'mono', value: d.id, disabled: !isNew, placeholder: 'OrderItemDTO', on: { input: e => { d.id = e.target.value; } } })),
+        el('label', { cls: 'field', css: 'flex:1' }, el('span', null, '中文名称'), el('input', { type: 'text', value: d.name, placeholder: '订单明细模型', on: { input: e => { d.name = e.target.value; } } })),
+        el('label', { cls: 'field', css: 'width:110px' }, el('span', null, '分类'), (() => { const s = el('select', { on: { change: e => { d.kind = e.target.value; } } }); ['dto','entity','event','error'].forEach(k => s.appendChild(el('option', { value: k, selected: k === d.kind }, k))); return s; })())
+      ),
+      el('label', { cls: 'field', css: 'margin-bottom:12px' }, el('span', null, '说明'), el('input', { type: 'text', value: d.description, placeholder: '描述模型用途与约束', on: { input: e => { d.description = e.target.value; } } })),
+      el('div', { css: 'margin-bottom:12px' },
+        el('div', { cls: 'phead', css: 'margin-bottom:6px' }, el('span', { css: 'font-size:12.5px;font-weight:700' }, `字段定义 (${d.fields.length})`), el('button', { type: 'button', cls: 'btn sm', on: { click: () => { d.fields.push({ name: '', type: 'string', item_type: '', ref: '', required: true, description: '' }); renderSchemaEditor(); } } }, '+ 添加字段')),
+        flist
+      ),
+      el('pre', { cls: 'code-box', css: 'max-height:160px' }, tsLines.join('\n'))
+    );
+  }
+
+  /* ========== MODALS & ACTIONS ========== */
+  function openServiceModal(id) {
+    S.editSvcId = id;
+    const s = id ? svcOf(id) : null;
+    $('ms-title').textContent = s ? `编辑服务 · ${s.id}` : '新增微服务节点';
+    $('btn-ms-del').hidden = !s;
+    $('ms-id').value = s?.id || '';
+    $('ms-id').disabled = Boolean(s);
+    $('ms-name').value = s?.name || '';
+    $('ms-kind').value = s?.kind || 'service';
+    $('ms-tier').value = String(s?.tier ?? 1);
+    $('ms-owner').value = s?.owner || '';
+    $('ms-desc').value = s?.description || '';
+    $('modal-svc').hidden = false;
+  }
+  function openEdgeModal(fromId) {
+    if (S.services.length < 2) { setStatus('请先创建至少 2 个服务节点再添加依赖边。', 'error'); return; }
+    for (const sid of ['me-from', 'me-to']) {
+      const sel = $(sid); sel.replaceChildren();
+      for (const s of S.services) sel.appendChild(el('option', { value: s.id }, `${s.name} (${s.id})`));
+    }
+    if (fromId && svcOf(fromId)) $('me-from').value = fromId;
+    const alt = S.services.find(s => s.id !== $('me-from').value);
+    if (alt) $('me-to').value = alt.id;
+    $('me-label').value = '';
+    $('modal-edge').hidden = false;
+  }
+
+  async function refresh(msg) {
+    if (typeof plugin?.action !== 'function') { setStatus('请在 Velai Desktop 中打开此插件。', 'error'); return; }
+    try {
+      const caps = await plugin.action('host.capabilities', {}).catch(() => ({ actions: [] }));
+      S.canInsert = Array.isArray(caps?.actions) && caps.actions.includes('host.draft.insert');
+      const r = await plugin.action('arch.state', {});
+      Object.assign(S, { revision: r.revision, services: r.services, edges: r.edges, endpoints: r.endpoints, schemas: r.schemas, analysis: r.analysis });
+      render();
+      setStatus(msg || `已同步 ${S.services.length} 服务 · ${S.edges.length} 依赖边 · ${S.endpoints.length} API 契约`);
+      if (S.view === 'codegen') void runCodegen();
+    } catch (e) { setStatus(`读取失败：${e?.message || '未知错误'}`, 'error'); }
+  }
+
+  const loadDemo = () => busyRun('载入演示失败', async () => {
+    const r = await plugin.action('arch.demo.load', { expected_revision: S.revision });
+    if (r.status === 'loaded') { S.selSvcId = 'order-svc'; S.selEpId = null; S.epDraft = null; S.selScId = null; S.scDraft = null; await refresh(`已载入电商风控演示：${r.services_count} 服务、${r.endpoints_count} 接口、${r.schemas_count} 模型。`); }
+    else { setStatus(`载入冲突：${r.status}`, 'error'); await refresh(); }
+  });
+  const deleteEdge = id => busyRun('断开依赖边失败', async () => {
+    const r = await plugin.action('arch.edge.delete', { expected_revision: S.revision, id });
+    if (r.status === 'deleted') await refresh('已断开依赖边并重新分析拓扑环依赖。');
+    else setStatus(`断开失败：${r.status}`, 'error');
+  });
+  const saveEndpoint = () => busyRun('保存契约失败', async () => {
+    const d = S.epDraft; if (!d) return;
+    if (!d.path.startsWith('/') || !d.summary.trim()) { setStatus('请填写以 / 开头的路径与接口摘要。', 'error'); return; }
+    const r = await plugin.action('arch.endpoint.save', {
+      expected_revision: S.revision, id: d.id, service_id: d.service_id, method: d.method, path: d.path.trim(),
+      summary: d.summary.trim(), auth: d.auth, status: d.status,
+      params: d.params.filter(p => p.name.trim()), request_schema: d.request_schema, response_schema: d.response_schema,
+      error_codes: d.error_codes.filter(e => e.code >= 400 && e.code <= 599 && e.message.trim()),
+    });
+    if (r.status === 'saved') { S.selEpId = r.endpoint_id; S.epDraft = null; await refresh('API 契约已保存。'); }
+    else setStatus(`保存失败：${r.status}`, 'error');
+  });
+  const deleteEndpoint = id => busyRun('删除契约失败', async () => {
+    const r = await plugin.action('arch.endpoint.delete', { expected_revision: S.revision, id });
+    if (r.status === 'deleted') { S.selEpId = null; S.epDraft = null; await refresh('已删除 API 契约。'); }
+    else setStatus(`删除失败：${r.status}`, 'error');
+  });
+  const saveSchema = () => busyRun('保存模型失败', async () => {
+    const d = S.scDraft; if (!d) return;
+    if (!d.id.trim() || !d.name.trim()) { setStatus('请填写 Schema ID 与名称。', 'error'); return; }
+    const r = await plugin.action('arch.schema.save', {
+      expected_revision: S.revision, id: d.id.trim(), name: d.name.trim(), kind: d.kind,
+      description: d.description.trim(), fields: d.fields.filter(f => f.name.trim()),
+    });
+    if (r.status === 'saved') { S.selScId = d.id.trim(); S.scDraft = null; await refresh(`Schema ${d.id.trim()} 已保存。`); }
+    else setStatus(`保存失败：${r.status}`, 'error');
+  });
+  const deleteSchema = id => busyRun('删除模型失败', async () => {
+    const r = await plugin.action('arch.schema.delete', { expected_revision: S.revision, id });
+    if (r.status === 'deleted') { S.selScId = null; S.scDraft = null; await refresh('已删除 Schema 并清理失效引用。'); }
+    else setStatus(`删除失败：${r.status}`, 'error');
+  });
+
+  function startNewEndpoint() {
+    if (!S.services.length) { setStatus('请先创建至少一个服务节点。', 'error'); openServiceModal(null); return; }
+    const id = `ep-${Date.now().toString(36)}`;
+    S.selEpId = id;
+    S.epDraft = { id, service_id: S.selSvcId || S.services[0].id, method: 'GET', path: '/v1/resource', summary: '', auth: 'bearer', status: 'draft', params: [], request_schema: '', response_schema: '', error_codes: [] };
+    switchView('endpoints');
+  }
+
+  /* Wiring */
+  document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
+  document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => { $(b.dataset.close).hidden = true; }));
+  $('btn-demo').addEventListener('click', () => void loadDemo());
+  $('btn-add-svc').addEventListener('click', () => openServiceModal(null));
+  $('btn-add-edge').addEventListener('click', () => openEdgeModal(S.selSvcId));
+  $('btn-add-ep').addEventListener('click', startNewEndpoint);
+  $('btn-ep-new2').addEventListener('click', startNewEndpoint);
+  $('kpi-cycle-chip').addEventListener('click', () => switchView('topology'));
+  $('btn-sc-new').addEventListener('click', () => {
+    S.selScId = '';
+    S.scDraft = { id: '', name: '', kind: 'dto', description: '', fields: [{ name: 'id', type: 'string', item_type: '', ref: '', required: true, description: '主键 ID' }] };
+    renderSchemaEditor();
+  });
+  $('btn-theme').addEventListener('click', () => {
+    const r = document.documentElement;
+    r.dataset.theme = (r.dataset.theme === 'dark' || (!r.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches)) ? 'light' : 'dark';
+  });
+  for (const [id, ev] of [['ep-search','input'],['ep-filter-svc','change'],['ep-filter-method','change'],['ep-filter-status','change']]) $(id).addEventListener(ev, renderEndpoints);
+
+  $('btn-ms-save').addEventListener('click', () => {
+    const id = $('ms-id').value.trim(), name = $('ms-name').value.trim();
+    if (!id || !name) { setStatus('请填写服务 ID 与名称。', 'error'); return; }
+    void busyRun('保存服务失败', async () => {
+      const r = await plugin.action('arch.service.save', { expected_revision: S.revision, id, name, kind: $('ms-kind').value, owner: $('ms-owner').value.trim(), description: $('ms-desc').value.trim(), tier: Number($('ms-tier').value) || 1 });
+      if (r.status === 'saved') { $('modal-svc').hidden = true; S.selSvcId = id; await refresh(`服务 ${name} 已保存。`); }
+      else setStatus(`保存失败：${r.status}`, 'error');
+    });
+  });
+  $('btn-ms-del').addEventListener('click', () => S.editSvcId && void busyRun('删除服务失败', async () => {
+    const r = await plugin.action('arch.service.delete', { expected_revision: S.revision, id: S.editSvcId });
+    if (r.status === 'deleted') { $('modal-svc').hidden = true; S.selSvcId = null; S.epDraft = null; await refresh('已删除服务及其关联边与接口。'); }
+    else setStatus(`删除失败：${r.status}`, 'error');
+  }));
+  $('btn-me-save').addEventListener('click', () => void busyRun('添加依赖边失败', async () => {
+    const r = await plugin.action('arch.edge.save', { expected_revision: S.revision, id: `edge-${Date.now().toString(36)}`, from: $('me-from').value, to: $('me-to').value, protocol: $('me-proto').value, label: $('me-label').value.trim() });
+    if (r.status === 'saved') { $('modal-edge').hidden = true; await refresh('已添加依赖边并刷新环依赖检测。'); }
+    else setStatus(`添加失败：${r.status}`, 'error');
+  }));
+
+  document.querySelectorAll('#cg-tabs button').forEach(b => b.addEventListener('click', () => {
+    S.cgTarget = b.dataset.target;
+    document.querySelectorAll('#cg-tabs button').forEach(x => x.classList.toggle('active', x === b));
+    void runCodegen();
+  }));
+  $('cg-service').addEventListener('change', () => void runCodegen());
+  $('btn-cg-refresh').addEventListener('click', () => void runCodegen());
+  $('btn-cg-copy').addEventListener('click', async () => {
+    if (!S.cgCode) return;
+    try { await navigator.clipboard.writeText(S.cgCode); setStatus('契约代码已复制到剪贴板。', 'ok'); }
+    catch { setStatus('复制失败，请手动选中代码框内容。', 'error'); }
+  });
+  $('btn-cg-insert').addEventListener('click', async () => {
+    if (!S.cgCode) return;
+    const lang = S.cgTarget === 'openapi' ? 'json' : 'ts';
+    const text = `请评审以下由 API Arch Studio 生成的 ${S.cgTarget === 'openapi' ? 'OpenAPI 3.0.3' : 'TypeScript'} 接口契约，重点检查 REST 语义、鉴权边界、字段命名与错误码完整性：\n\n\`\`\`${lang}\n${S.cgCode.slice(0, 6000)}\n\`\`\``;
+    try {
+      const r = await plugin.action('host.draft.insert', { text });
+      if (r?.inserted) setStatus('已插入当前会话输入框，请发送给 AI 评审。', 'ok');
+      else setStatus('未能确认插入结果，请检查会话输入框。', 'error');
+    } catch (e) { setStatus(`插入失败：${e?.message || '未知错误'}`, 'error'); }
+  });
+
+  $('btn-io').addEventListener('click', async () => {
+    $('modal-io').hidden = false;
+    const sel = $('io-select'); sel.replaceChildren();
+    try {
+      const items = (await plugin.action('document.list', {})).items || [];
+      if (!items.length) sel.appendChild(el('option', { value: 'all' }, '暂无可导出数据'));
+      for (const it of items) sel.appendChild(el('option', { value: it.id }, it.label));
+    } catch (e) { setStatus(`读取导出列表失败：${e?.message || '未知错误'}`, 'error'); }
+  });
+  $('btn-io-exp').addEventListener('click', async () => {
+    try {
+      const r = await plugin.action('document.export', { id: $('io-select').value || 'all' });
+      if (r.error) setStatus(`导出失败：${r.error}`, 'error');
+      else { $('io-text').value = r.text || ''; setStatus(`已导出 ${r.filename}`, 'ok'); }
+    } catch (e) { setStatus(`导出异常：${e?.message || '未知错误'}`, 'error'); }
+  });
+  $('btn-io-copy').addEventListener('click', async () => {
+    const t = $('io-text').value; if (!t) return;
+    try { await navigator.clipboard.writeText(t); setStatus('快照 JSON 已复制。', 'ok'); } catch { $('io-text').select(); setStatus('请按 Ctrl/Cmd+C 复制。'); }
+  });
+  $('btn-io-imp').addEventListener('click', async () => {
+    const t = $('io-text').value.trim(); if (!t) return;
+    try {
+      const r = await plugin.action('document.import', { text: t });
+      if (r.imported) { $('modal-io').hidden = true; S.epDraft = null; S.scDraft = null; await refresh(`导入成功：${r.services_count} 服务 · ${r.endpoints_count} 接口 · ${r.schemas_count} 模型。`); }
+      else setStatus(`导入失败：${r.reason || '格式无效'}`, 'error');
+    } catch (e) { setStatus(`导入异常：${e?.message || '未知错误'}`, 'error'); }
+  });
+
+  void refresh();
+})();
+</script>
+</body>
+</html>

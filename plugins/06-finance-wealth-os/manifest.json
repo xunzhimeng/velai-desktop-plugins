@@ -1,0 +1,756 @@
+{
+  "manifest_version": 1,
+  "plugin_id": "finance-wealth-os",
+  "name": "智能财务与资产配置 CFO 系统",
+  "version": "1.0.0",
+  "host_api": 1,
+  "backend": "backend/index.js",
+  "page": "ui/index.html",
+  "ui": {
+    "icon": "table",
+    "surfaces": ["workspace", "chat", "assistant"]
+  },
+  "permissions": ["data.read", "data.write", "tasks.start", "tasks.read", "tasks.cancel"],
+  "actions": [
+    {
+      "id": "finance.snapshot",
+      "title": "读取财务工作台完整快照",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "month": { "type": "string", "minLength": 7, "maxLength": 7 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["revision", "month", "accounts", "ledger", "goals", "summary", "allocation", "budgets", "top_expenses", "trend", "cfo_memo"],
+        "properties": {
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "month": { "type": "string", "minLength": 7, "maxLength": 7 },
+          "accounts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "name", "kind", "asset_class", "balance", "apy", "institution", "note", "updated_at"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "name": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "kind": { "type": "string", "enum": ["asset", "liability"] },
+                "asset_class": { "type": "string", "enum": ["cash", "equity", "fund", "real_estate", "fixed_income", "debt", "other"] },
+                "balance": { "type": "number", "minimum": 0, "maximum": 999999999 },
+                "apy": { "type": "number", "minimum": -50, "maximum": 100 },
+                "institution": { "type": "string", "maxLength": 36 },
+                "note": { "type": "string", "maxLength": 120 },
+                "updated_at": { "type": "string", "minLength": 10, "maxLength": 10 }
+              }
+            }
+          },
+          "ledger": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "date", "type", "category", "amount", "account_id", "target_account_id", "note"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "date": { "type": "string", "minLength": 10, "maxLength": 10 },
+                "type": { "type": "string", "enum": ["income", "expense", "transfer"] },
+                "category": { "type": "string", "enum": ["salary", "bonus", "dividend", "housing", "food", "transport", "health", "shopping", "education", "entertainment", "travel", "invest", "other"] },
+                "amount": { "type": "number", "minimum": 0.01, "maximum": 99999999 },
+                "account_id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "target_account_id": { "type": "string", "maxLength": 48 },
+                "note": { "type": "string", "maxLength": 100 }
+              }
+            }
+          },
+          "goals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "kind", "category", "label", "monthly_limit", "current_saved", "target_date"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "kind": { "type": "string", "enum": ["budget", "target"] },
+                "category": { "type": "string", "minLength": 1, "maxLength": 32 },
+                "label": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "monthly_limit": { "type": "number", "minimum": 1, "maximum": 999999999 },
+                "current_saved": { "type": "number", "minimum": 0, "maximum": 999999999 },
+                "target_date": { "type": "string", "maxLength": 10 }
+              }
+            }
+          },
+          "summary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "total_assets",
+              "total_liabilities",
+              "net_worth",
+              "debt_ratio",
+              "monthly_income",
+              "monthly_expense",
+              "monthly_surplus",
+              "savings_rate",
+              "over_budget_count",
+              "warn_budget_count"
+            ],
+            "properties": {
+              "total_assets": { "type": "number", "minimum": 0, "maximum": 9999999999 },
+              "total_liabilities": { "type": "number", "minimum": 0, "maximum": 9999999999 },
+              "net_worth": { "type": "number", "minimum": -9999999999, "maximum": 9999999999 },
+              "debt_ratio": { "type": "number", "minimum": 0, "maximum": 999 },
+              "monthly_income": { "type": "number", "minimum": 0, "maximum": 9999999999 },
+              "monthly_expense": { "type": "number", "minimum": 0, "maximum": 9999999999 },
+              "monthly_surplus": { "type": "number", "minimum": -9999999999, "maximum": 9999999999 },
+              "savings_rate": { "type": "number", "minimum": -999, "maximum": 100 },
+              "over_budget_count": { "type": "integer", "minimum": 0, "maximum": 999 },
+              "warn_budget_count": { "type": "integer", "minimum": 0, "maximum": 999 }
+            }
+          },
+          "allocation": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["asset_class", "amount", "share"],
+              "properties": {
+                "asset_class": { "type": "string", "minLength": 1, "maxLength": 24 },
+                "amount": { "type": "number", "minimum": 0, "maximum": 9999999999 },
+                "share": { "type": "number", "minimum": 0, "maximum": 100 }
+              }
+            }
+          },
+          "budgets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "category", "label", "limit", "spent", "ratio", "level"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "category": { "type": "string", "minLength": 1, "maxLength": 32 },
+                "label": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "limit": { "type": "number", "minimum": 1, "maximum": 999999999 },
+                "spent": { "type": "number", "minimum": 0, "maximum": 999999999 },
+                "ratio": { "type": "number", "minimum": 0, "maximum": 9999 },
+                "level": { "type": "string", "enum": ["ok", "warn", "over"] }
+              }
+            }
+          },
+          "top_expenses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["category", "amount", "share"],
+              "properties": {
+                "category": { "type": "string", "minLength": 1, "maxLength": 32 },
+                "amount": { "type": "number", "minimum": 0, "maximum": 999999999 },
+                "share": { "type": "number", "minimum": 0, "maximum": 100 }
+              }
+            }
+          },
+          "trend": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["month", "net_worth", "income", "expense"],
+              "properties": {
+                "month": { "type": "string", "minLength": 7, "maxLength": 7 },
+                "net_worth": { "type": "number", "minimum": -9999999999, "maximum": 9999999999 },
+                "income": { "type": "number", "minimum": 0, "maximum": 9999999999 },
+                "expense": { "type": "number", "minimum": 0, "maximum": 9999999999 }
+              }
+            }
+          },
+          "cfo_memo": { "type": "string", "maxLength": 2048 }
+        }
+      }
+    },
+    {
+      "id": "finance.account.save",
+      "title": "新增或更新资产负债账户",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id", "name", "kind", "asset_class", "balance", "apy", "institution", "note"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "name": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "kind": { "type": "string", "enum": ["asset", "liability"] },
+          "asset_class": { "type": "string", "enum": ["cash", "equity", "fund", "real_estate", "fixed_income", "debt", "other"] },
+          "balance": { "type": "number", "minimum": 0, "maximum": 999999999 },
+          "apy": { "type": "number", "minimum": -50, "maximum": 100 },
+          "institution": { "type": "string", "maxLength": 36 },
+          "note": { "type": "string", "maxLength": 120 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "finance.account.delete",
+      "title": "删除资产负债账户",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["deleted", "not_found", "conflict"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "finance.tx.save",
+      "title": "记录或更新收支流水",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id", "date", "type", "category", "amount", "account_id", "target_account_id", "note"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "date": { "type": "string", "minLength": 10, "maxLength": 10 },
+          "type": { "type": "string", "enum": ["income", "expense", "transfer"] },
+          "category": { "type": "string", "enum": ["salary", "bonus", "dividend", "housing", "food", "transport", "health", "shopping", "education", "entertainment", "travel", "invest", "other"] },
+          "amount": { "type": "number", "minimum": 0.01, "maximum": 99999999 },
+          "account_id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "target_account_id": { "type": "string", "maxLength": 48 },
+          "note": { "type": "string", "maxLength": 100 },
+          "sync_balance": { "type": "boolean" }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "finance.tx.delete",
+      "title": "删除收支流水",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["deleted", "not_found", "conflict"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "finance.goal.save",
+      "title": "新增或更新月度预算与财务目标",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id", "kind", "category", "label", "monthly_limit", "current_saved", "target_date"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "kind": { "type": "string", "enum": ["budget", "target"] },
+          "category": { "type": "string", "minLength": 1, "maxLength": 32 },
+          "label": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "monthly_limit": { "type": "number", "minimum": 1, "maximum": 999999999 },
+          "current_saved": { "type": "number", "minimum": 0, "maximum": 999999999 },
+          "target_date": { "type": "string", "maxLength": 10 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "finance.goal.delete",
+      "title": "删除预算或财务目标",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["deleted", "not_found", "conflict"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "finance.cfo.memo",
+      "title": "保存 AI 私人 CFO 诊断备忘",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "memo"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "memo": { "type": "string", "maxLength": 2048 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "finance.simulate",
+      "title": "FIRE 复利多场景与房贷省息金融计算引擎",
+      "permissions": [],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["current_net_worth", "monthly_invest", "expected_return", "inflation", "annual_expense"],
+        "properties": {
+          "current_net_worth": { "type": "number", "minimum": -99999999, "maximum": 999999999 },
+          "monthly_invest": { "type": "number", "minimum": 0, "maximum": 9999999 },
+          "expected_return": { "type": "number", "minimum": 0, "maximum": 40 },
+          "inflation": { "type": "number", "minimum": 0, "maximum": 20 },
+          "annual_expense": { "type": "number", "minimum": 1000, "maximum": 99999999 },
+          "swr": { "type": "number", "minimum": 2, "maximum": 10 },
+          "years": { "type": "integer", "minimum": 5, "maximum": 40 },
+          "mortgage": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["principal", "annual_rate", "total_years", "paid_months", "prepay_amount", "mode"],
+            "properties": {
+              "principal": { "type": "number", "minimum": 10000, "maximum": 99999999 },
+              "annual_rate": { "type": "number", "minimum": 0.1, "maximum": 25 },
+              "total_years": { "type": "integer", "minimum": 1, "maximum": 40 },
+              "paid_months": { "type": "integer", "minimum": 0, "maximum": 479 },
+              "prepay_amount": { "type": "number", "minimum": 0, "maximum": 99999999 },
+              "mode": { "type": "string", "enum": ["reduce_term", "reduce_payment"] }
+            }
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fire_target", "start_year", "years", "scenarios", "series"],
+        "properties": {
+          "fire_target": { "type": "number", "minimum": 0, "maximum": 99999999999 },
+          "start_year": { "type": "integer", "minimum": 2000, "maximum": 2200 },
+          "years": { "type": "integer", "minimum": 5, "maximum": 40 },
+          "scenarios": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["conservative", "base", "optimistic"],
+            "properties": {
+              "conservative": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["rate", "real_rate", "final_real", "fire_year", "years_to_fire"],
+                "properties": {
+                  "rate": { "type": "number", "minimum": -50, "maximum": 100 },
+                  "real_rate": { "type": "number", "minimum": -50, "maximum": 100 },
+                  "final_real": { "type": "number", "minimum": -99999999999, "maximum": 99999999999 },
+                  "fire_year": { "type": "integer", "minimum": 0, "maximum": 2300 },
+                  "years_to_fire": { "type": "integer", "minimum": -1, "maximum": 200 }
+                }
+              },
+              "base": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["rate", "real_rate", "final_real", "fire_year", "years_to_fire"],
+                "properties": {
+                  "rate": { "type": "number", "minimum": -50, "maximum": 100 },
+                  "real_rate": { "type": "number", "minimum": -50, "maximum": 100 },
+                  "final_real": { "type": "number", "minimum": -99999999999, "maximum": 99999999999 },
+                  "fire_year": { "type": "integer", "minimum": 0, "maximum": 2300 },
+                  "years_to_fire": { "type": "integer", "minimum": -1, "maximum": 200 }
+                }
+              },
+              "optimistic": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["rate", "real_rate", "final_real", "fire_year", "years_to_fire"],
+                "properties": {
+                  "rate": { "type": "number", "minimum": -50, "maximum": 100 },
+                  "real_rate": { "type": "number", "minimum": -50, "maximum": 100 },
+                  "final_real": { "type": "number", "minimum": -99999999999, "maximum": 99999999999 },
+                  "fire_year": { "type": "integer", "minimum": 0, "maximum": 2300 },
+                  "years_to_fire": { "type": "integer", "minimum": -1, "maximum": 200 }
+                }
+              }
+            }
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["year", "conservative", "base", "optimistic"],
+              "properties": {
+                "year": { "type": "integer", "minimum": 2000, "maximum": 2300 },
+                "conservative": { "type": "number", "minimum": -99999999999, "maximum": 99999999999 },
+                "base": { "type": "number", "minimum": -99999999999, "maximum": 99999999999 },
+                "optimistic": { "type": "number", "minimum": -99999999999, "maximum": 99999999999 }
+              }
+            }
+          },
+          "mortgage_result": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "original_monthly",
+              "remaining_principal",
+              "original_remaining_interest",
+              "new_monthly",
+              "new_remaining_months",
+              "new_remaining_interest",
+              "interest_saved",
+              "months_saved"
+            ],
+            "properties": {
+              "original_monthly": { "type": "number", "minimum": 0, "maximum": 99999999 },
+              "remaining_principal": { "type": "number", "minimum": 0, "maximum": 999999999 },
+              "original_remaining_interest": { "type": "number", "minimum": 0, "maximum": 999999999 },
+              "new_monthly": { "type": "number", "minimum": 0, "maximum": 99999999 },
+              "new_remaining_months": { "type": "integer", "minimum": 0, "maximum": 600 },
+              "new_remaining_interest": { "type": "number", "minimum": 0, "maximum": 999999999 },
+              "interest_saved": { "type": "number", "minimum": 0, "maximum": 999999999 },
+              "months_saved": { "type": "integer", "minimum": 0, "maximum": 600 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "finance.demo.seed",
+      "title": "加载完整财务演示数据集",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["seeded", "conflict"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "counts": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["accounts", "ledger", "goals"],
+            "properties": {
+              "accounts": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "ledger": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "goals": { "type": "integer", "minimum": 0, "maximum": 100 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "document.list",
+      "title": "列出可导出的财务数据包",
+      "permissions": ["data.read"],
+      "input_schema": { "type": "object", "additionalProperties": false, "required": [], "properties": {} },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "label"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 64 },
+                "label": { "type": "string", "minLength": 1, "maxLength": 120 }
+              }
+            }
+          },
+          "error": { "type": "string", "maxLength": 64 }
+        }
+      }
+    },
+    {
+      "id": "document.export",
+      "title": "导出财务数据 JSON",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "maxLength": 64 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "filename": { "type": "string", "maxLength": 80 },
+          "text": { "type": "string", "maxLength": 12288 },
+          "error": { "type": "string", "maxLength": 64 }
+        }
+      }
+    },
+    {
+      "id": "document.import",
+      "title": "导入财务数据 JSON",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text"],
+        "properties": {
+          "text": { "type": "string", "minLength": 2, "maxLength": 12288 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["imported"],
+        "properties": {
+          "imported": { "type": "boolean" },
+          "reason": { "type": "string", "maxLength": 64 }
+        }
+      }
+    },
+    {
+      "id": "session.turn.request",
+      "title": "向当前会话派发 AI 私人 CFO 诊断",
+      "permissions": ["tasks.start"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["prompt", "work_id"],
+        "properties": {
+          "prompt": { "type": "string", "minLength": 1, "maxLength": 2048 },
+          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["task_id", "state"],
+        "properties": {
+          "task_id": { "type": "string", "minLength": 36, "maxLength": 36 },
+          "state": { "type": "string", "enum": ["dispatching"] }
+        }
+      }
+    },
+    {
+      "id": "session.turn.result",
+      "title": "核对 AI 私人 CFO 财务诊断结果",
+      "permissions": ["tasks.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["work_id"],
+        "properties": {
+          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["work_id", "state", "truncated"],
+        "properties": {
+          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 },
+          "state": {
+            "type": "string",
+            "enum": ["dispatching", "running", "waiting", "completed", "cancelled", "failed", "unknown", "unavailable"]
+          },
+          "truncated": { "type": "boolean" }
+        }
+      }
+    }
+  ],
+  "tools": [
+    {
+      "id": "finance.summary",
+      "title": "获取财务总览与超支预警",
+      "description": "查询净资产、总资产、总负债、储蓄率、资产配置分布、本月分类支出与超支预警清单。",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "month": { "type": "string", "minLength": 7, "maxLength": 7, "description": "可选月份 YYYY-MM，默认当月" }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status", "month", "summary", "allocation", "budget_alerts", "top_expenses"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["ready", "empty"] },
+          "month": { "type": "string", "minLength": 7, "maxLength": 7 },
+          "summary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["total_assets", "total_liabilities", "net_worth", "debt_ratio", "monthly_income", "monthly_expense", "savings_rate"],
+            "properties": {
+              "total_assets": { "type": "number", "minimum": 0, "maximum": 9999999999 },
+              "total_liabilities": { "type": "number", "minimum": 0, "maximum": 9999999999 },
+              "net_worth": { "type": "number", "minimum": -9999999999, "maximum": 9999999999 },
+              "debt_ratio": { "type": "number", "minimum": 0, "maximum": 999 },
+              "monthly_income": { "type": "number", "minimum": 0, "maximum": 9999999999 },
+              "monthly_expense": { "type": "number", "minimum": 0, "maximum": 9999999999 },
+              "savings_rate": { "type": "number", "minimum": -999, "maximum": 100 }
+            }
+          },
+          "allocation": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["asset_class", "amount", "share"],
+              "properties": {
+                "asset_class": { "type": "string", "minLength": 1, "maxLength": 24 },
+                "amount": { "type": "number", "minimum": 0, "maximum": 9999999999 },
+                "share": { "type": "number", "minimum": 0, "maximum": 100 }
+              }
+            }
+          },
+          "budget_alerts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["category", "label", "limit", "spent", "ratio", "level"],
+              "properties": {
+                "category": { "type": "string", "minLength": 1, "maxLength": 32 },
+                "label": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "limit": { "type": "number", "minimum": 1, "maximum": 999999999 },
+                "spent": { "type": "number", "minimum": 0, "maximum": 999999999 },
+                "ratio": { "type": "number", "minimum": 0, "maximum": 9999 },
+                "level": { "type": "string", "enum": ["ok", "warn", "over"] }
+              }
+            }
+          },
+          "top_expenses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["category", "amount", "share"],
+              "properties": {
+                "category": { "type": "string", "minLength": 1, "maxLength": 32 },
+                "amount": { "type": "number", "minimum": 0, "maximum": 999999999 },
+                "share": { "type": "number", "minimum": 0, "maximum": 100 }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "finance.tx.add",
+      "title": "快速记一笔收入或支出流水",
+      "description": "向个人账本快速记录一条收入或支出流水，并实时返回该分类本月预算消耗比例与预警状态。",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "category", "amount"],
+        "properties": {
+          "type": { "type": "string", "enum": ["income", "expense"] },
+          "category": { "type": "string", "enum": ["salary", "bonus", "dividend", "housing", "food", "transport", "health", "shopping", "education", "entertainment", "travel", "invest", "other"] },
+          "amount": { "type": "number", "minimum": 0.01, "maximum": 99999999 },
+          "date": { "type": "string", "minLength": 10, "maxLength": 10, "description": "交易日期 YYYY-MM-DD，默认当天" },
+          "account_name": { "type": "string", "maxLength": 48, "description": "可选账户名称或 ID" },
+          "note": { "type": "string", "maxLength": 100, "description": "备注说明" }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["recorded", "invalid_input", "limit", "conflict"] },
+          "tx_id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "budget_ratio": { "type": "number", "minimum": 0, "maximum": 9999 },
+          "budget_level": { "type": "string", "enum": ["none", "ok", "warn", "over"] }
+        }
+      }
+    }
+  ],
+  "data": [
+    { "collection": "accounts", "scope": "account", "schema_version": 1 },
+    { "collection": "ledger", "scope": "account", "schema_version": 1 },
+    { "collection": "goals", "scope": "account", "schema_version": 1 }
+  ],
+  "http": [],
+  "tasks": [],
+  "files": []
+}

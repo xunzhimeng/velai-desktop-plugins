@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>智能财务与资产配置 CFO 系统 · Finance Wealth OS</title>
+<style>
+:root{color-scheme:light dark;--bg:#f3f7f6;--surface:#fff;--surface-2:#f7faf9;--surface-hover:#edf4f2;--fg:#0b1720;--fg-2:#334857;--muted:#647887;--border:#dde7e5;--border-strong:#c4d4d1;--accent:#059669;--accent-2:#10b981;--accent-soft:rgba(5,150,105,.11);--sky:#0284c7;--sky-soft:rgba(2,132,199,.12);--indigo:#4f46e5;--warn:#d97706;--warn-soft:rgba(217,119,6,.14);--danger:#e11d48;--danger-soft:rgba(225,29,72,.12);--shadow-sm:0 1px 2px rgba(11,23,32,.05);--shadow-md:0 8px 24px rgba(11,23,32,.08);--r:12px;--rs:8px;font:13.5px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Segoe UI",sans-serif}
+:root[data-theme="dark"]{--bg:#081016;--surface:#0f1b24;--surface-2:#14232e;--surface-hover:#1b2f3d;--fg:#eef6f7;--fg-2:#c6d7de;--muted:#8aa0ad;--border:#1e313f;--border-strong:#2d4659;--accent:#10b981;--accent-2:#34d399;--accent-soft:rgba(16,185,129,.17);--sky:#38bdf8;--sky-soft:rgba(56,189,248,.16);--indigo:#818cf8;--warn:#f59e0b;--warn-soft:rgba(245,158,11,.17);--danger:#fb7185;--danger-soft:rgba(251,113,133,.16);--shadow-sm:0 1px 2px rgba(0,0,0,.28);--shadow-md:0 12px 30px rgba(0,0,0,.42)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);min-height:100vh}.num{font-variant-numeric:tabular-nums}[hidden]{display:none!important}
+.shell{display:grid;grid-template-columns:224px minmax(0,1fr);min-height:100vh}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:16px 12px;display:flex;flex-direction:column;gap:14px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 6px 10px;border-bottom:1px solid var(--border)}
+.brand-icon{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--sky));display:grid;place-items:center;color:#fff;flex-shrink:0;box-shadow:0 4px 12px rgba(5,150,105,.28)}
+.brand-title{font-weight:750;font-size:14px;letter-spacing:-.01em;line-height:1.25}.brand-sub{font-size:11px;color:var(--muted)}
+.nav{display:flex;flex-direction:column;gap:4px}
+.nav-btn{display:flex;align-items:center;gap:8px;width:100%;padding:9px 10px;border-radius:9px;border:1px solid transparent;background:transparent;color:var(--fg-2);font:inherit;font-weight:500;cursor:pointer;text-align:left;transition:all .15s}
+.nav-btn:hover{background:var(--surface-hover);color:var(--fg)}.nav-btn.active{background:var(--accent-soft);color:var(--accent);border-color:rgba(16,185,129,.26);font-weight:650}
+.nav-badge{margin-left:auto;font-size:11px;font-weight:650;padding:1px 7px;border-radius:999px;background:var(--surface-2);color:var(--muted)}.nav-badge.alert{background:var(--danger-soft);color:var(--danger)}
+.side-footer{margin-top:auto;display:flex;flex-direction:column;gap:6px;padding-top:12px;border-top:1px solid var(--border)}
+.side-tool{width:100%;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--fg-2);font:inherit;font-size:12.5px;font-weight:500;cursor:pointer}
+.side-tool:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.main{padding:16px 20px 28px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.topbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+.page-title{font-size:18px;font-weight:750;margin:0;letter-spacing:-.015em}
+.status-pill{font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--border);padding:4px 10px;border-radius:999px;display:inline-flex;align-items:center;gap:6px}
+.status-pill[data-error="true"]{color:var(--danger);border-color:var(--danger);background:var(--danger-soft)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block}.status-pill[data-error="true"] .dot{background:var(--danger)}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:13px 15px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:4px;position:relative;overflow:hidden}
+.kpi-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}.kpi-card.danger::before{background:var(--danger)}.kpi-card.sky::before{background:var(--sky)}.kpi-card.indigo::before{background:var(--indigo)}
+.kpi-label{font-size:12px;color:var(--muted);font-weight:500;display:flex;justify-content:space-between;align-items:center}
+.kpi-val{font-size:21px;font-weight:780;letter-spacing:-.02em}.kpi-sub{font-size:11.5px;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow-sm)}
+.card-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.card-title{font-size:14px;font-weight:700;margin:0;display:flex;align-items:center;gap:7px}.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+input,select,textarea,button{font:inherit;color:var(--fg);border:1px solid var(--border-strong);border-radius:var(--rs);padding:6px 10px;background:var(--surface);transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+textarea{resize:vertical;min-height:76px;width:100%}
+button{cursor:pointer;font-weight:550;display:inline-flex;align-items:center;justify-content:center;gap:5px}
+button:hover:not(:disabled){border-color:var(--accent)}button.primary{background:var(--accent);border-color:var(--accent);color:#fff}button.primary:hover:not(:disabled){background:var(--accent-2);border-color:var(--accent-2)}
+button.sky{background:var(--sky);border-color:var(--sky);color:#fff}button.ghost{background:transparent;border-color:var(--border);color:var(--fg-2)}button.ghost:hover:not(:disabled){background:var(--surface-hover);color:var(--fg)}
+button.danger{color:var(--danger);border-color:rgba(225,29,72,.35);background:var(--danger-soft)}button.sm{padding:4px 8px;font-size:12px;border-radius:6px}button:disabled{opacity:.5;cursor:not-allowed}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:650;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--fg-2);border:1px solid var(--border)}
+.tag.ok{background:var(--accent-soft);color:var(--accent);border-color:transparent}.tag.sky{background:var(--sky-soft);color:var(--sky);border-color:transparent}.tag.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}.tag.danger{background:var(--danger-soft);color:var(--danger);border-color:transparent}
+.grid-2{display:grid;grid-template-columns:1fr 1.15fr;gap:12px}.grid-2-eq{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.field{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:600;color:var(--fg-2)}.field.full{grid-column:1/-1}
+.svg-wrap{width:100%;overflow:hidden}.svg-wrap svg{width:100%;height:auto;display:block}
+.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+th{font-size:11.5px;font-weight:650;color:var(--muted);background:var(--surface-2)}tr:hover td{background:var(--surface-hover)}.right{text-align:right}
+.donut-layout{display:grid;grid-template-columns:195px minmax(0,1fr);gap:14px;align-items:center}
+.legend{display:flex;flex-direction:column;gap:7px}.legend-item{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px}.swatch{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+.budget-item{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.bar-track{height:8px;border-radius:999px;background:var(--border);overflow:hidden}.bar-fill{height:100%;border-radius:999px;transition:width .25s}
+.bar-fill.ok{background:var(--accent)}.bar-fill.warn{background:var(--warn)}.bar-fill.over{background:var(--danger)}
+.sim-box{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:11px 13px;display:flex;flex-direction:column;gap:3px}
+.sim-box.highlight{border-color:var(--accent);background:var(--accent-soft)}.sim-label{font-size:11.5px;color:var(--muted);font-weight:600}.sim-val{font-size:18px;font-weight:780}.sim-sub{font-size:11.5px;color:var(--fg-2)}
+.scenario-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.scenario-card{text-align:left;padding:11px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface-2);cursor:pointer;display:flex;flex-direction:column;gap:4px}
+.scenario-card:hover{border-color:var(--accent)}.scenario-card.active{border-color:var(--accent);background:var(--accent-soft)}
+.ai-output{white-space:pre-wrap;word-break:break-word;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px;font:13.5px/1.65 inherit;max-height:360px;overflow-y:auto;margin:0}
+.modal-backdrop{position:fixed;inset:0;background:rgba(8,16,22,.58);display:grid;place-items:center;padding:16px;z-index:50}
+.modal{width:min(600px,100%);max-height:90vh;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow-md);display:flex;flex-direction:column;gap:12px}
+@media(max-width:960px){.shell{grid-template-columns:1fr}.sidebar{position:static;height:auto;border-right:none;border-bottom:1px solid var(--border);padding:10px 12px;gap:10px}.nav{flex-direction:row;overflow-x:auto}.nav-btn{width:auto;white-space:nowrap}.side-footer{flex-direction:row;margin-top:0;padding-top:8px}.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-2,.grid-2-eq,.donut-layout{grid-template-columns:1fr}.scenario-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.kpi-grid,.grid-3,.form-grid,.scenario-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+<div class="brand">
+<div class="brand-icon" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10"/><path d="M15 9.5a2.5 2.5 0 0 0-5 0c0 2.5 5 1.8 5 4.5a2.5 2.5 0 0 1-5 0"/></svg></div>
+<div><div class="brand-title">Finance Wealth OS</div><div class="brand-sub">智能财务与资产配置 CFO</div></div>
+</div>
+<nav class="nav">
+<button type="button" class="nav-btn active" data-view="dashboard"><span>资产负债总览</span><span class="nav-badge num" id="badge-acc">0</span></button>
+<button type="button" class="nav-btn" data-view="ledger"><span>智能账本与预算</span><span class="nav-badge num" id="badge-budget">0</span></button>
+<button type="button" class="nav-btn" data-view="fire"><span>FIRE 复利与房贷</span><span class="nav-badge">引擎</span></button>
+<button type="button" class="nav-btn" data-view="cfo"><span>AI 私人 CFO 诊断</span><span class="nav-badge">AI</span></button>
+</nav>
+<div class="side-footer">
+<button type="button" class="side-tool" id="btn-seed">加载完整财务演示数据</button>
+<button type="button" class="side-tool" id="btn-io">JSON 导入 / 导出</button>
+<button type="button" class="side-tool" id="btn-theme">切换亮/暗主题</button>
+</div>
+</aside>
+<main class="main">
+<header class="topbar">
+<h1 class="page-title" id="view-heading">资产负债总览</h1>
+<div class="row">
+<span class="status-pill" id="status-pill" role="status"><span class="dot"></span><span id="status-text">正在初始化…</span></span>
+<button type="button" class="ghost sm" id="btn-refresh">刷新</button>
+</div>
+</header>
+<section class="kpi-grid">
+<div class="kpi-card"><div class="kpi-label"><span>总资产</span><span class="tag ok num" id="kpi-asset-cnt">0 账户</span></div><div class="kpi-val num" id="kpi-assets">¥0</div><div class="kpi-sub">跨现金/权益/基金/房产/固收</div></div>
+<div class="kpi-card danger"><div class="kpi-label"><span>总负债</span><span class="tag danger num" id="kpi-debt-ratio">负债率 0%</span></div><div class="kpi-val num" id="kpi-liab">¥0</div><div class="kpi-sub">按揭与信用负债合计</div></div>
+<div class="kpi-card sky"><div class="kpi-label"><span>净资产 (Net Worth)</span><span class="tag sky" id="kpi-month">--</span></div><div class="kpi-val num" id="kpi-nw">¥0</div><div class="kpi-sub" id="kpi-nw-sub">本月净结余 ¥0</div></div>
+<div class="kpi-card indigo"><div class="kpi-label"><span>本月储蓄率</span><span class="tag warn num" id="kpi-alert-cnt">0 预警</span></div><div class="kpi-val num" id="kpi-savings">0%</div><div class="kpi-sub" id="kpi-flow-sub">收 ¥0 · 支 ¥0</div></div>
+</section>
+<section id="view-dashboard" class="view">
+<div class="grid-2" style="margin-bottom:12px">
+<div class="card"><div class="card-head"><h2 class="card-title">资产配置环形结构</h2><span class="tag">按资产大类实时占比</span></div><div class="donut-layout"><div class="svg-wrap" id="svg-donut"></div><div class="legend" id="donut-legend"></div></div></div>
+<div class="card"><div class="card-head"><h2 class="card-title">净资产与月度现金流双轨趋势</h2><div class="row" style="font-size:11.5px;color:var(--muted)"><span><strong style="color:var(--sky)">━●━</strong> 净资产</span><span><strong style="color:var(--accent)">■</strong> 收入</span><span><strong style="color:var(--danger)">■</strong> 支出</span></div></div><div class="svg-wrap" id="svg-trend"></div></div>
+</div>
+<div class="card">
+<div class="card-head"><h2 class="card-title">资产与负债账户明细表</h2><button type="button" class="primary sm" id="btn-new-acc">+ 新增账户</button></div>
+<div class="table-wrap"><table><thead><tr><th>账户名称</th><th>类型 / 分类</th><th>所属机构</th><th class="right">参考年化 / 利率</th><th class="right">当前余额</th><th class="right">操作</th></tr></thead><tbody id="acc-tbody"></tbody></table></div>
+</div>
+</section>
+<section id="view-ledger" class="view" hidden>
+<div class="grid-2-eq" style="margin-bottom:12px">
+<div class="card">
+<div class="card-head"><h2 class="card-title">分类月度预算预警</h2><button type="button" class="primary sm" id="btn-new-goal">+ 预算 / 目标</button></div>
+<div style="font-size:11.5px;color:var(--muted);margin-bottom:8px">绿灯 &lt;75% 安全 · 黄灯 75-95% 预警 · 红灯 &gt;95% 超支告警</div>
+<div id="budget-list" style="display:flex;flex-direction:column;gap:8px"></div>
+<div id="target-wrap" style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border)" hidden>
+<div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:7px">长期财务里程碑目标</div>
+<div id="target-list" style="display:flex;flex-direction:column;gap:8px"></div>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<div class="card">
+<div class="card-head"><h2 class="card-title">快速记一笔流水</h2><span class="tag">支持收入 / 支出 / 转账</span></div>
+<div class="form-grid">
+<label class="field">流水类型<select id="tx-type"><option value="expense">支出 (Expense)</option><option value="income">收入 (Income)</option><option value="transfer">账户转账 / 定投</option></select></label>
+<label class="field">收支分类<select id="tx-cat"></select></label>
+<label class="field">金额 (¥) *<input id="tx-amt" type="number" min="0.01" step="0.01" placeholder="例如：320"></label>
+<label class="field">交易日期<input id="tx-date" type="date"></label>
+<label class="field">资金账户<select id="tx-acc"></select></label>
+<label class="field" id="tx-target-wrap" hidden>转入目标账户<select id="tx-target-acc"></select></label>
+<label class="field full">备注<input id="tx-note" maxlength="100" placeholder="例如：生鲜商超采购 / 宽基指数定投"></label>
+</div>
+<div class="row" style="margin-top:10px;justify-content:space-between">
+<label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--fg-2);cursor:pointer"><input id="tx-sync" type="checkbox" checked style="width:auto;padding:0"> 同步更新账户余额</label>
+<button type="button" class="primary" id="btn-tx-add">记入账本</button>
+</div>
+</div>
+<div class="card"><div class="card-head"><h2 class="card-title">本月支出 Top 榜单</h2><span class="tag num" id="top-exp-total">¥0</span></div><div id="top-exp-list" style="display:flex;flex-direction:column;gap:8px"></div></div>
+</div>
+</div>
+<div class="card">
+<div class="card-head"><h2 class="card-title">收支流水明细</h2><div class="row"><select id="tx-filter-type"><option value="">全部类型</option><option value="income">收入</option><option value="expense">支出</option><option value="transfer">转账</option></select><input id="tx-search" placeholder="搜索分类或备注…" style="width:170px"></div></div>
+<div class="table-wrap"><table><thead><tr><th>日期</th><th>类型</th><th>分类</th><th>账户</th><th>备注</th><th class="right">金额</th><th class="right">操作</th></tr></thead><tbody id="tx-tbody"></tbody></table></div>
+</div>
+</section>
+<section id="view-fire" class="view" hidden>
+<div class="card" style="margin-bottom:12px">
+<div class="card-head"><h2 class="card-title">FIRE 财务自由与复利多场景推演器（后端金融引擎）</h2><div class="row"><button type="button" class="ghost sm" id="btn-sync-nw">一键带入当前净资产</button><button type="button" class="primary sm" id="btn-run-sim">重新计算</button></div></div>
+<div class="grid-3" style="margin-bottom:12px">
+<label class="field">当前净资产 (¥)<input id="sim-nw" type="number" step="10000" value="1700000"></label>
+<label class="field">每月定投金额 (¥)<input id="sim-monthly" type="number" step="500" value="18000"></label>
+<label class="field">基准年化收益率 (%)<input id="sim-ret" type="number" step="0.5" min="0" max="35" value="8"></label>
+<label class="field">年均通胀率 (%)<input id="sim-inf" type="number" step="0.2" min="0" max="15" value="2.5"></label>
+<label class="field">目标年支出 (¥)<input id="sim-exp" type="number" step="5000" value="220000"></label>
+<label class="field">安全提取率 SWR (%)<input id="sim-swr" type="number" step="0.2" min="2" max="8" value="4"></label>
+</div>
+<div class="grid-3" style="margin-bottom:12px" id="fire-cards"></div>
+<div class="card-head" style="margin-bottom:6px"><h3 class="card-title">20 年实值购买力三档增长曲线（保守 / 基准 / 乐观）</h3><span class="tag sky num" id="fire-target-badge">FIRE 目标：¥0</span></div>
+<div class="svg-wrap" id="svg-fire"></div>
+</div>
+<div class="card">
+<div class="card-head"><h2 class="card-title">房贷等额本息 vs 提前还款省息测算器</h2><span class="tag">精确逐月摊还引擎</span></div>
+<div class="grid-3" style="margin-bottom:12px">
+<label class="field">原贷款本金 (¥)<input id="mg-principal" type="number" step="50000" value="1500000"></label>
+<label class="field">贷款年利率 (%)<input id="mg-rate" type="number" step="0.05" value="3.45"></label>
+<label class="field">原贷款总年限 (年)<input id="mg-years" type="number" min="1" max="40" value="30"></label>
+<label class="field">已还期数 (月)<input id="mg-paid" type="number" min="0" max="479" value="60"></label>
+<label class="field">计划提前还款额 (¥)<input id="mg-prepay" type="number" step="10000" value="300000"></label>
+<label class="field">提前还款方式<select id="mg-mode"><option value="reduce_term">月供不变 · 缩短年限（最省息）</option><option value="reduce_payment">年限不变 · 减少月供（降压）</option></select></label>
+</div>
+<div class="grid-3" id="mortgage-cards"></div>
+</div>
+</section>
+<section id="view-cfo" class="view" hidden>
+<div class="card" style="display:flex;flex-direction:column;gap:14px">
+<div class="card-head" style="margin-bottom:0"><h2 class="card-title">AI 私人 CFO 财务诊断工作台</h2><span class="tag ok">联动 Velai 当前会话 · session.turn.*</span></div>
+<div class="sim-box" id="cfo-context" style="font-size:12.5px;line-height:1.65;color:var(--fg-2);white-space:pre-line"></div>
+<div>
+<div style="font-size:12.5px;font-weight:700;margin-bottom:7px;color:var(--fg-2)">选择 CFO 专项财务诊断维度</div>
+<div class="scenario-grid" id="cfo-scenarios">
+<button type="button" class="scenario-card active" data-sc="rebalance"><strong style="font-size:13px">资产再平衡方案</strong><span style="font-size:11.5px;color:var(--muted)">诊断权益/固收/房产/现金集中度风险，输出分步调仓建议</span></button>
+<button type="button" class="scenario-card" data-sc="cashflow"><strong style="font-size:13px">节流与预算优化</strong><span style="font-size:11.5px;color:var(--muted)">拆解超支与黄灯分类、优化储蓄率与现金流防线</span></button>
+<button type="button" class="scenario-card" data-sc="debt"><strong style="font-size:13px">负债与提前还贷决策</strong><span style="font-size:11.5px;color:var(--muted)">对比房贷利率与组合预期收益，评估还贷 vs 定投最优解</span></button>
+<button type="button" class="scenario-card" data-sc="tax_fire"><strong style="font-size:13px">税务筹划与 FIRE 加速</strong><span style="font-size:11.5px;color:var(--muted)">结合净资产与储蓄率制定年度税务优化与 FIRE 加速路线</span></button>
+</div>
+</div>
+<label class="field">补充个人目标或约束（可选）<input id="cfo-extra" maxlength="200" placeholder="例如：3 年内有子女教育大额支出，偏好中等偏稳健风险"></label>
+<div class="row">
+<button type="button" class="primary" id="btn-cfo-send">发送给 Velai 当前会话进行 CFO 诊断</button>
+<button type="button" class="ghost" id="btn-cfo-check" hidden>核对 CFO 诊断报告</button>
+<span id="cfo-state" style="font-size:12.5px;color:var(--muted)"></span>
+</div>
+<div id="cfo-result-box" hidden style="display:flex;flex-direction:column;gap:10px;padding-top:10px;border-top:1px dashed var(--border)">
+<pre class="ai-output" id="cfo-output"></pre>
+<div class="row">
+<button type="button" class="primary sm" id="btn-cfo-insert">一键插入会话输入框</button>
+<button type="button" class="sky sm" id="btn-cfo-save">核对并保存为 CFO 备忘</button>
+<button type="button" class="ghost sm" id="btn-cfo-copy">复制报告</button>
+</div>
+</div>
+<div id="cfo-saved-wrap" hidden style="padding-top:10px;border-top:1px solid var(--border)">
+<div style="font-size:12.5px;font-weight:700;margin-bottom:6px;color:var(--muted)">已保存的 CFO 诊断备忘</div>
+<pre class="ai-output" id="cfo-saved-memo" style="max-height:200px"></pre>
+</div>
+</div>
+</section>
+</main>
+</div>
+<div class="modal-backdrop" id="modal-acc" hidden><div class="modal">
+<div class="card-head" style="margin-bottom:0"><h2 class="card-title" id="m-acc-title">新增资产/负债账户</h2><button type="button" class="ghost sm" data-close="modal-acc">关闭</button></div>
+<div class="form-grid">
+<label class="field">账户名称 *<input id="m-acc-name" maxlength="48"></label>
+<label class="field">账户性质<select id="m-acc-kind"><option value="asset">资产账户 (Asset)</option><option value="liability">负债账户 (Liability)</option></select></label>
+<label class="field">资产大类<select id="m-acc-cls"><option value="cash">现金与货币</option><option value="equity">股票权益</option><option value="fund">指数与基金</option><option value="real_estate">房产不动产</option><option value="fixed_income">债券与固收</option><option value="other">其他资产</option><option value="debt">按揭与负债</option></select></label>
+<label class="field">当前余额 (¥) *<input id="m-acc-bal" type="number" min="0" step="100" value="100000"></label>
+<label class="field">参考年化 / 利率 (%)<input id="m-acc-apy" type="number" step="0.1" value="3.5"></label>
+<label class="field">所属机构<input id="m-acc-inst" maxlength="36"></label>
+<label class="field full">备注<input id="m-acc-note" maxlength="120"></label>
+</div>
+<div class="row" style="justify-content:flex-end"><button type="button" class="ghost" data-close="modal-acc">取消</button><button type="button" class="primary" id="btn-m-acc-save">保存账户</button></div>
+</div></div>
+<div class="modal-backdrop" id="modal-goal" hidden><div class="modal">
+<div class="card-head" style="margin-bottom:0"><h2 class="card-title">新增月度预算 / 财务目标</h2><button type="button" class="ghost sm" data-close="modal-goal">关闭</button></div>
+<div class="form-grid">
+<label class="field">类型<select id="m-goal-kind"><option value="budget">分类月度预算上限</option><option value="target">长期储蓄 / 资产目标</option></select></label>
+<label class="field">关联分类<select id="m-goal-cat"></select></label>
+<label class="field">显示名称 *<input id="m-goal-label" maxlength="48" placeholder="例如：餐饮月度预算"></label>
+<label class="field">预算上限 / 目标金额 (¥) *<input id="m-goal-limit" type="number" min="1" value="4000"></label>
+<label class="field">已达成金额 (目标用)<input id="m-goal-saved" type="number" min="0" value="0"></label>
+<label class="field">目标日期 (可选)<input id="m-goal-date" type="date"></label>
+</div>
+<div class="row" style="justify-content:flex-end"><button type="button" class="ghost" data-close="modal-goal">取消</button><button type="button" class="primary" id="btn-m-goal-save">保存设置</button></div>
+</div></div>
+<div class="modal-backdrop" id="modal-io" hidden><div class="modal">
+<div class="card-head" style="margin-bottom:0"><h2 class="card-title">财务数据导入与导出（document.*）</h2><button type="button" class="ghost sm" data-close="modal-io">关闭</button></div>
+<div class="row"><select id="io-select" style="flex:1"></select><button type="button" class="primary sm" id="btn-io-export">导出 JSON</button></div>
+<label class="field">JSON 数据内容<textarea id="io-text" style="min-height:170px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px"></textarea></label>
+<div class="row" style="justify-content:space-between"><span id="io-msg" style="font-size:12px;color:var(--muted)"></span><div class="row"><button type="button" class="ghost sm" id="btn-io-copy">复制 JSON</button><button type="button" class="primary sm" id="btn-io-import">校验并导入</button></div></div>
+</div></div>
+<script>
+(() => {
+const plugin = globalThis.nmasPlugin;
+const $ = id => document.getElementById(id);
+const on = (id, ev, fn) => $(id).addEventListener(ev, fn);
+const CLASS_META = {
+cash: { label: '现金与货币', color: '#059669' }, equity: { label: '股票权益', color: '#4f46e5' },
+fund: { label: '指数与基金', color: '#0284c7' }, real_estate: { label: '房产不动产', color: '#d97706' },
+fixed_income: { label: '国债与固收', color: '#0d9488' }, other: { label: '其他资产', color: '#7c3aed' },
+debt: { label: '负债按揭', color: '#e11d48' },
+};
+const CAT_LABEL = {
+salary: '薪资收入', bonus: '奖金副业', dividend: '股息分红', housing: '居住月供', food: '餐饮美食',
+transport: '交通出行', health: '医疗健康', shopping: '购物数码', education: '学习成长',
+entertainment: '休闲娱乐', travel: '差旅度假', invest: '投资定投', other: '其他',
+};
+const VIEW_TITLE = { dashboard: '资产负债总览', ledger: '智能账本与预算预警', fire: 'FIRE 复利推演与房贷省息引擎', cfo: 'AI 私人 CFO 财务诊断' };
+let state = { revision: 0, month: '', accounts: [], ledger: [], goals: [], summary: null, allocation: [], budgets: [], top_expenses: [], trend: [], cfo_memo: '' };
+let simResult = null, editingAccId = null, activeScenario = 'rebalance', canInsert = false, pendingWorkId = null, latestCfoText = '', busy = false;
+const today = () => new Date().toISOString().slice(0, 10);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmtWan = n => { const v = Number(n) || 0, a = Math.abs(v), s = v < 0 ? '-' : ''; return a >= 1e8 ? `${s}¥${(a/1e8).toFixed(2)}亿` : a >= 1e4 ? `${s}¥${(a/1e4).toFixed(a>=1e6?1:2)}万` : `${s}¥${Math.round(a).toLocaleString('zh-CN')}`; };
+const fmtFull = n => `${Number(n) < 0 ? '-' : ''}¥${Math.round(Math.abs(Number(n) || 0)).toLocaleString('zh-CN')}`;
+const setStatus = (msg, err = false) => { $('status-text').textContent = msg; $('status-pill').dataset.error = String(err); };
+const runBusy = async fn => { if (busy) return; busy = true; try { await fn(); } catch (e) { setStatus(`操作失败：${e?.message || '未知错误'}`, true); } finally { busy = false; } };
+const uuid = () => { const b = crypto.getRandomValues(new Uint8Array(16)); b[6] = (b[6] & 15) | 64; b[8] = (b[8] & 63) | 128; const h = Array.from(b, x => x.toString(16).padStart(2, '0')).join(''); return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`; };
+const mkBtn = (text, cls, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = text; b.addEventListener('click', fn); return b; };
+function initCats() {
+const opts = Object.entries(CAT_LABEL).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+$('tx-cat').innerHTML = opts; $('tx-cat').value = 'food';
+$('m-goal-cat').innerHTML = opts; $('m-goal-cat').value = 'food';
+if (!$('tx-date').value) $('tx-date').value = today();
+}
+function switchView(view) {
+$('view-heading').textContent = VIEW_TITLE[view] || view;
+document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+document.querySelectorAll('.view').forEach(el => { el.hidden = el.id !== `view-${view}`; });
+if (view === 'fire' && !simResult) void runSimulation();
+if (view === 'cfo') renderCfoContext();
+}
+async function loadSnapshot() {
+if (typeof plugin?.action !== 'function') { setStatus('请在 Velai Desktop 中打开此插件', true); return; }
+try {
+const caps = await plugin.action('host.capabilities', {}).catch(() => ({ actions: [] }));
+canInsert = Array.isArray(caps?.actions) && caps.actions.includes('host.draft.insert');
+state = await plugin.action('finance.snapshot', {});
+renderAll();
+setStatus(`已同步 · ${state.accounts.length} 账户 · ${state.ledger.length} 流水 · Rev #${state.revision}`);
+} catch (e) { setStatus(`加载失败：${e?.message || '未知错误'}`, true); }
+}
+function renderAll() {
+renderKpis(); renderDonutSvg(); renderTrendSvg(); renderAccountsTable();
+renderBudgets(); renderTxFormAccounts(); renderTopExpenses(); renderLedgerTable(); renderCfoContext();
+}
+function renderKpis() {
+const s = state.summary || { total_assets: 0, total_liabilities: 0, net_worth: 0, debt_ratio: 0, monthly_income: 0, monthly_expense: 0, monthly_surplus: 0, savings_rate: 0, over_budget_count: 0, warn_budget_count: 0 };
+$('kpi-assets').textContent = fmtWan(s.total_assets);
+$('kpi-asset-cnt').textContent = `${state.accounts.filter(a => a.kind === 'asset').length} 资产账户`;
+$('kpi-liab').textContent = fmtWan(s.total_liabilities);
+$('kpi-debt-ratio').textContent = `负债率 ${s.debt_ratio}%`;
+$('kpi-nw').textContent = fmtWan(s.net_worth);
+$('kpi-month').textContent = state.month || '--';
+$('kpi-nw-sub').textContent = `本月净结余 ${fmtFull(s.monthly_surplus)}`;
+$('kpi-savings').textContent = `${s.savings_rate}%`;
+const alerts = s.over_budget_count + s.warn_budget_count;
+$('kpi-alert-cnt').textContent = s.over_budget_count > 0 ? `${s.over_budget_count} 超支 / ${s.warn_budget_count} 预警` : `${alerts} 预警`;
+$('kpi-alert-cnt').className = `tag num ${s.over_budget_count > 0 ? 'danger' : (s.warn_budget_count > 0 ? 'warn' : 'ok')}`;
+$('kpi-flow-sub').textContent = `收 ${fmtFull(s.monthly_income)} · 支 ${fmtFull(s.monthly_expense)}`;
+$('badge-acc').textContent = String(state.accounts.length);
+$('badge-budget').textContent = String(alerts || state.budgets.length);
+$('badge-budget').classList.toggle('alert', s.over_budget_count > 0);
+}
+function renderDonutSvg() {
+const alloc = state.allocation || [], total = state.summary?.total_assets || 0;
+const size = 190, cx = 95, cy = 95, r = 68, circ = 2 * Math.PI * r;
+let offset = 0, arcs = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--border)" stroke-width="22"/>`;
+for (const item of alloc) {
+const meta = CLASS_META[item.asset_class] || CLASS_META.other;
+const len = total > 0 ? (item.amount / total) * circ : 0;
+arcs += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${meta.color}" stroke-width="22" stroke-dasharray="${Math.max(1,len-1.5).toFixed(2)} ${circ.toFixed(2)}" stroke-dashoffset="${(-offset).toFixed(2)}" transform="rotate(-90 ${cx} ${cy})"><title>${esc(meta.label)}：${esc(fmtFull(item.amount))} (${item.share}%)</title></circle>`;
+offset += len;
+}
+$('svg-donut').innerHTML = `<svg viewBox="0 0 ${size} ${size}" role="img" aria-label="资产配置环形饼图">${arcs}<text x="${cx}" y="${cy-4}" text-anchor="middle" fill="var(--muted)" font-size="10.5">总资产</text><text x="${cx}" y="${cy+15}" text-anchor="middle" fill="var(--fg)" font-size="14.5" font-weight="800">${esc(fmtWan(total))}</text></svg>`;
+const leg = $('donut-legend'); leg.replaceChildren();
+if (!alloc.length) { leg.innerHTML = `<div style="font-size:12.5px;color:var(--muted)">暂无资产数据，点击左下角「加载完整财务演示数据」即可体验。</div>`; return; }
+for (const item of alloc) {
+const meta = CLASS_META[item.asset_class] || CLASS_META.other;
+leg.insertAdjacentHTML('beforeend', `<div class="legend-item"><span class="row" style="gap:7px"><span class="swatch" style="background:${meta.color}"></span><strong>${esc(meta.label)}</strong></span><span class="num" style="color:var(--fg-2)">${esc(fmtWan(item.amount))} <span style="color:var(--muted)">(${item.share}%)</span></span></div>`);
+}
+}
+function renderTrendSvg() {
+const trend = state.trend || [];
+if (!trend.length) { $('svg-trend').innerHTML = `<div style="padding:46px 12px;text-align:center;color:var(--muted)">暂无月度趋势数据</div>`; return; }
+const W = 460, H = 216, padL = 54, padR = 46, padT = 20, padB = 30, cW = W - padL - padR, cH = H - padT - padB;
+const maxFlow = Math.max(...trend.map(t => Math.max(t.income, t.expense)), 10000) * 1.15;
+const nws = trend.map(t => t.net_worth), minNw = Math.min(...nws), maxNw = Math.max(...nws);
+const span = Math.max(maxNw - minNw, Math.abs(maxNw) * 0.08, 10000), nwF = minNw - span * 0.25, nwC = maxNw + span * 0.2;
+let svg = '';
+for (let i = 0; i <= 3; i++) {
+const y = padT + cH - (cH * i) / 3;
+svg += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="var(--border)" stroke-dasharray="${i?'3 3':''}"/>`
++ `<text x="${padL-6}" y="${y+4}" text-anchor="end" fill="var(--sky)" font-size="10">${esc(fmtWan(nwF+((nwC-nwF)*i)/3))}</text>`
++ `<text x="${W-padR+5}" y="${y+4}" fill="var(--muted)" font-size="10">${esc(fmtWan((maxFlow*i)/3))}</text>`;
+}
+const step = cW / trend.length, pts = [];
+trend.forEach((t, i) => {
+const cx = padL + i * step + step / 2, bw = Math.min(14, step * 0.22);
+const hi = (t.income / maxFlow) * cH, he = (t.expense / maxFlow) * cH;
+svg += `<rect x="${(cx-bw-1.5).toFixed(1)}" y="${(padT+cH-hi).toFixed(1)}" width="${bw}" height="${Math.max(2,hi).toFixed(1)}" rx="3" fill="var(--accent)" opacity=".72"><title>${esc(t.month)} 收入：${esc(fmtFull(t.income))}</title></rect>`
++ `<rect x="${(cx+1.5).toFixed(1)}" y="${(padT+cH-he).toFixed(1)}" width="${bw}" height="${Math.max(2,he).toFixed(1)}" rx="3" fill="var(--danger)" opacity=".65"><title>${esc(t.month)} 支出：${esc(fmtFull(t.expense))}</title></rect>`
++ `<text x="${cx.toFixed(1)}" y="${H-10}" text-anchor="middle" fill="var(--muted)" font-size="10.5">${esc(t.month.slice(2))}</text>`;
+pts.push({ x: cx, y: padT + cH - ((t.net_worth - nwF) / (nwC - nwF)) * cH, t });
+});
+svg += `<path d="${pts.map((p, i) => `${i?'L':'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')}" fill="none" stroke="var(--sky)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`;
+for (const p of pts) svg += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="var(--surface)" stroke="var(--sky)" stroke-width="2.3"><title>${esc(p.t.month)} 净资产：${esc(fmtFull(p.t.net_worth))}</title></circle>`;
+$('svg-trend').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="净资产与现金流双轨趋势图">${svg}</svg>`;
+}
+function renderAccountsTable() {
+const tbody = $('acc-tbody'); tbody.replaceChildren();
+if (!state.accounts.length) { tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:22px">暂无账户记录</td></tr>`; return; }
+const sorted = [...state.accounts].sort((a, b) => (a.kind === b.kind ? b.balance - a.balance : (a.kind === 'asset' ? -1 : 1)));
+for (const a of sorted) {
+const meta = CLASS_META[a.asset_class] || CLASS_META.other;
+const tr = document.createElement('tr');
+tr.innerHTML = `<td><strong>${esc(a.name)}</strong>${a.note ? `<div style="font-size:11.5px;color:var(--muted)">${esc(a.note)}</div>` : ''}</td>`
++ `<td><span class="tag ${a.kind==='liability'?'danger':'ok'}">${a.kind==='liability'?'负债':'资产'} · ${esc(meta.label)}</span></td>`
++ `<td style="color:var(--fg-2)">${esc(a.institution||'—')}</td><td class="right num">${a.apy}%</td>`
++ `<td class="right num" style="font-weight:700;color:${a.kind==='liability'?'var(--danger)':'var(--fg)'}">${a.kind==='liability'?'-':''}${esc(fmtFull(a.balance))}</td><td class="right"></td>`;
+const td = tr.lastElementChild;
+const b1 = mkBtn('编辑', 'ghost sm', () => openAccModal(a));
+const b2 = mkBtn('删除', 'ghost sm', () => runBusy(async () => {
+const res = await plugin.action('finance.account.delete', { expected_revision: state.revision, id: a.id });
+if (res.status === 'deleted') { await loadSnapshot(); setStatus('已删除账户'); } else setStatus(`删除失败：${res.status}`, true);
+})); b2.style.marginLeft = '4px';
+td.append(b1, b2); tbody.appendChild(tr);
+}
+}
+function renderBudgets() {
+const bBox = $('budget-list'); bBox.replaceChildren();
+if (!state.budgets.length) bBox.innerHTML = `<div style="font-size:12.5px;color:var(--muted);padding:12px 0">暂未设置分类月度预算</div>`;
+const delGoal = id => runBusy(async () => {
+const res = await plugin.action('finance.goal.delete', { expected_revision: state.revision, id });
+if (res.status === 'deleted') { await loadSnapshot(); setStatus('已删除预算/目标'); } else setStatus(`删除失败：${res.status}`, true);
+});
+for (const b of state.budgets) {
+const txt = b.level === 'over' ? '红灯超支' : b.level === 'warn' ? '黄灯预警' : '安全';
+const cls = b.level === 'over' ? 'danger' : b.level === 'warn' ? 'warn' : 'ok';
+const card = document.createElement('div'); card.className = 'budget-item';
+card.innerHTML = `<div class="row" style="justify-content:space-between"><div class="row"><strong>${esc(b.label)}</strong><span class="tag">${esc(CAT_LABEL[b.category]||b.category)}</span></div><div class="row"><span class="tag ${cls} num">${txt} ${b.ratio}%</span><button type="button" class="ghost sm" data-dg>x</button></div></div><div class="bar-track"><div class="bar-fill ${b.level}" style="width:${Math.min(100,b.ratio)}%"></div></div><div class="row" style="justify-content:space-between;font-size:12px;color:var(--muted)"><span class="num">已用 ${esc(fmtFull(b.spent))}</span><span class="num">月度预算 ${esc(fmtFull(b.limit))}</span></div>`;
+card.querySelector('[data-dg]').addEventListener('click', () => delGoal(b.id));
+bBox.appendChild(card);
+}
+const targets = state.goals.filter(g => g.kind === 'target');
+$('target-wrap').hidden = !targets.length;
+const tBox = $('target-list'); tBox.replaceChildren();
+for (const t of targets) {
+const pct = Math.min(100, Math.round((t.current_saved / t.monthly_limit) * 100));
+const card = document.createElement('div'); card.className = 'budget-item';
+card.innerHTML = `<div class="row" style="justify-content:space-between"><strong>${esc(t.label)}</strong><div class="row"><span class="tag sky num">${pct}%</span><button type="button" class="ghost sm" data-dt>x</button></div></div><div class="bar-track"><div class="bar-fill ok" style="width:${pct}%"></div></div><div class="row" style="justify-content:space-between;font-size:12px;color:var(--muted)"><span class="num">${esc(fmtWan(t.current_saved))} / ${esc(fmtWan(t.monthly_limit))}</span><span>${esc(t.target_date||'长期目标')}</span></div>`;
+card.querySelector('[data-dt]').addEventListener('click', () => delGoal(t.id));
+tBox.appendChild(card);
+}
+}
+function renderTxFormAccounts() {
+const opts = state.accounts.length ? state.accounts.map(a => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('') : `<option value="default-cash">默认现金账户</option>`;
+$('tx-acc').innerHTML = opts; $('tx-target-acc').innerHTML = opts;
+}
+function renderTopExpenses() {
+const list = state.top_expenses || [];
+$('top-exp-total').textContent = fmtFull(state.summary?.monthly_expense || 0);
+const box = $('top-exp-list'); box.replaceChildren();
+if (!list.length) { box.innerHTML = `<div style="font-size:12.5px;color:var(--muted)">本月暂无支出记录</div>`; return; }
+const maxAmt = Math.max(...list.map(x => x.amount), 1);
+for (const item of list) {
+box.insertAdjacentHTML('beforeend', `<div><div class="row" style="justify-content:space-between;font-size:12.5px;margin-bottom:3px"><strong>${esc(CAT_LABEL[item.category]||item.category)}</strong><span class="num">${esc(fmtFull(item.amount))} <span style="color:var(--muted)">(${item.share}%)</span></span></div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(4,Math.round((item.amount/maxAmt)*100))}%;background:linear-gradient(90deg,var(--sky),var(--indigo))"></div></div></div>`);
+}
+}
+function renderLedgerTable() {
+const tf = $('tx-filter-type').value, kw = $('tx-search').value.trim().toLowerCase();
+const accMap = new Map(state.accounts.map(a => [a.id, a.name]));
+const rows = [...state.ledger].filter(t => (!tf || t.type === tf) && (!kw || `${CAT_LABEL[t.category]||t.category} ${t.note} ${accMap.get(t.account_id)||''}`.toLowerCase().includes(kw))).sort((a, b) => b.date.localeCompare(a.date));
+const tbody = $('tx-tbody'); tbody.replaceChildren();
+if (!rows.length) { tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">暂无符合条件的流水</td></tr>`; return; }
+const tl = { income: '收入', expense: '支出', transfer: '转账' }, tt = { income: 'ok', expense: 'danger', transfer: 'sky' };
+for (const t of rows) {
+const tr = document.createElement('tr');
+const sign = t.type === 'income' ? '+' : t.type === 'expense' ? '-' : '⇄ ';
+const accTxt = t.type === 'transfer' && t.target_account_id ? `${accMap.get(t.account_id)||t.account_id} → ${accMap.get(t.target_account_id)||t.target_account_id}` : (accMap.get(t.account_id)||t.account_id);
+tr.innerHTML = `<td class="num">${esc(t.date)}</td><td><span class="tag ${tt[t.type]}">${tl[t.type]}</span></td><td>${esc(CAT_LABEL[t.category]||t.category)}</td><td style="color:var(--fg-2)">${esc(accTxt)}</td><td style="color:var(--muted)">${esc(t.note||'—')}</td><td class="right num" style="font-weight:700;color:${t.type==='income'?'var(--accent)':t.type==='expense'?'var(--danger)':'var(--sky)'}">${sign}${esc(fmtFull(t.amount))}</td><td class="right"></td>`;
+tr.lastElementChild.appendChild(mkBtn('删除', 'ghost sm', () => runBusy(async () => {
+const res = await plugin.action('finance.tx.delete', { expected_revision: state.revision, id: t.id });
+if (res.status === 'deleted') { await loadSnapshot(); setStatus('已删除流水'); } else setStatus(`删除失败：${res.status}`, true);
+})));
+tbody.appendChild(tr);
+}
+}
+async function runSimulation() {
+if (typeof plugin?.action !== 'function') return;
+try {
+const res = await plugin.action('finance.simulate', {
+current_net_worth: Number($('sim-nw').value) || 0,
+monthly_invest: Math.max(0, Number($('sim-monthly').value) || 0),
+expected_return: Math.max(0, Math.min(40, Number($('sim-ret').value) || 0)),
+inflation: Math.max(0, Math.min(20, Number($('sim-inf').value) || 0)),
+annual_expense: Math.max(1000, Number($('sim-exp').value) || 100000),
+swr: Math.max(2, Math.min(10, Number($('sim-swr').value) || 4)),
+years: 20,
+mortgage: {
+principal: Math.max(10000, Number($('mg-principal').value) || 1000000),
+annual_rate: Math.max(0.1, Math.min(25, Number($('mg-rate').value) || 3.45)),
+total_years: Math.max(1, Math.min(40, Math.round(Number($('mg-years').value) || 30))),
+paid_months: Math.max(0, Math.min(479, Math.round(Number($('mg-paid').value) || 0))),
+prepay_amount: Math.max(0, Number($('mg-prepay').value) || 0),
+mode: $('mg-mode').value,
+},
+});
+simResult = res; renderFireResult(res); renderMortgageResult(res.mortgage_result);
+} catch (e) { setStatus(`金融推演失败：${e?.message || '参数超限'}`, true); }
+}
+function renderFireResult(res) {
+$('fire-target-badge').textContent = `FIRE 实值目标：${fmtWan(res.fire_target)}`;
+const defs = [{ k: 'conservative', t: '保守情景', c: '#d97706', cls: '' }, { k: 'base', t: '基准情景', c: '#059669', cls: 'highlight' }, { k: 'optimistic', t: '乐观情景', c: '#4f46e5', cls: '' }];
+$('fire-cards').innerHTML = defs.map(d => {
+const it = res.scenarios[d.k];
+const ft = it.years_to_fire === 0 ? '已达成 FIRE' : it.years_to_fire > 0 ? `${it.fire_year} 年达成（${it.years_to_fire} 年后）` : '80 年内未达标';
+return `<div class="sim-box ${d.cls}"><div class="sim-label" style="color:${d.c}">${d.t}（名义 ${it.rate}% / 实值 ${it.real_rate}%）</div><div class="sim-val num">${esc(fmtWan(it.final_real))}</div><div class="sim-sub">20 年末实值资产 · <strong>${esc(ft)}</strong></div></div>`;
+}).join('');
+const series = res.series || [], W = 720, H = 260, padL = 62, padR = 24, padT = 22, padB = 34, cW = W - padL - padR, cH = H - padT - padB;
+const maxV = Math.max(res.fire_target * 1.15, ...series.map(p => p.optimistic), 100000), minV = Math.min(0, ...series.map(p => p.conservative)), span = Math.max(maxV - minV, 1);
+const toX = i => padL + (i / Math.max(1, series.length - 1)) * cW, toY = v => padT + cH - ((v - minV) / span) * cH;
+let svg = `<defs><linearGradient id="baseArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#059669" stop-opacity=".22"/><stop offset="100%" stop-color="#059669" stop-opacity=".01"/></linearGradient></defs>`;
+for (let i = 0; i <= 4; i++) {
+const y = padT + cH - (cH * i) / 4;
+svg += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="var(--border)" stroke-dasharray="${i?'3 3':''}"/><text x="${padL-8}" y="${y+4}" text-anchor="end" fill="var(--muted)" font-size="10.5">${esc(fmtWan(minV+(span*i)/4))}</text>`;
+}
+const fy = toY(res.fire_target);
+svg += `<line x1="${padL}" y1="${fy.toFixed(1)}" x2="${W-padR}" y2="${fy.toFixed(1)}" stroke="#e11d48" stroke-width="1.6" stroke-dasharray="6 4"/><text x="${W-padR-4}" y="${(fy-6).toFixed(1)}" text-anchor="end" fill="#e11d48" font-size="11" font-weight="700">FIRE 自由线 ${esc(fmtWan(res.fire_target))}</text>`;
+const mkP = k => series.map((p, i) => `${i?'L':'M'}${toX(i).toFixed(1)},${toY(p[k]).toFixed(1)}`).join(' ');
+const bp = mkP('base');
+svg += `<path d="${bp} L${toX(series.length-1).toFixed(1)},${toY(minV).toFixed(1)} L${toX(0).toFixed(1)},${toY(minV).toFixed(1)} Z" fill="url(#baseArea)"/><path d="${mkP('conservative')}" fill="none" stroke="#d97706" stroke-width="2" stroke-dasharray="5 3"/><path d="${bp}" fill="none" stroke="#059669" stroke-width="2.8"/><path d="${mkP('optimistic')}" fill="none" stroke="#4f46e5" stroke-width="2.2"/>`;
+series.forEach((p, i) => {
+if (i % 4 === 0 || i === series.length - 1) {
+const x = toX(i);
+svg += `<text x="${x.toFixed(1)}" y="${H-10}" text-anchor="middle" fill="var(--muted)" font-size="10.5">${p.year}</text><circle cx="${x.toFixed(1)}" cy="${toY(p.base).toFixed(1)}" r="3.6" fill="var(--surface)" stroke="#059669" stroke-width="2"><title>${p.year}年｜保守 ${esc(fmtWan(p.conservative))} · 基准 ${esc(fmtWan(p.base))} · 乐观 ${esc(fmtWan(p.optimistic))}</title></circle>`;
+}
+});
+$('svg-fire').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="20年复利增长三档曲线">${svg}</svg>`;
+}
+function renderMortgageResult(m) {
+if (!m) return;
+const pct = m.original_remaining_interest > 0 ? Math.round((m.interest_saved / m.original_remaining_interest) * 100) : 0;
+$('mortgage-cards').innerHTML = `<div class="sim-box"><div class="sim-label">原等额本息月供 / 剩余本金</div><div class="sim-val num">${esc(fmtFull(m.original_monthly))}/月</div><div class="sim-sub num">剩余本金 ${esc(fmtWan(m.remaining_principal))} · 原剩息 ${esc(fmtWan(m.original_remaining_interest))}</div></div>`
++ `<div class="sim-box highlight"><div class="sim-label" style="color:var(--accent)">提前还款预计节省总利息</div><div class="sim-val num" style="color:var(--accent)">${esc(fmtFull(m.interest_saved))}</div><div class="sim-sub num">剩余利息直降 ${pct}% · 缩短 ${m.months_saved} 期（约 ${(m.months_saved/12).toFixed(1)} 年）</div></div>`
++ `<div class="sim-box"><div class="sim-label">方案调整后新月供 / 新剩期</div><div class="sim-val num">${esc(fmtFull(m.new_monthly))}/月</div><div class="sim-sub num">剩余 ${m.new_remaining_months} 期 · 新剩余利息 ${esc(fmtWan(m.new_remaining_interest))}</div></div>`;
+}
+function buildCfoCtx() {
+const s = state.summary; if (!s) return '请先加载财务演示数据或录入账户与收支流水。';
+const alloc = state.allocation.map(a => `${(CLASS_META[a.asset_class]||CLASS_META.other).label} ${a.share}% (${fmtWan(a.amount)})`).join('、') || '无';
+const over = state.budgets.filter(b => b.level !== 'ok').map(b => `${b.label} ${b.ratio}% (${fmtFull(b.spent)}/${fmtFull(b.limit)})`).join('；') || '当前无超支或预警分类';
+const top = state.top_expenses.slice(0, 4).map(e => `${CAT_LABEL[e.category]||e.category} ${fmtFull(e.amount)} (${e.share}%)`).join('、') || '无';
+return `【资产负债】总资产 ${fmtWan(s.total_assets)}｜总负债 ${fmtWan(s.total_liabilities)}｜净资产 ${fmtWan(s.net_worth)}｜资产负债率 ${s.debt_ratio}%\n【资产结构】${alloc}\n【本月现金流 ${state.month}】月收入 ${fmtFull(s.monthly_income)}｜月支出 ${fmtFull(s.monthly_expense)}｜净结余 ${fmtFull(s.monthly_surplus)}｜储蓄率 ${s.savings_rate}%\n【预算预警】${over}\n【支出 Top 分类】${top}`;
+}
+function renderCfoContext() {
+$('cfo-context').textContent = buildCfoCtx();
+$('btn-cfo-insert').hidden = !canInsert;
+$('cfo-saved-wrap').hidden = !state.cfo_memo;
+$('cfo-saved-memo').textContent = state.cfo_memo || '';
+}
+function openAccModal(acc = null) {
+editingAccId = acc?.id || null;
+$('m-acc-title').textContent = acc ? `编辑账户：${acc.name}` : '新增资产/负债账户';
+$('m-acc-name').value = acc?.name ?? ''; $('m-acc-kind').value = acc?.kind ?? 'asset';
+$('m-acc-cls').value = acc?.asset_class ?? 'cash'; $('m-acc-bal').value = acc?.balance ?? 100000;
+$('m-acc-apy').value = acc?.apy ?? 3.5; $('m-acc-inst').value = acc?.institution ?? '';
+$('m-acc-note').value = acc?.note ?? ''; $('modal-acc').hidden = false;
+}
+document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
+document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => { $(b.dataset.close).hidden = true; }));
+on('btn-refresh', 'click', () => void loadSnapshot());
+const mqDark = matchMedia('(prefers-color-scheme: dark)');
+let userTheme = false;
+if (mqDark.matches) document.documentElement.dataset.theme = 'dark';
+mqDark.addEventListener?.('change', e => { if (!userTheme) document.documentElement.dataset.theme = e.matches ? 'dark' : 'light'; });
+on('btn-theme', 'click', () => { userTheme = true; document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; });
+on('btn-seed', 'click', () => runBusy(async () => {
+const res = await plugin.action('finance.demo.seed', { expected_revision: state.revision });
+if (res.status === 'seeded') { await loadSnapshot(); setStatus(`已加载完整财务演示数据（${res.counts.accounts} 账户 / ${res.counts.ledger} 流水 / ${res.counts.goals} 预算目标）`); }
+else setStatus(`加载演示数据冲突：${res.status}`, true);
+}));
+on('btn-new-acc', 'click', () => openAccModal(null));
+on('btn-new-goal', 'click', () => { $('modal-goal').hidden = false; });
+on('btn-m-acc-save', 'click', () => runBusy(async () => {
+const name = $('m-acc-name').value.trim(); if (!name) { setStatus('请填写账户名称', true); return; }
+const kind = $('m-acc-kind').value;
+const res = await plugin.action('finance.account.save', {
+expected_revision: state.revision, id: editingAccId || `fin-${Date.now().toString(36)}`, name, kind,
+asset_class: kind === 'liability' ? 'debt' : $('m-acc-cls').value, balance: Math.max(0, Number($('m-acc-bal').value) || 0),
+apy: Number($('m-acc-apy').value) || 0, institution: $('m-acc-inst').value.trim(), note: $('m-acc-note').value.trim(),
+});
+if (res.status === 'saved') { $('modal-acc').hidden = true; await loadSnapshot(); setStatus('账户已保存'); } else setStatus(`保存未完成：${res.status}`, true);
+}));
+on('btn-m-goal-save', 'click', () => runBusy(async () => {
+const label = $('m-goal-label').value.trim(), limit = Number($('m-goal-limit').value) || 0;
+if (!label || limit < 1) { setStatus('请填写名称与有效金额', true); return; }
+const res = await plugin.action('finance.goal.save', {
+expected_revision: state.revision, id: `goal-${Date.now().toString(36)}`, kind: $('m-goal-kind').value,
+category: $('m-goal-cat').value, label, monthly_limit: limit,
+current_saved: Math.max(0, Number($('m-goal-saved').value) || 0), target_date: $('m-goal-date').value || '',
+});
+if (res.status === 'saved') { $('modal-goal').hidden = true; await loadSnapshot(); setStatus('预算/目标已保存'); } else setStatus(`保存未完成：${res.status}`, true);
+}));
+on('tx-type', 'change', () => { const t = $('tx-type').value; $('tx-target-wrap').hidden = t !== 'transfer'; $('tx-cat').value = t === 'income' ? 'salary' : t === 'transfer' ? 'invest' : 'food'; });
+on('tx-filter-type', 'change', renderLedgerTable); on('tx-search', 'input', renderLedgerTable);
+on('btn-tx-add', 'click', () => runBusy(async () => {
+const amount = Number($('tx-amt').value); if (!amount || amount < 0.01) { setStatus('请输入有效金额', true); return; }
+const type = $('tx-type').value;
+const res = await plugin.action('finance.tx.save', {
+expected_revision: state.revision, id: `tx-${Date.now().toString(36)}`, date: $('tx-date').value || today(),
+type, category: $('tx-cat').value, amount, account_id: $('tx-acc').value || 'default-cash',
+target_account_id: type === 'transfer' ? ($('tx-target-acc').value || '') : '', note: $('tx-note').value.trim(), sync_balance: $('tx-sync').checked,
+});
+if (res.status === 'saved') { $('tx-amt').value = ''; $('tx-note').value = ''; await loadSnapshot(); setStatus('流水已记入账本'); }
+else setStatus(`记账未完成：${res.status}`, true);
+}));
+['sim-nw','sim-monthly','sim-ret','sim-inf','sim-exp','sim-swr','mg-principal','mg-rate','mg-years','mg-paid','mg-prepay','mg-mode'].forEach(id => on(id, 'change', () => void runSimulation()));
+on('btn-run-sim', 'click', () => void runSimulation());
+on('btn-sync-nw', 'click', () => {
+if (state.summary) { $('sim-nw').value = Math.round(state.summary.net_worth); if (state.summary.monthly_surplus > 0) $('sim-monthly').value = Math.round(state.summary.monthly_surplus); void runSimulation(); }
+});
+document.querySelectorAll('#cfo-scenarios .scenario-card').forEach(btn => btn.addEventListener('click', () => {
+activeScenario = btn.dataset.sc;
+document.querySelectorAll('#cfo-scenarios .scenario-card').forEach(c => c.classList.toggle('active', c === btn));
+}));
+on('btn-cfo-send', 'click', async () => {
+const scText = {
+rebalance: '请作为专业私人 CFO 诊断我的资产配置与负债率，指出集中度与流动性风险，给出可执行的季度再平衡调仓方案。',
+cashflow: '请基于我本月收支、储蓄率与预算超支/预警项，拆解消费漏洞并给出 3 条可落地的节流优化建议。',
+debt: '请结合我的负债率、房贷利率与组合结构，评估应优先提前还贷还是继续指数定投，给出资金分配比例建议。',
+tax_fire: '请从年度个人税务合规筹划与 FIRE 财务自由加速两维度，给出 12 个月行动路线图。',
+}[activeScenario];
+const extra = $('cfo-extra').value.trim();
+let prompt = `${scText}\n${extra ? `补充背景：${extra}\n` : ''}\n--- 当前个人财务实时快照 ---\n${buildCfoCtx()}`;
+if (Array.from(prompt).length > 2000) prompt = Array.from(prompt).slice(0, 2000).join('');
+pendingWorkId = uuid(); latestCfoText = '';
+$('btn-cfo-check').hidden = false; $('cfo-result-box').hidden = true;
+$('cfo-state').textContent = '正在向 Velai 当前会话派发 CFO 财务诊断…';
+try {
+await plugin.action('session.turn.request', { prompt, work_id: pendingWorkId });
+$('cfo-state').textContent = '已派发给当前会话，待 AI 回复完成后点击「核对 CFO 诊断报告」。';
+} catch (e) { $('cfo-state').textContent = e?.message === 'cancelled' ? '已取消派发，请先选择一个会话。' : `派发未确认（${e?.message || 'unknown'}），请到原会话查看。`; }
+});
+on('btn-cfo-check', 'click', async () => {
+if (!pendingWorkId) return;
+$('cfo-state').textContent = '正在核对诊断报告…';
+try {
+const r = await plugin.action('session.turn.result', { work_id: pendingWorkId });
+if (r.state === 'completed' && !r.truncated && typeof r.text === 'string' && r.text.trim()) {
+latestCfoText = r.text.trim(); $('cfo-output').textContent = latestCfoText;
+$('cfo-result-box').hidden = false; $('btn-cfo-insert').hidden = !canInsert;
+$('cfo-state').textContent = '已获取完整 CFO 诊断报告，可核对保存或插入输入框。';
+} else $('cfo-state').textContent = `当前状态：${r.state}${r.truncated ? '（内容被截断，请回原会话查看）' : ''}`;
+} catch (e) { $('cfo-state').textContent = `核对失败：${e?.message || '请回原会话查看'}`; }
+});
+on('btn-cfo-insert', 'click', async () => {
+if (!latestCfoText) return;
+try { const r = await plugin.action('host.draft.insert', { text: latestCfoText }); setStatus(r?.inserted ? '已插入 Velai 会话输入框' : '未能确认插入', !r?.inserted); }
+catch (e) { setStatus(`插入失败：${e?.message || ''}`, true); }
+});
+on('btn-cfo-save', 'click', () => { if (!latestCfoText) return; void runBusy(async () => {
+const res = await plugin.action('finance.cfo.memo', { expected_revision: state.revision, memo: latestCfoText.slice(0, 2048) });
+if (res.status === 'saved') { await loadSnapshot(); setStatus('已保存 CFO 财务诊断备忘'); } else setStatus(`保存未完成：${res.status}`, true);
+}); });
+on('btn-cfo-copy', 'click', async () => { if (!latestCfoText) return; try { await navigator.clipboard.writeText(latestCfoText); setStatus('已复制 CFO 诊断报告'); } catch { setStatus('请手动选中复制'); } });
+on('btn-io', 'click', async () => {
+$('modal-io').hidden = false; $('io-msg').textContent = '';
+try { const r = await plugin.action('document.list', {}); $('io-select').innerHTML = (r.items || []).map(it => `<option value="${esc(it.id)}">${esc(it.label)}</option>`).join(''); }
+catch (e) { $('io-msg').textContent = `获取列表失败：${e?.message || ''}`; }
+});
+on('btn-io-export', 'click', async () => {
+const id = $('io-select').value; if (!id) return;
+try { const r = await plugin.action('document.export', { id }); if (r.text) { $('io-text').value = r.text; $('io-msg').textContent = `已导出 ${r.filename}（${r.text.length} 字符）`; } else $('io-msg').textContent = `导出失败：${r.error || ''}`; }
+catch (e) { $('io-msg').textContent = `导出失败：${e?.message || ''}`; }
+});
+on('btn-io-import', 'click', async () => {
+const text = $('io-text').value.trim(); if (!text) { $('io-msg').textContent = '请先粘贴 JSON'; return; }
+try { const r = await plugin.action('document.import', { text }); if (r.imported) { await loadSnapshot(); $('io-msg').textContent = '导入成功，工作台已刷新。'; } else $('io-msg').textContent = `导入失败：${r.reason || ''}`; }
+catch (e) { $('io-msg').textContent = `导入失败：${e?.message || ''}`; }
+});
+on('btn-io-copy', 'click', async () => { try { await navigator.clipboard.writeText($('io-text').value); $('io-msg').textContent = '已复制 JSON'; } catch { $('io-msg').textContent = '请手动全选复制'; } });
+initCats();
+void loadSnapshot();
+})();
+</script>
+</body>
+</html>

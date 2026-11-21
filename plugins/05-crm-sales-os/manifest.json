@@ -1,0 +1,714 @@
+{
+  "manifest_version": 1,
+  "plugin_id": "crm-sales-os",
+  "name": "AI 智能客户与商机管理系统",
+  "version": "1.0.0",
+  "host_api": 1,
+  "backend": "backend/index.js",
+  "page": "ui/index.html",
+  "ui": {
+    "icon": "chat",
+    "surfaces": ["workspace", "chat", "assistant"]
+  },
+  "permissions": ["data.read", "data.write", "tasks.start", "tasks.read", "tasks.cancel"],
+  "actions": [
+    {
+      "id": "crm.snapshot",
+      "title": "读取 CRM 完整工作台快照",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["revision", "accounts", "deals", "activities", "metrics"],
+        "properties": {
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "accounts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "name",
+                "industry",
+                "size",
+                "health",
+                "contact_name",
+                "contact_role",
+                "annual_potential",
+                "tags",
+                "risk_note",
+                "updated_at"
+              ],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+                "industry": { "type": "string", "minLength": 1, "maxLength": 32 },
+                "size": { "type": "string", "enum": ["startup", "smb", "midmarket", "enterprise"] },
+                "health": { "type": "integer", "minimum": 0, "maximum": 100 },
+                "contact_name": { "type": "string", "minLength": 1, "maxLength": 40 },
+                "contact_role": { "type": "string", "maxLength": 40 },
+                "annual_potential": { "type": "number", "minimum": 0, "maximum": 999999999 },
+                "tags": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 24 } },
+                "risk_note": { "type": "string", "maxLength": 240 },
+                "updated_at": { "type": "string", "minLength": 10, "maxLength": 10 }
+              }
+            }
+          },
+          "deals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "account_id",
+                "title",
+                "stage",
+                "amount",
+                "probability",
+                "close_date",
+                "owner",
+                "next_step",
+                "loss_reason",
+                "updated_at"
+              ],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "account_id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "title": { "type": "string", "minLength": 1, "maxLength": 80 },
+                "stage": { "type": "string", "enum": ["lead", "qualified", "proposal", "negotiation", "won", "lost"] },
+                "amount": { "type": "number", "minimum": 0, "maximum": 999999999 },
+                "probability": { "type": "integer", "minimum": 0, "maximum": 100 },
+                "close_date": { "type": "string", "minLength": 10, "maxLength": 10 },
+                "owner": { "type": "string", "maxLength": 32 },
+                "next_step": { "type": "string", "maxLength": 160 },
+                "loss_reason": { "type": "string", "maxLength": 160 },
+                "updated_at": { "type": "string", "minLength": 10, "maxLength": 10 }
+              }
+            }
+          },
+          "activities": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "account_id", "deal_id", "type", "date", "summary", "next_action", "next_due", "done"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "account_id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "deal_id": { "type": "string", "maxLength": 48 },
+                "type": { "type": "string", "enum": ["call", "meeting", "demo", "quote", "email", "ai_note"] },
+                "date": { "type": "string", "minLength": 10, "maxLength": 10 },
+                "summary": { "type": "string", "minLength": 1, "maxLength": 400 },
+                "next_action": { "type": "string", "maxLength": 160 },
+                "next_due": { "type": "string", "maxLength": 10 },
+                "done": { "type": "boolean" }
+              }
+            }
+          },
+          "metrics": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "active_pipeline",
+              "weighted_forecast",
+              "won_amount",
+              "lost_amount",
+              "active_deal_count",
+              "win_rate",
+              "avg_health",
+              "overdue_count",
+              "due_soon_count",
+              "funnel"
+            ],
+            "properties": {
+              "active_pipeline": { "type": "number", "minimum": 0, "maximum": 9999999999 },
+              "weighted_forecast": { "type": "number", "minimum": 0, "maximum": 9999999999 },
+              "won_amount": { "type": "number", "minimum": 0, "maximum": 9999999999 },
+              "lost_amount": { "type": "number", "minimum": 0, "maximum": 9999999999 },
+              "active_deal_count": { "type": "integer", "minimum": 0, "maximum": 9999 },
+              "win_rate": { "type": "number", "minimum": 0, "maximum": 100 },
+              "avg_health": { "type": "number", "minimum": 0, "maximum": 100 },
+              "overdue_count": { "type": "integer", "minimum": 0, "maximum": 9999 },
+              "due_soon_count": { "type": "integer", "minimum": 0, "maximum": 9999 },
+              "funnel": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["stage", "count", "amount", "weighted"],
+                  "properties": {
+                    "stage": { "type": "string", "enum": ["lead", "qualified", "proposal", "negotiation", "won", "lost"] },
+                    "count": { "type": "integer", "minimum": 0, "maximum": 9999 },
+                    "amount": { "type": "number", "minimum": 0, "maximum": 9999999999 },
+                    "weighted": { "type": "number", "minimum": 0, "maximum": 9999999999 }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "crm.account.save",
+      "title": "新增或更新企业客户",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expected_revision",
+          "id",
+          "name",
+          "industry",
+          "size",
+          "health",
+          "contact_name",
+          "contact_role",
+          "annual_potential",
+          "tags",
+          "risk_note"
+        ],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "industry": { "type": "string", "minLength": 1, "maxLength": 32 },
+          "size": { "type": "string", "enum": ["startup", "smb", "midmarket", "enterprise"] },
+          "health": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "contact_name": { "type": "string", "minLength": 1, "maxLength": 40 },
+          "contact_role": { "type": "string", "maxLength": 40 },
+          "annual_potential": { "type": "number", "minimum": 0, "maximum": 999999999 },
+          "tags": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 24 } },
+          "risk_note": { "type": "string", "maxLength": 240 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "crm.account.delete",
+      "title": "删除企业客户及关联记录",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["deleted", "not_found", "conflict"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "crm.deal.save",
+      "title": "新增或更新商机",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expected_revision",
+          "id",
+          "account_id",
+          "title",
+          "stage",
+          "amount",
+          "probability",
+          "close_date",
+          "owner",
+          "next_step",
+          "loss_reason"
+        ],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "account_id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "title": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "stage": { "type": "string", "enum": ["lead", "qualified", "proposal", "negotiation", "won", "lost"] },
+          "amount": { "type": "number", "minimum": 0, "maximum": 999999999 },
+          "probability": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "close_date": { "type": "string", "minLength": 10, "maxLength": 10 },
+          "owner": { "type": "string", "maxLength": 32 },
+          "next_step": { "type": "string", "maxLength": 160 },
+          "loss_reason": { "type": "string", "maxLength": 160 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input", "account_not_found"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "crm.deal.stage",
+      "title": "推进或变更商机阶段",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id", "stage"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "stage": { "type": "string", "enum": ["lead", "qualified", "proposal", "negotiation", "won", "lost"] },
+          "probability": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "loss_reason": { "type": "string", "maxLength": 160 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "not_found", "conflict"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "stage": { "type": "string", "enum": ["lead", "qualified", "proposal", "negotiation", "won", "lost"] },
+          "probability": { "type": "integer", "minimum": 0, "maximum": 100 }
+        }
+      }
+    },
+    {
+      "id": "crm.deal.delete",
+      "title": "删除商机",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["deleted", "not_found", "conflict"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "crm.activity.save",
+      "title": "新增或更新客户互动记录",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id", "account_id", "deal_id", "type", "date", "summary", "next_action", "next_due", "done"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "account_id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "deal_id": { "type": "string", "maxLength": 48 },
+          "type": { "type": "string", "enum": ["call", "meeting", "demo", "quote", "email", "ai_note"] },
+          "date": { "type": "string", "minLength": 10, "maxLength": 10 },
+          "summary": { "type": "string", "minLength": 1, "maxLength": 400 },
+          "next_action": { "type": "string", "maxLength": 160 },
+          "next_due": { "type": "string", "maxLength": 10 },
+          "done": { "type": "boolean" }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input", "account_not_found"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "crm.activity.delete",
+      "title": "删除互动记录",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["deleted", "not_found", "conflict"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "crm.demo.seed",
+      "title": "加载完整 B2B SaaS 演示数据集",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["seeded", "conflict"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "counts": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["accounts", "deals", "activities"],
+            "properties": {
+              "accounts": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "deals": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "activities": { "type": "integer", "minimum": 0, "maximum": 100 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "document.list",
+      "title": "列出可导出的 CRM 数据包",
+      "permissions": ["data.read"],
+      "input_schema": { "type": "object", "additionalProperties": false, "required": [], "properties": {} },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "label"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 64 },
+                "label": { "type": "string", "minLength": 1, "maxLength": 120 }
+              }
+            }
+          },
+          "error": { "type": "string", "maxLength": 64 }
+        }
+      }
+    },
+    {
+      "id": "document.export",
+      "title": "导出 CRM 数据 JSON",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "maxLength": 64 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "filename": { "type": "string", "maxLength": 80 },
+          "text": { "type": "string", "maxLength": 12288 },
+          "error": { "type": "string", "maxLength": 64 }
+        }
+      }
+    },
+    {
+      "id": "document.import",
+      "title": "导入 CRM 数据 JSON",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text"],
+        "properties": {
+          "text": { "type": "string", "minLength": 2, "maxLength": 12288 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["imported"],
+        "properties": {
+          "imported": { "type": "boolean" },
+          "reason": { "type": "string", "maxLength": 64 }
+        }
+      }
+    },
+    {
+      "id": "session.turn.request",
+      "title": "向当前会话派发 AI 销售军师任务",
+      "permissions": ["tasks.start"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["prompt", "work_id"],
+        "properties": {
+          "prompt": { "type": "string", "minLength": 1, "maxLength": 2048 },
+          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["task_id", "state"],
+        "properties": {
+          "task_id": { "type": "string", "minLength": 36, "maxLength": 36 },
+          "state": { "type": "string", "enum": ["dispatching"] }
+        }
+      }
+    },
+    {
+      "id": "session.turn.result",
+      "title": "核对 AI 销售军师推理结果",
+      "permissions": ["tasks.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["work_id"],
+        "properties": {
+          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["work_id", "state", "truncated"],
+        "properties": {
+          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 },
+          "state": {
+            "type": "string",
+            "enum": ["dispatching", "running", "waiting", "completed", "cancelled", "failed", "unknown", "unavailable"]
+          },
+          "truncated": { "type": "boolean" }
+        }
+      }
+    }
+  ],
+  "tools": [
+    {
+      "id": "crm.pipeline",
+      "title": "查询销售漏斗与加权营收",
+      "description": "汇总 CRM 销售管道总额、各阶段商机数与加权预测营收、赢单率及待跟进告警。",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "stage": {
+            "type": "string",
+            "enum": ["lead", "qualified", "proposal", "negotiation", "won", "lost"],
+            "description": "可选按商机阶段筛选明细"
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status", "summary", "stages", "top_deals"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["ready", "empty"] },
+          "summary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["active_pipeline", "weighted_forecast", "won_amount", "win_rate", "overdue_count", "due_soon_count"],
+            "properties": {
+              "active_pipeline": { "type": "number", "minimum": 0, "maximum": 9999999999 },
+              "weighted_forecast": { "type": "number", "minimum": 0, "maximum": 9999999999 },
+              "won_amount": { "type": "number", "minimum": 0, "maximum": 9999999999 },
+              "win_rate": { "type": "number", "minimum": 0, "maximum": 100 },
+              "overdue_count": { "type": "integer", "minimum": 0, "maximum": 9999 },
+              "due_soon_count": { "type": "integer", "minimum": 0, "maximum": 9999 }
+            }
+          },
+          "stages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["stage", "count", "amount", "weighted"],
+              "properties": {
+                "stage": { "type": "string", "minLength": 1, "maxLength": 24 },
+                "count": { "type": "integer", "minimum": 0, "maximum": 9999 },
+                "amount": { "type": "number", "minimum": 0, "maximum": 9999999999 },
+                "weighted": { "type": "number", "minimum": 0, "maximum": 9999999999 }
+              }
+            }
+          },
+          "top_deals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "title", "account_name", "stage", "amount", "probability", "close_date"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "title": { "type": "string", "minLength": 1, "maxLength": 80 },
+                "account_name": { "type": "string", "minLength": 1, "maxLength": 64 },
+                "stage": { "type": "string", "minLength": 1, "maxLength": 24 },
+                "amount": { "type": "number", "minimum": 0, "maximum": 999999999 },
+                "probability": { "type": "integer", "minimum": 0, "maximum": 100 },
+                "close_date": { "type": "string", "minLength": 10, "maxLength": 10 }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "crm.account.get",
+      "title": "按名称查询客户 360° 档案",
+      "description": "按企业客户名称模糊或精确检索客户健康度、联系人、关联商机总额与最近互动跟进记录。",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 64, "description": "客户名称或关键词" }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["found", "not_found"] },
+          "account": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "name", "industry", "size", "health", "contact_name", "contact_role", "annual_potential", "risk_note", "total_deal_amount"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+              "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+              "industry": { "type": "string", "minLength": 1, "maxLength": 32 },
+              "size": { "type": "string", "minLength": 1, "maxLength": 24 },
+              "health": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "contact_name": { "type": "string", "minLength": 1, "maxLength": 40 },
+              "contact_role": { "type": "string", "maxLength": 40 },
+              "annual_potential": { "type": "number", "minimum": 0, "maximum": 999999999 },
+              "risk_note": { "type": "string", "maxLength": 240 },
+              "total_deal_amount": { "type": "number", "minimum": 0, "maximum": 9999999999 }
+            }
+          },
+          "deals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "title", "stage", "amount", "probability", "close_date"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "title": { "type": "string", "minLength": 1, "maxLength": 80 },
+                "stage": { "type": "string", "minLength": 1, "maxLength": 24 },
+                "amount": { "type": "number", "minimum": 0, "maximum": 999999999 },
+                "probability": { "type": "integer", "minimum": 0, "maximum": 100 },
+                "close_date": { "type": "string", "minLength": 10, "maxLength": 10 }
+              }
+            }
+          },
+          "recent_activities": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "type", "date", "summary", "next_action", "next_due", "done"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "type": { "type": "string", "minLength": 1, "maxLength": 24 },
+                "date": { "type": "string", "minLength": 10, "maxLength": 10 },
+                "summary": { "type": "string", "minLength": 1, "maxLength": 400 },
+                "next_action": { "type": "string", "maxLength": 160 },
+                "next_due": { "type": "string", "maxLength": 10 },
+                "done": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "crm.activity.log",
+      "title": "记录客户互动跟进",
+      "description": "为指定企业客户和可选商机记录一条电话、会议、演示、报价、邮件或 AI 策略互动，并设置下一步跟进日期。",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["account_name", "type", "summary"],
+        "properties": {
+          "account_name": { "type": "string", "minLength": 1, "maxLength": 64, "description": "客户名称或客户 ID" },
+          "deal_id": { "type": "string", "maxLength": 48, "description": "可选关联商机 ID" },
+          "type": { "type": "string", "enum": ["call", "meeting", "demo", "quote", "email", "ai_note"] },
+          "date": { "type": "string", "minLength": 10, "maxLength": 10, "description": "互动日期 YYYY-MM-DD，默认当天" },
+          "summary": { "type": "string", "minLength": 1, "maxLength": 400, "description": "互动摘要" },
+          "next_action": { "type": "string", "maxLength": 160, "description": "下一步行动" },
+          "next_due": { "type": "string", "maxLength": 10, "description": "下次跟进日期 YYYY-MM-DD" }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["logged", "account_not_found", "invalid_input", "limit", "conflict"] },
+          "activity_id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "account_name": { "type": "string", "minLength": 1, "maxLength": 64 }
+        }
+      }
+    }
+  ],
+  "data": [
+    { "collection": "accounts", "scope": "account", "schema_version": 1 },
+    { "collection": "deals", "scope": "account", "schema_version": 1 },
+    { "collection": "activities", "scope": "account", "schema_version": 1 }
+  ],
+  "http": [],
+  "tasks": [],
+  "files": []
+}

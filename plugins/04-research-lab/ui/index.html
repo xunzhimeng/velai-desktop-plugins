@@ -1,0 +1,1280 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 学术科研与文献综述工作台</title>
+<style>
+:root{--bg:#0a0d14;--bg-elev:#111622;--bg-card:#151c2c;--bg-hover:#1d263b;--bg-input:#0d121d;--border:#233049;--border-strong:#354769;--fg:#eef2fa;--fg-muted:#94a3bd;--fg-dim:#64748b;--accent:#818cf8;--accent-solid:#6366f1;--accent-soft:rgba(129,140,248,0.16);--sky:#38bdf8;--emerald:#34d399;--amber:#fbbf24;--rose:#fb7185;--shadow:0 12px 30px rgba(0,0,0,0.38);--radius:12px;font:13px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Segoe UI",system-ui,sans-serif;}
+html[data-theme="light"]{--bg:#f4f6fb;--bg-elev:#ffffff;--bg-card:#ffffff;--bg-hover:#f1f5fb;--bg-input:#f8fafc;--border:#e2e8f0;--border-strong:#cbd5e1;--fg:#0f172a;--fg-muted:#475569;--fg-dim:#64748b;--accent:#4f46e5;--accent-solid:#4f46e5;--accent-soft:rgba(79,70,229,0.1);--sky:#0284c7;--emerald:#059669;--amber:#d97706;--rose:#e11d48;--shadow:0 8px 22px rgba(15,23,42,0.08);}
+*{box-sizing:border-box;}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);overflow:hidden;}
+::-webkit-scrollbar{width:7px;height:7px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:99px;}
+.app{display:grid;grid-template-columns:214px minmax(0,1fr);height:100vh;}
+.sidebar{background:var(--bg-elev);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:14px 12px;gap:14px;overflow-y:auto;}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 6px;}
+.brand-icon{width:30px;height:30px;border-radius:9px;flex-shrink:0;background:linear-gradient(135deg,#6366f1,#38bdf8);display:grid;place-items:center;color:#fff;font-weight:800;font-size:13px;box-shadow:0 4px 14px rgba(99,102,241,0.4);}
+.brand-title{font-size:13.5px;font-weight:700;line-height:1.2;}
+.brand-sub{font-size:11px;color:var(--fg-dim);}
+.nav{display:flex;flex-direction:column;gap:4px;}
+.nav-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;border:1px solid transparent;border-radius:9px;padding:9px 10px;background:transparent;color:var(--fg-muted);cursor:pointer;font:inherit;font-weight:500;text-align:left;transition:0.15s;}
+.nav-btn:hover{background:var(--bg-hover);color:var(--fg);}
+.nav-btn.active{background:var(--accent-soft);color:var(--fg);border-color:rgba(129,140,248,0.36);font-weight:600;}
+.nav-left{display:flex;align-items:center;gap:8px;}
+.nav-badge{font-size:11px;padding:1px 6px;border-radius:99px;background:var(--bg-card);border:1px solid var(--border);color:var(--fg-muted);}
+.side-foot{margin-top:auto;padding-top:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px;}
+.side-meta{font-size:11px;color:var(--fg-dim);display:flex;justify-content:space-between;padding:0 4px;}
+.workspace{display:flex;flex-direction:column;min-width:0;height:100vh;overflow:hidden;}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:11px 18px;border-bottom:1px solid var(--border);background:var(--bg-elev);}
+.top-title{display:flex;align-items:center;gap:10px;}
+.top-title h1{margin:0;font-size:15px;font-weight:700;}
+.rev-pill{font-size:11px;color:var(--fg-muted);background:var(--bg-card);border:1px solid var(--border);border-radius:99px;padding:2px 8px;}
+.toolbar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.btn{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);border-radius:8px;padding:6px 11px;background:var(--bg-card);color:var(--fg);font:inherit;font-weight:500;cursor:pointer;transition:0.15s;white-space:nowrap;}
+.btn:hover:not(:disabled){border-color:var(--border-strong);background:var(--bg-hover);}
+.btn.primary{background:var(--accent-solid);border-color:var(--accent-solid);color:#fff;}
+.btn.primary:hover:not(:disabled){filter:brightness(1.1);}
+.btn.ghost{background:transparent;}
+.btn.danger{color:var(--rose);border-color:rgba(251,113,133,0.35);}
+.btn.danger:hover:not(:disabled){background:rgba(251,113,133,0.12);}
+.btn.sm{padding:4px 8px;font-size:12px;border-radius:7px;}
+.btn:disabled{opacity:0.5;cursor:not-allowed;}
+.kpi-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:12px 18px 4px;}
+.kpi-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:11px 14px;display:flex;flex-direction:column;gap:4px;position:relative;overflow:hidden;}
+.kpi-card::after{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--kpi-c,var(--accent));}
+.kpi-label{font-size:11.5px;color:var(--fg-muted);display:flex;justify-content:space-between;}
+.kpi-val{font-size:22px;font-weight:800;letter-spacing:-0.02em;line-height:1.15;}
+.kpi-sub{font-size:11px;color:var(--fg-dim);}
+.main-scroll{flex:1;overflow-y:auto;padding:12px 18px 24px;display:flex;flex-direction:column;gap:14px;}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;display:flex;flex-direction:column;gap:12px;}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.card-title{margin:0;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;}
+.card-sub{font-size:12px;color:var(--fg-muted);}
+input[type="text"],input[type="search"],input[type="number"],select,textarea{font:inherit;color:var(--fg);background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:6px 10px;outline:none;transition:border-color 0.15s;}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);}
+textarea{resize:vertical;line-height:1.55;}
+.chips{display:flex;gap:5px;flex-wrap:wrap;align-items:center;}
+.chip{border:1px solid var(--border);background:var(--bg-input);color:var(--fg-muted);border-radius:99px;padding:3px 10px;font-size:12px;cursor:pointer;font-family:inherit;}
+.chip.active{background:var(--accent-soft);border-color:var(--accent);color:var(--fg);font-weight:600;}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 7px;border-radius:99px;border:1px solid transparent;white-space:nowrap;}
+.st-unread{background:rgba(148,163,184,0.14);color:#94a3b8;border-color:rgba(148,163,184,0.3);}
+.st-reading{background:rgba(56,189,248,0.15);color:#38bdf8;border-color:rgba(56,189,248,0.32);}
+.st-annotated{background:rgba(129,140,248,0.18);color:#818cf8;border-color:rgba(129,140,248,0.36);}
+.st-cited{background:rgba(52,211,153,0.16);color:#34d399;border-color:rgba(52,211,153,0.35);}
+.tag-pill{font-size:11px;padding:1px 7px;border-radius:6px;background:var(--bg-input);border:1px solid var(--border);color:var(--fg-muted);}
+.stars{color:var(--amber);letter-spacing:1px;font-size:12px;}
+.paper-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px;}
+.paper-card{background:var(--bg-input);border:1px solid var(--border);border-radius:11px;padding:12px 13px;display:flex;flex-direction:column;gap:8px;transition:0.15s;}
+.paper-card:hover{border-color:var(--border-strong);}
+.paper-card.checked{border-color:var(--accent);box-shadow:0 0 0 1px rgba(129,140,248,0.35);}
+.paper-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.paper-title{font-size:13.5px;font-weight:700;line-height:1.35;}
+.paper-meta{font-size:11.5px;color:var(--fg-muted);}
+.paper-snippet{font-size:12px;color:var(--fg-muted);display:flex;flex-direction:column;gap:4px;}
+.paper-snippet b{color:var(--fg);font-weight:600;}
+.graph-layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(260px,0.85fr);gap:14px;}
+.svg-wrap{position:relative;width:100%;border:1px solid var(--border);border-radius:10px;background:var(--bg-input);overflow:hidden;}
+.svg-wrap svg{display:block;width:100%;height:auto;}
+.drawer{display:flex;flex-direction:column;gap:10px;}
+.link-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:7px;background:var(--bg-input);border:1px solid var(--border);color:var(--fg);font-size:11.5px;cursor:pointer;text-align:left;}
+.link-chip:hover{border-color:var(--accent);background:var(--bg-hover);}
+.matrix-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+.matrix-table th,.matrix-table td{border:1px solid var(--border);padding:9px 10px;vertical-align:top;text-align:left;}
+.matrix-table th{background:var(--bg-elev);font-weight:700;min-width:170px;}
+.matrix-table th:first-child{min-width:96px;width:104px;color:var(--fg-muted);}
+.md-pre{margin:0;white-space:pre-wrap;word-break:break-word;padding:10px 12px;border:1px solid var(--border);border-radius:9px;background:var(--bg-input);font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;max-height:220px;overflow:auto;}
+.ai-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(270px,0.85fr);gap:14px;}
+.mode-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.mode-card{text-align:left;border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--bg-input);color:var(--fg);cursor:pointer;display:flex;flex-direction:column;gap:3px;transition:0.15s;}
+.mode-card:hover{border-color:var(--border-strong);}
+.mode-card.active{border-color:var(--accent);background:var(--accent-soft);}
+.ai-result-box{border:1px solid var(--border-strong);border-radius:10px;padding:11px 12px;background:var(--bg-input);display:flex;flex-direction:column;gap:8px;}
+.note-list{display:flex;flex-direction:column;gap:8px;max-height:460px;overflow-y:auto;}
+.note-item{border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--bg-input);cursor:pointer;display:flex;flex-direction:column;gap:4px;}
+.note-item:hover{border-color:var(--border-strong);}
+.note-item.active{border-color:var(--accent);background:var(--accent-soft);}
+.empty-state{padding:38px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;border:1px dashed var(--border-strong);border-radius:var(--radius);background:var(--bg-input);}
+.empty-state h3{margin:0;font-size:15px;}
+.empty-state p{margin:0;color:var(--fg-muted);max-width:460px;}
+.modal-backdrop{position:fixed;inset:0;background:rgba(5,8,15,0.7);backdrop-filter:blur(4px);display:grid;place-items:center;z-index:50;padding:16px;}
+.modal-backdrop[hidden]{display:none;}
+.modal{width:min(660px,100%);max-height:88vh;overflow-y:auto;background:var(--bg-elev);border:1px solid var(--border-strong);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px;}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field-label{font-size:12px;font-weight:600;color:var(--fg-muted);display:flex;justify-content:space-between;}
+.cites-pick{display:flex;flex-wrap:wrap;gap:6px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);max-height:110px;overflow-y:auto;}
+.cites-pick label{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:2px 7px;border-radius:6px;background:var(--bg-card);border:1px solid var(--border);cursor:pointer;}
+.toast{position:fixed;right:18px;bottom:18px;z-index:60;padding:9px 14px;border-radius:10px;background:var(--bg-elev);border:1px solid var(--border-strong);box-shadow:var(--shadow);font-size:12.5px;font-weight:500;max-width:380px;}
+.toast[data-type="error"]{border-color:var(--rose);color:var(--rose);}
+.toast[data-type="ok"]{border-color:var(--emerald);color:var(--emerald);}
+.toast[hidden],[hidden]{display:none !important;}
+@media (max-width:860px){
+.app{grid-template-columns:1fr;grid-template-rows:auto 1fr;}
+.sidebar{flex-direction:row;align-items:center;overflow-x:auto;padding:8px 12px;border-right:none;border-bottom:1px solid var(--border);}
+.brand-sub,.side-foot{display:none;}
+.nav{flex-direction:row;}
+.kpi-strip{grid-template-columns:repeat(2,minmax(0,1fr));}
+.graph-layout,.ai-grid,.form-grid,.mode-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+<div class="brand">
+<div class="brand-icon">RL</div>
+<div>
+<div class="brand-title">Research Lab</div>
+<div class="brand-sub">文献 · 引用网 · 矩阵 · AI 综述</div>
+</div>
+</div>
+<nav class="nav" aria-label="主导航">
+<button class="nav-btn active" data-view="library" type="button">
+<span class="nav-left"><span>▤</span><span>文献卡片库</span></span>
+<span class="nav-badge" id="nav-papers">0</span>
+</button>
+<button class="nav-btn" data-view="graph" type="button">
+<span class="nav-left"><span>❖</span><span>引用脉络图谱</span></span>
+<span class="nav-badge" id="nav-edges">0</span>
+</button>
+<button class="nav-btn" data-view="matrix" type="button">
+<span class="nav-left"><span>⊞</span><span>方法论对比矩阵</span></span>
+<span class="nav-badge" id="nav-sel">0</span>
+</button>
+<button class="nav-btn" data-view="ai" type="button">
+<span class="nav-left"><span>✦</span><span>AI 文献综述台</span></span>
+<span class="nav-badge" id="nav-notes">0</span>
+</button>
+</nav>
+<div class="side-foot">
+<div class="side-meta"><span>作用域</span><span>Account 跨项目</span></div>
+<div class="side-meta"><span>AI 联动</span><span>session.turn.*</span></div>
+<div class="side-meta"><span>Tools</span><span>search / read / add</span></div>
+<button id="btn-seed-side" class="btn sm" type="button" style="justify-content:center">✦ 加载 LLM 经典论文集</button>
+</div>
+</aside>
+<div class="workspace">
+<header class="topbar">
+<div class="top-title">
+<h1 id="view-heading">学术文献卡片库与筛选</h1>
+<span class="rev-pill" id="rev-badge">修订 #0</span>
+<span class="rev-pill" id="sel-badge">已勾选 0 篇用于对比/综述</span>
+</div>
+<div class="toolbar">
+<button id="btn-seed" class="btn sm" type="button">✦ 演示文献集</button>
+<button id="btn-io" class="btn sm" type="button">⇅ 导入 / 导出</button>
+<button id="btn-theme" class="btn sm ghost" type="button">☀ 浅色</button>
+<button id="btn-new-paper" class="btn sm primary" type="button">+ 收录论文</button>
+</div>
+</header>
+<section class="kpi-strip">
+<div class="kpi-card" style="--kpi-c:#818cf8">
+<div class="kpi-label"><span>文献总量</span><span>Account Library</span></div>
+<div class="kpi-val" id="kpi-papers">0</div>
+<div class="kpi-sub" id="kpi-rating">平均星级 0.0 ★</div>
+</div>
+<div class="kpi-card" style="--kpi-c:#34d399">
+<div class="kpi-label"><span>已批注 / 已引用</span><span>Deep Read</span></div>
+<div class="kpi-val" id="kpi-read">0</div>
+<div class="kpi-sub" id="kpi-read-sub">精读完成率 0%</div>
+</div>
+<div class="kpi-card" style="--kpi-c:#38bdf8">
+<div class="kpi-label"><span>引用网络连边</span><span>Citation Graph</span></div>
+<div class="kpi-val" id="kpi-edges">0</div>
+<div class="kpi-sub">有向知识演进关系</div>
+</div>
+<div class="kpi-card" style="--kpi-c:#fbbf24">
+<div class="kpi-label"><span>科研综述笔记</span><span>AI Synthesis</span></div>
+<div class="kpi-val" id="kpi-notes">0</div>
+<div class="kpi-sub">支持会话协同采纳</div>
+</div>
+</section>
+<main class="main-scroll">
+<section id="view-library" class="view-pane">
+<div id="empty-lib" class="empty-state" hidden>
+<h3>欢迎使用 AI 学术科研与文献综述工作台</h3>
+<p>支持文献结构化管理、原生 SVG 有向引用图谱、方法论对比矩阵以及通过 Velai 当前会话一键生成 Related Work 与研究空白。点击下方加载 6 篇经典 LLM Agent / RAG / Sandbox 演示论文集！</p>
+<div class="toolbar">
+<button id="btn-seed-empty" class="btn primary" type="button">✦ 加载 6 篇经典演示论文集</button>
+<button id="btn-new-empty" class="btn" type="button">+ 手动收录首篇论文</button>
+</div>
+</div>
+<div id="lib-content" class="card">
+<div class="card-head">
+<div class="toolbar" style="flex:1">
+<input id="search-paper" type="search" placeholder="搜索论文标题、作者、会议期刊、核心方法或标签…" style="min-width:220px;flex:1;max-width:380px">
+<select id="sort-paper">
+<option value="year_desc">按年份降序</option>
+<option value="rating_desc">按星级降序</option>
+<option value="cites_desc">按被引用度降序</option>
+</select>
+</div>
+<div class="chips" id="status-chips">
+<button class="chip active" data-st="all" type="button">全部</button>
+<button class="chip" data-st="unread" type="button">未读</button>
+<button class="chip" data-st="reading" type="button">在读</button>
+<button class="chip" data-st="annotated" type="button">已批注</button>
+<button class="chip" data-st="cited" type="button">已引用</button>
+</div>
+</div>
+<div class="chips" id="tag-chips"></div>
+<div id="paper-grid" class="paper-grid"></div>
+</div>
+</section>
+<section id="view-graph" class="view-pane" hidden>
+<div class="graph-layout">
+<div class="card">
+<div class="card-head">
+<div>
+<h2 class="card-title">有向引用脉络与主题演进图谱 (SVG)</h2>
+<div class="card-sub">按发表年份分层排布，贝塞尔曲线展示知识演进（基础文献 → 后续施引）；点击任意节点高亮上下游引用链</div>
+</div>
+<div class="chips" style="font-size:11.5px;color:var(--fg-muted)">
+<span>● <span style="color:#38bdf8">蓝色：上游参考文献</span></span>
+<span>● <span style="color:#34d399">绿色：下游施引文献</span></span>
+</div>
+</div>
+<div class="svg-wrap">
+<svg id="graph-svg" viewBox="0 0 760 440" role="img" aria-label="论文引用脉络图谱"></svg>
+</div>
+</div>
+<div class="card">
+<div class="card-head">
+<h2 class="card-title">节点详情抽屉</h2>
+<span class="card-sub" id="graph-hint">点击左侧节点查看</span>
+</div>
+<div id="graph-drawer" class="drawer"></div>
+</div>
+</div>
+</section>
+<section id="view-matrix" class="view-pane" hidden>
+<div class="card">
+<div class="card-head">
+<div>
+<h2 class="card-title">方法论横向对比矩阵</h2>
+<div class="card-sub">勾选 1~6 篇论文对比「核心架构 / 数据集 / 指标亮点 / 局限性 / 可复用点」，自动生成 Markdown 表格</div>
+</div>
+<div class="toolbar">
+<button id="btn-matrix-insert" class="btn sm primary" type="button" hidden>↗ 插入对比表到会话</button>
+<button id="btn-matrix-copy" class="btn sm" type="button">复制 Markdown 表格</button>
+</div>
+</div>
+<div class="chips" id="matrix-picker"></div>
+<div style="overflow-x:auto">
+<table class="matrix-table" id="matrix-table"></table>
+</div>
+<div class="field">
+<span class="field-label">自动生成的 Markdown 对比表预览</span>
+<pre id="matrix-md" class="md-pre"></pre>
+</div>
+</div>
+</section>
+<section id="view-ai" class="view-pane" hidden>
+<div class="ai-grid">
+<div class="card">
+<div class="card-head">
+<div>
+<h2 class="card-title">AI 文献综述与研究空白生成器</h2>
+<div class="card-sub">勾选 1~6 篇论文，通过 session.turn.request 委托 Velai 当前会话生成，核对后采纳保存为科研笔记</div>
+</div>
+<span class="rev-pill" id="ai-sel-count">已选 0 / 6 篇</span>
+</div>
+<div class="chips" id="ai-paper-picker"></div>
+<div class="mode-grid" id="ai-modes">
+<button class="mode-card active" data-mode="related_work" type="button">
+<strong>① 生成 Related Work 综述</strong>
+<span class="card-sub">按技术演进脉络串联对比，输出学术论文风格相关工作章节</span>
+</button>
+<button class="mode-card" data-mode="research_gaps" type="button">
+<strong>② 提炼共同研究空白</strong>
+<span class="card-sub">交叉比对各文局限性，归纳 3 个可发表的创新研究切入点</span>
+</button>
+<button class="mode-card" data-mode="experiment_plan" type="button">
+<strong>③ 生成实验对比方案</strong>
+<span class="card-sub">设计 Baseline 对比矩阵、评测数据集、核心指标与消融实验</span>
+</button>
+<button class="mode-card" data-mode="peer_review" type="button">
+<strong>④ 审稿意见模拟 (Peer Review)</strong>
+<span class="card-sub">以顶会审稿人视角输出 Strengths / Weaknesses / Questions</span>
+</button>
+</div>
+<label class="field">
+<span class="field-label">补充研究问题或聚焦方向（可选）</span>
+<input id="ai-focus" type="text" maxlength="200" placeholder="例如：聚焦桌面端低延迟沙箱插件编排与事实验证场景…">
+</label>
+<div class="toolbar">
+<button id="btn-ai-dispatch" class="btn primary" type="button">✦ 发送给当前会话生成</button>
+<button id="btn-ai-check" class="btn" type="button" hidden>⟳ 核对会话结果</button>
+<button id="btn-ai-insert-prompt" class="btn" type="button" hidden>↗ 仅插入提示词到输入框</button>
+</div>
+<div id="ai-turn-box" class="ai-result-box" hidden>
+<div class="card-head">
+<strong id="ai-turn-state" style="font-size:12.5px">等待派发…</strong>
+<div class="toolbar">
+<button id="btn-ai-adopt" class="btn sm primary" type="button" hidden>✓ 采纳并存为科研笔记</button>
+</div>
+</div>
+<pre id="ai-turn-preview" class="md-pre" hidden></pre>
+</div>
+</div>
+<div class="card">
+<div class="card-head">
+<h2 class="card-title">科研综述笔记库 (<span id="notes-count">0</span>)</h2>
+<button id="btn-new-note" class="btn sm" type="button">+ 手动新建笔记</button>
+</div>
+<div id="note-list" class="note-list"></div>
+<div id="note-viewer" class="ai-result-box" hidden>
+<div class="card-head">
+<input id="nv-title" type="text" maxlength="100" style="flex:1;font-weight:700">
+<button id="nv-save" class="btn sm primary" type="button">保存</button>
+<button id="nv-insert" class="btn sm" type="button" hidden>↗ 插入</button>
+<button id="nv-del" class="btn sm danger" type="button">删除</button>
+</div>
+<textarea id="nv-content" rows="9" maxlength="6000"></textarea>
+</div>
+</div>
+</div>
+</section>
+</main>
+</div>
+</div>
+<div id="modal-paper" class="modal-backdrop" hidden>
+<div class="modal" role="dialog" aria-modal="true">
+<div class="card-head">
+<h2 class="card-title" id="mp-heading">收录论文</h2>
+<button id="mp-close" class="btn sm ghost" type="button">✕</button>
+</div>
+<div class="form-grid">
+<label class="field" style="grid-column:1/-1">
+<span class="field-label">论文标题 *</span>
+<input id="pf-title" type="text" maxlength="160" placeholder="例如：Self-RAG: Learning to Retrieve, Generate, and Critique">
+</label>
+<label class="field">
+<span class="field-label">论文短 ID（英文/数字）</span>
+<input id="pf-id" type="text" maxlength="40" placeholder="例如：asai2024selfrag（留空自动生成）">
+</label>
+<label class="field">
+<span class="field-label">作者 *</span>
+<input id="pf-authors" type="text" maxlength="120" placeholder="Akari Asai, Zeqiu Wu et al.">
+</label>
+<label class="field">
+<span class="field-label">年份 *</span>
+<input id="pf-year" type="number" min="1950" max="2100" value="2024">
+</label>
+<label class="field">
+<span class="field-label">会议 / 期刊 *</span>
+<input id="pf-venue" type="text" maxlength="48" placeholder="ICLR 2024 / NeurIPS 2024">
+</label>
+<label class="field">
+<span class="field-label">阅读状态</span>
+<select id="pf-status">
+<option value="unread">未读 (Unread)</option>
+<option value="reading">在读 (Reading)</option>
+<option value="annotated">已批注 (Annotated)</option>
+<option value="cited">已引用 (Cited)</option>
+</select>
+</label>
+<label class="field">
+<span class="field-label">重要度星级 (1-5)</span>
+<select id="pf-rating">
+<option value="5">★★★★★ (5 必读核心)</option>
+<option value="4" selected>★★★★☆ (4 重点参考)</option>
+<option value="3">★★★☆☆ (3 一般参考)</option>
+<option value="2">★★☆☆☆ (2 略读)</option>
+<option value="1">★☆☆☆☆ (1 边缘相关)</option>
+</select>
+</label>
+<label class="field" style="grid-column:1/-1">
+<span class="field-label">领域标签（逗号分隔，最多 6 个）</span>
+<input id="pf-tags" type="text" maxlength="120" placeholder="RAG, Agent, Sandbox, Reflection">
+</label>
+<label class="field" style="grid-column:1/-1">
+<span class="field-label">核心方法</span>
+<textarea id="pf-method" rows="2" maxlength="260"></textarea>
+</label>
+<label class="field" style="grid-column:1/-1">
+<span class="field-label">主要贡献</span>
+<textarea id="pf-contrib" rows="2" maxlength="260"></textarea>
+</label>
+<label class="field" style="grid-column:1/-1">
+<span class="field-label">局限性 / 研究空白</span>
+<textarea id="pf-limit" rows="2" maxlength="260"></textarea>
+</label>
+<div class="field" style="grid-column:1/-1">
+<span class="field-label">该论文引用的库内上游文献 (Cites)</span>
+<div id="pf-cites-box" class="cites-pick"></div>
+</div>
+</div>
+<div class="card-head">
+<button id="mp-del" class="btn danger" type="button" hidden>删除论文</button>
+<div class="toolbar" style="margin-left:auto">
+<button id="mp-cancel" class="btn" type="button">取消</button>
+<button id="mp-save" class="btn primary" type="button">保存论文</button>
+</div>
+</div>
+</div>
+</div>
+<div id="modal-matrix" class="modal-backdrop" hidden>
+<div class="modal" role="dialog" aria-modal="true">
+<div class="card-head">
+<h2 class="card-title" id="mm-heading">编辑对比矩阵维度</h2>
+<button id="mm-close" class="btn sm ghost" type="button">✕</button>
+</div>
+<label class="field"><span class="field-label">核心架构</span><textarea id="mf-arch" rows="2" maxlength="240"></textarea></label>
+<label class="field"><span class="field-label">数据集 / 基准</span><input id="mf-data" type="text" maxlength="180"></label>
+<label class="field"><span class="field-label">指标亮点</span><input id="mf-met" type="text" maxlength="180"></label>
+<label class="field"><span class="field-label">局限性</span><textarea id="mf-lim" rows="2" maxlength="240"></textarea></label>
+<label class="field"><span class="field-label">可复用点</span><textarea id="mf-reu" rows="2" maxlength="240"></textarea></label>
+<div class="card-head">
+<div class="toolbar" style="margin-left:auto">
+<button id="mm-cancel" class="btn" type="button">取消</button>
+<button id="mm-save" class="btn primary" type="button">保存对比条目</button>
+</div>
+</div>
+</div>
+</div>
+<div id="modal-io" class="modal-backdrop" hidden>
+<div class="modal" role="dialog" aria-modal="true">
+<div class="card-head">
+<h2 class="card-title">导入 / 导出文献库与科研笔记 (JSON)</h2>
+<button id="io-close" class="btn sm ghost" type="button">✕</button>
+</div>
+<div class="toolbar">
+<select id="io-select" style="flex:1"></select>
+<button id="io-export" class="btn sm primary" type="button">导出预览</button>
+<button id="io-copy" class="btn sm" type="button">复制</button>
+</div>
+<textarea id="io-text" rows="10" placeholder="导出预览 JSON，或粘贴文献库 / 科研笔记 JSON 进行导入…"></textarea>
+<div class="card-head">
+<span class="card-sub">单次导入/导出上限 12 KiB</span>
+<button id="io-import" class="btn primary" type="button">执行导入</button>
+</div>
+</div>
+</div>
+<div id="toast" class="toast" role="status" hidden></div>
+<script>
+(() => {
+const plugin = globalThis.nmasPlugin;
+const $ = id => document.getElementById(id);
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const ST_LBL = { unread: '未读', reading: '在读', annotated: '已批注', cited: '已引用' };
+const MODE_LBL = {
+related_work: 'Related Work 综述',
+research_gaps: '共同研究空白',
+experiment_plan: '实验对比方案',
+peer_review: '审稿意见模拟',
+custom: '科研笔记',
+};
+const VIEW_TITLES = {
+library: '学术文献卡片库与筛选',
+graph: '引用脉络与主题演进图谱',
+matrix: '方法论横向对比矩阵',
+ai: 'AI 文献综述与研究空白工作台',
+};
+const state = {
+view: 'library',
+revision: 0,
+kpi: { total_papers: 0, annotated_or_cited: 0, citation_edges: 0, total_notes: 0, avg_rating: 0 },
+papers: [],
+matrix: { selected_ids: [], rows: {} },
+notes: [],
+filterStatus: 'all',
+filterTag: 'all',
+search: '',
+sortBy: 'year_desc',
+graphFocusId: null,
+editingPaperId: null,
+editingMatrixId: null,
+activeNoteId: null,
+aiMode: 'related_work',
+pendingWorkId: null,
+latestAiText: '',
+canInsert: false,
+busy: false,
+};
+let toastTimer = null;
+function toast(msg, type = 'info') {
+const el = $('toast');
+el.textContent = msg;
+el.dataset.type = type;
+el.hidden = false;
+clearTimeout(toastTimer);
+toastTimer = setTimeout(() => { el.hidden = true; }, 3400);
+}
+function esc(s) {
+return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function svgEl(tag, attrs = {}, text = '') {
+const n = document.createElementNS(SVG_NS, tag);
+for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v));
+if (text) n.textContent = text;
+return n;
+}
+function uuid() {
+const b = crypto.getRandomValues(new Uint8Array(16));
+b[6] = (b[6] & 0x0f) | 0x40;
+b[8] = (b[8] & 0x3f) | 0x80;
+const h = Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+function stars(n) { return '★'.repeat(n) + '☆'.repeat(Math.max(0, 5 - n)); }
+function getCitedBy(id) { return state.papers.filter(p => (p.cites || []).includes(id)); }
+function getMatrixRow(p) {
+const r = state.matrix.rows?.[p.id];
+return {
+architecture: r?.architecture || p.method || '—',
+datasets: r?.datasets || '—',
+metrics: r?.metrics || p.contribution || '—',
+limitations: r?.limitations || p.limitations || '—',
+reusable: r?.reusable || '—',
+};
+}
+function switchView(v) {
+state.view = v;
+$('view-heading').textContent = VIEW_TITLES[v] || '';
+document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+document.querySelectorAll('.view-pane').forEach(p => { p.hidden = p.id !== `view-${v}`; });
+renderView();
+}
+function renderChrome() {
+const selCount = state.matrix.selected_ids.filter(id => state.papers.some(p => p.id === id)).length;
+$('rev-badge').textContent = `修订 #${state.revision}`;
+$('sel-badge').textContent = `已勾选 ${selCount} 篇用于对比/综述`;
+$('kpi-papers').textContent = String(state.kpi.total_papers);
+$('kpi-rating').textContent = `平均星级 ${state.kpi.avg_rating.toFixed(1)} ★`;
+$('kpi-read').textContent = String(state.kpi.annotated_or_cited);
+const pct = state.kpi.total_papers ? Math.round((state.kpi.annotated_or_cited * 100) / state.kpi.total_papers) : 0;
+$('kpi-read-sub').textContent = `精读完成率 ${pct}%`;
+$('kpi-edges').textContent = String(state.kpi.citation_edges);
+$('kpi-notes').textContent = String(state.kpi.total_notes);
+$('nav-papers').textContent = String(state.papers.length);
+$('nav-edges').textContent = String(state.kpi.citation_edges);
+$('nav-sel').textContent = String(selCount);
+$('nav-notes').textContent = String(state.notes.length);
+$('btn-matrix-insert').hidden = !state.canInsert;
+$('btn-ai-insert-prompt').hidden = !state.canInsert;
+$('nv-insert').hidden = !state.canInsert;
+}
+function renderView() {
+renderChrome();
+if (state.view === 'library') renderLibrary();
+else if (state.view === 'graph') renderGraph();
+else if (state.view === 'matrix') renderMatrix();
+else if (state.view === 'ai') renderAiView();
+}
+async function toggleSelectPaper(id) {
+if (state.busy) return;
+const set = new Set(state.matrix.selected_ids.filter(x => state.papers.some(p => p.id === x)));
+if (set.has(id)) set.delete(id);
+else {
+if (set.size >= 6) { toast('最多同时勾选 6 篇论文用于对比与综述。', 'error'); return; }
+set.add(id);
+}
+const nextSel = Array.from(set);
+state.matrix.selected_ids = nextSel;
+renderView();
+state.busy = true;
+try {
+const r = await plugin.action('matrix.save', { expected_revision: state.revision, selected_ids: nextSel });
+if (r.status === 'saved') state.revision = r.revision;
+else if (r.status === 'conflict') await loadAll();
+renderChrome();
+} catch (e) { toast(`同步勾选失败：${e?.message || '未知错误'}`, 'error'); }
+finally { state.busy = false; }
+}
+function renderLibrary() {
+const has = state.papers.length > 0;
+$('empty-lib').hidden = has;
+$('lib-content').hidden = !has;
+if (!has) return;
+const allTags = Array.from(new Set(state.papers.flatMap(p => p.tags || []))).sort();
+const tagBox = $('tag-chips');
+tagBox.replaceChildren();
+const mkTag = (val, label) => {
+const b = document.createElement('button');
+b.type = 'button';
+b.className = `chip${state.filterTag === val ? ' active' : ''}`;
+b.textContent = label;
+b.addEventListener('click', () => { state.filterTag = val; renderLibrary(); });
+return b;
+};
+tagBox.appendChild(mkTag('all', '全部领域'));
+for (const t of allTags) tagBox.appendChild(mkTag(t, `#${t}`));
+const kw = state.search.trim().toLowerCase();
+const selSet = new Set(state.matrix.selected_ids);
+let list = state.papers.filter(p => {
+if (state.filterStatus !== 'all' && p.status !== state.filterStatus) return false;
+if (state.filterTag !== 'all' && !(p.tags || []).includes(state.filterTag)) return false;
+if (kw) {
+const hay = `${p.id} ${p.title} ${p.authors} ${p.venue} ${(p.tags || []).join(' ')} ${p.method} ${p.contribution} ${p.limitations}`.toLowerCase();
+if (!hay.includes(kw)) return false;
+}
+return true;
+});
+if (state.sortBy === 'year_desc') list.sort((a, b) => b.year - a.year || b.rating - a.rating);
+else if (state.sortBy === 'rating_desc') list.sort((a, b) => b.rating - a.rating || b.year - a.year);
+else list.sort((a, b) => getCitedBy(b.id).length - getCitedBy(a.id).length);
+const grid = $('paper-grid');
+grid.replaceChildren();
+if (!list.length) {
+grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--fg-dim);padding:26px">没有匹配的论文</div>`;
+return;
+}
+for (const p of list) {
+const checked = selSet.has(p.id);
+const citedBy = getCitedBy(p.id).length;
+const card = document.createElement('article');
+card.className = `paper-card${checked ? ' checked' : ''}`;
+card.innerHTML = `
+<div class="paper-top">
+<label style="display:flex;align-items:flex-start;gap:7px;cursor:pointer;flex:1">
+<input type="checkbox" ${checked ? 'checked' : ''} style="margin-top:3px">
+<span class="paper-title">${esc(p.title)}</span>
+</label>
+<span class="pill st-${esc(p.status)}">${esc(ST_LBL[p.status] || p.status)}</span>
+</div>
+<div class="paper-meta">${esc(p.authors)} · <strong>${p.year}</strong> · ${esc(p.venue)}</div>
+<div class="toolbar" style="justify-content:space-between">
+<div class="chips">${(p.tags || []).map(t => `<span class="tag-pill">#${esc(t)}</span>`).join('')}</div>
+<span class="stars">${stars(p.rating)}</span>
+</div>
+<div class="paper-snippet">
+<div><b>方法：</b>${esc(p.method || '待补充')}</div>
+<div><b>贡献：</b>${esc(p.contribution || '待补充')}</div>
+<div><b>局限：</b>${esc(p.limitations || '待补充')}</div>
+</div>
+<div class="toolbar" style="justify-content:space-between;margin-top:auto;padding-top:6px;border-top:1px solid var(--border)">
+<span style="font-size:11.5px;color:var(--fg-dim)">引用 ${(p.cites || []).length} · 被引 ${citedBy} · ID:${esc(p.id)}</span>
+<div class="toolbar">
+<button class="btn sm" data-act="graph" type="button">图谱</button>
+<button class="btn sm" data-act="edit" type="button">编辑</button>
+</div>
+</div>
+`;
+card.querySelector('input[type="checkbox"]').addEventListener('change', () => toggleSelectPaper(p.id));
+card.querySelector('[data-act="graph"]').addEventListener('click', () => { state.graphFocusId = p.id; switchView('graph'); });
+card.querySelector('[data-act="edit"]').addEventListener('click', () => openPaperModal(p));
+grid.appendChild(card);
+}
+}
+function renderGraph() {
+const svg = $('graph-svg');
+svg.replaceChildren();
+const drawer = $('graph-drawer');
+if (!state.papers.length) {
+svg.appendChild(svgEl('text', { x: 380, y: 210, 'text-anchor': 'middle', fill: 'var(--fg-dim)', 'font-size': 13 }, '暂无文献数据，请先加载演示集或收录论文'));
+drawer.innerHTML = `<div class="card-sub">暂无节点</div>`;
+return;
+}
+if (!state.graphFocusId || !state.papers.some(p => p.id === state.graphFocusId)) {
+state.graphFocusId = state.papers[state.papers.length - 1].id;
+}
+const years = Array.from(new Set(state.papers.map(p => p.year))).sort((a, b) => a - b);
+const byYear = new Map(years.map(y => [y, []]));
+for (const p of state.papers) byYear.get(p.year).push(p);
+const W = 760;
+const maxPerYear = Math.max(1, ...Array.from(byYear.values()).map(a => a.length));
+const H = Math.max(400, 96 + maxPerYear * 102);
+svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+const defs = svgEl('defs');
+const mkMarker = (id, color) => {
+const m = svgEl('marker', { id, viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse' });
+m.appendChild(svgEl('path', { d: 'M 0 1.5 L 9 5 L 0 8.5 z', fill: color }));
+return m;
+};
+defs.append(mkMarker('arr-muted', '#475569'), mkMarker('arr-up', '#38bdf8'), mkMarker('arr-down', '#34d399'));
+svg.appendChild(defs);
+const colW = (W - 60) / Math.max(1, years.length);
+const nodeW = Math.min(182, colW - 26);
+const nodeH = 66;
+const pos = new Map();
+years.forEach((yr, ci) => {
+const cx = 30 + colW * ci + colW / 2;
+svg.appendChild(svgEl('line', { x1: cx, y1: 42, x2: cx, y2: H - 18, stroke: 'var(--border)', 'stroke-dasharray': '4 4' }));
+svg.appendChild(svgEl('rect', { x: cx - 32, y: 12, width: 64, height: 22, rx: 11, fill: 'var(--bg-elev)', stroke: 'var(--border-strong)' }));
+svg.appendChild(svgEl('text', { x: cx, y: 27, 'text-anchor': 'middle', fill: 'var(--fg)', 'font-size': 11.5, 'font-weight': 700 }, String(yr)));
+const arr = byYear.get(yr);
+const stepY = (H - 76) / arr.length;
+arr.forEach((p, ri) => {
+const cy = 58 + stepY * ri + stepY / 2;
+pos.set(p.id, { x: cx, y: cy, w: nodeW, h: nodeH });
+});
+});
+const focus = state.papers.find(p => p.id === state.graphFocusId);
+const upSet = new Set(focus?.cites || []);
+const downSet = new Set(getCitedBy(focus.id).map(p => p.id));
+for (const citing of state.papers) {
+const dst = pos.get(citing.id);
+if (!dst) continue;
+for (const citedId of citing.cites || []) {
+const src = pos.get(citedId);
+if (!src || citedId === citing.id) continue;
+const isUpEdge = citing.id === focus.id;
+const isDownEdge = citedId === focus.id;
+const sameCol = Math.abs(src.x - dst.x) < 10;
+let d;
+if (sameCol) {
+const sx = src.x + src.w / 2;
+const dx = dst.x + dst.w / 2;
+const bend = 46;
+d = `M ${sx} ${src.y} C ${sx + bend} ${src.y}, ${dx + bend} ${dst.y}, ${dx} ${dst.y}`;
+} else {
+const sx = src.x < dst.x ? src.x + src.w / 2 : src.x - src.w / 2;
+const dx = src.x < dst.x ? dst.x - dst.w / 2 - 3 : dst.x + dst.w / 2 + 3;
+const mx = (sx + dx) / 2;
+d = `M ${sx} ${src.y} C ${mx} ${src.y}, ${mx} ${dst.y}, ${dx} ${dst.y}`;
+}
+const stroke = isUpEdge ? '#38bdf8' : isDownEdge ? '#34d399' : '#475569';
+const marker = isUpEdge ? 'url(#arr-up)' : isDownEdge ? 'url(#arr-down)' : 'url(#arr-muted)';
+svg.appendChild(svgEl('path', {
+d, fill: 'none', stroke, 'stroke-width': (isUpEdge || isDownEdge) ? 2.4 : 1.3,
+'stroke-opacity': (isUpEdge || isDownEdge) ? 0.95 : 0.35, 'marker-end': marker,
+}));
+}
+}
+for (const p of state.papers) {
+const b = pos.get(p.id);
+const isFocus = p.id === focus.id;
+const isUp = upSet.has(p.id);
+const isDown = downSet.has(p.id);
+const related = isFocus || isUp || isDown;
+const stroke = isFocus ? '#818cf8' : isUp ? '#38bdf8' : isDown ? '#34d399' : 'var(--border-strong)';
+const g = svgEl('g', { style: 'cursor:pointer', opacity: related ? 1 : 0.42 });
+g.appendChild(svgEl('rect', {
+x: b.x - b.w / 2, y: b.y - b.h / 2, width: b.w, height: b.h, rx: 10,
+fill: isFocus ? 'rgba(99,102,241,0.22)' : 'var(--bg-card)',
+stroke, 'stroke-width': isFocus ? 2.4 : related ? 1.8 : 1.1,
+}));
+const shortT = p.title.length > 22 ? `${p.title.slice(0, 22)}…` : p.title;
+g.appendChild(svgEl('text', { x: b.x - b.w / 2 + 10, y: b.y - 10, fill: 'var(--fg)', 'font-size': 11, 'font-weight': 700 }, shortT));
+g.appendChild(svgEl('text', { x: b.x - b.w / 2 + 10, y: b.y + 8, fill: 'var(--fg-muted)', 'font-size': 10 }, `${p.venue} · ${stars(p.rating)}`));
+g.appendChild(svgEl('text', { x: b.x - b.w / 2 + 10, y: b.y + 23, fill: stroke, 'font-size': 9.5, 'font-weight': 600 }, `${p.id} · ${(p.tags || []).slice(0, 2).join('/')}`));
+g.addEventListener('click', () => { state.graphFocusId = p.id; renderGraph(); });
+svg.appendChild(g);
+}
+const ups = (focus.cites || []).map(id => state.papers.find(p => p.id === id)).filter(Boolean);
+const downs = getCitedBy(focus.id);
+const isChecked = state.matrix.selected_ids.includes(focus.id);
+drawer.innerHTML = `
+<div style="font-size:14px;font-weight:700;line-height:1.35">${esc(focus.title)}</div>
+<div class="paper-meta">${esc(focus.authors)} · ${focus.year} · ${esc(focus.venue)}</div>
+<div class="toolbar">
+<span class="pill st-${esc(focus.status)}">${esc(ST_LBL[focus.status] || focus.status)}</span>
+<span class="stars">${stars(focus.rating)}</span>
+</div>
+<div class="paper-snippet">
+<div><b>核心方法：</b>${esc(focus.method || '—')}</div>
+<div><b>主要贡献：</b>${esc(focus.contribution || '—')}</div>
+<div><b>研究局限：</b>${esc(focus.limitations || '—')}</div>
+</div>
+<div class="field">
+<span class="field-label" style="color:#38bdf8">↑ 上游参考文献 (${ups.length})</span>
+<div id="dr-up" class="chips"></div>
+</div>
+<div class="field">
+<span class="field-label" style="color:#34d399">↓ 下游施引文献 (${downs.length})</span>
+<div id="dr-down" class="chips"></div>
+</div>
+<div class="toolbar" style="margin-top:4px">
+<button id="dr-toggle" class="btn sm primary" type="button">${isChecked ? '✓ 已在对比/综述队列' : '+ 加入对比/综述队列'}</button>
+<button id="dr-edit" class="btn sm" type="button">编辑文献</button>
+</div>
+`;
+const upBox = $('dr-up');
+if (!ups.length) upBox.innerHTML = `<span class="card-sub">无库内上游文献（奠基论文）</span>`;
+else for (const u of ups) {
+const b = document.createElement('button'); b.type = 'button'; b.className = 'link-chip';
+b.textContent = `${u.year} · ${u.id}`;
+b.addEventListener('click', () => { state.graphFocusId = u.id; renderGraph(); });
+upBox.appendChild(b);
+}
+const downBox = $('dr-down');
+if (!downs.length) downBox.innerHTML = `<span class="card-sub">暂无库内后续施引</span>`;
+else for (const d of downs) {
+const b = document.createElement('button'); b.type = 'button'; b.className = 'link-chip';
+b.textContent = `${d.year} · ${d.id}`;
+b.addEventListener('click', () => { state.graphFocusId = d.id; renderGraph(); });
+downBox.appendChild(b);
+}
+$('dr-toggle').addEventListener('click', () => toggleSelectPaper(focus.id));
+$('dr-edit').addEventListener('click', () => openPaperModal(focus));
+}
+function buildMatrixMarkdown(selPapers) {
+if (!selPapers.length) return '（请先勾选至少 1 篇论文生成方法论对比矩阵）';
+const clean = s => String(s || '—').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+const dims = [
+['核心架构', 'architecture'],
+['数据集 / 基准', 'datasets'],
+['指标亮点', 'metrics'],
+['局限性', 'limitations'],
+['可复用点', 'reusable'],
+];
+const head = `| 对比维度 | ${selPapers.map(p => `${clean(p.id)} (${p.year})`).join(' | ')} |`;
+const sep = `| --- | ${selPapers.map(() => '---').join(' | ')} |`;
+const body = dims.map(([lbl, key]) => `| **${lbl}** | ${selPapers.map(p => clean(getMatrixRow(p)[key])).join(' | ')} |`);
+return [head, sep, ...body].join('\n');
+}
+function renderMatrix() {
+const picker = $('matrix-picker');
+picker.replaceChildren();
+const selSet = new Set(state.matrix.selected_ids);
+for (const p of state.papers) {
+const b = document.createElement('button');
+b.type = 'button';
+b.className = `chip${selSet.has(p.id) ? ' active' : ''}`;
+b.textContent = `${selSet.has(p.id) ? '✓ ' : ''}${p.id} (${p.year})`;
+b.addEventListener('click', () => toggleSelectPaper(p.id));
+picker.appendChild(b);
+}
+const selPapers = state.papers.filter(p => selSet.has(p.id));
+const table = $('matrix-table');
+table.replaceChildren();
+if (!selPapers.length) {
+table.innerHTML = `<tr><td style="text-align:center;color:var(--fg-dim);padding:24px">点击上方论文胶囊勾选 1~6 篇论文进行横向方法论对比</td></tr>`;
+$('matrix-md').textContent = buildMatrixMarkdown([]);
+return;
+}
+const thead = document.createElement('thead');
+const htr = document.createElement('tr');
+htr.innerHTML = `<th>对比维度</th>`;
+for (const p of selPapers) {
+const th = document.createElement('th');
+th.innerHTML = `
+<div style="display:flex;justify-content:space-between;align-items:center;gap:6px">
+<span>${esc(p.id)} (${p.year})</span>
+<button class="btn sm" type="button">编辑</button>
+</div>
+<div style="font-size:11px;font-weight:400;color:var(--fg-muted);margin-top:3px">${esc(p.venue)}</div>
+`;
+th.querySelector('button').addEventListener('click', () => openMatrixModal(p));
+htr.appendChild(th);
+}
+thead.appendChild(htr);
+table.appendChild(thead);
+const tbody = document.createElement('tbody');
+const dims = [
+['核心架构', 'architecture'],
+['数据集', 'datasets'],
+['指标亮点', 'metrics'],
+['局限性', 'limitations'],
+['可复用点', 'reusable'],
+];
+for (const [label, key] of dims) {
+const tr = document.createElement('tr');
+tr.innerHTML = `<th>${label}</th>${selPapers.map(p => `<td>${esc(getMatrixRow(p)[key])}</td>`).join('')}`;
+tbody.appendChild(tr);
+}
+table.appendChild(tbody);
+$('matrix-md').textContent = buildMatrixMarkdown(selPapers);
+}
+function buildAiPrompt() {
+const selPapers = state.papers.filter(p => state.matrix.selected_ids.includes(p.id)).slice(0, 6);
+if (!selPapers.length) return '';
+const modeInst = {
+related_work: '请基于以下论文撰写一段学术顶会风格的 Related Work 文献综述：按演进脉络分组串讲，准确指出各自方法差异，并用 Markdown 输出。',
+research_gaps: '请交叉分析以下论文的局限性，提炼 3 个共性研究空白（Research Gaps）并给出可落地的创新切入点与验证假设。',
+experiment_plan: '请基于以下论文设计一套完整的实验对比方案，包含 Baseline 选择、评测数据集、核心指标与关键消融实验表。',
+peer_review: '请模拟顶会领域主席与审稿人，综合评述以下文献脉络并输出 Strengths / Weaknesses / Key Questions。',
+}[state.aiMode];
+const focus = $('ai-focus').value.trim();
+const lines = selPapers.map(p => `- [${p.id}, ${p.year}, ${p.venue}] ${p.title.slice(0, 80)} | 方法:${p.method.slice(0, 75)} | 局限:${p.limitations.slice(0, 75)}`);
+const raw = `${modeInst}${focus ? `\n聚焦方向：${focus}` : ''}\n\n文献清单：\n${lines.join('\n')}`;
+return Array.from(raw).slice(0, 2000).join('');
+}
+function renderAiView() {
+const selSet = new Set(state.matrix.selected_ids.filter(id => state.papers.some(p => p.id === id)));
+$('ai-sel-count').textContent = `已选 ${selSet.size} / 6 篇`;
+const picker = $('ai-paper-picker');
+picker.replaceChildren();
+for (const p of state.papers) {
+const b = document.createElement('button');
+b.type = 'button';
+b.className = `chip${selSet.has(p.id) ? ' active' : ''}`;
+b.textContent = `${selSet.has(p.id) ? '✓ ' : ''}${p.id} (${p.year})`;
+b.addEventListener('click', () => toggleSelectPaper(p.id));
+picker.appendChild(b);
+}
+$('notes-count').textContent = String(state.notes.length);
+const nBox = $('note-list');
+nBox.replaceChildren();
+if (!state.notes.length) {
+nBox.innerHTML = `<div class="card-sub" style="padding:12px">暂无科研笔记，可由左侧 AI 综述采纳保存或手动新建。</div>`;
+} else {
+for (const n of state.notes) {
+const div = document.createElement('div');
+div.className = `note-item${n.id === state.activeNoteId ? ' active' : ''}`;
+div.innerHTML = `
+<div style="display:flex;justify-content:space-between;gap:6px;align-items:center">
+<strong style="font-size:12.5px">${esc(n.title)}</strong>
+<span class="tag-pill">${esc(MODE_LBL[n.mode] || n.mode)}</span>
+</div>
+<div class="card-sub">${esc(n.created_at)} · 关联 ${n.paper_ids.length} 篇</div>
+<div style="font-size:11.5px;color:var(--fg-dim)">${esc(n.preview)}</div>
+`;
+div.addEventListener('click', () => openNote(n.id));
+nBox.appendChild(div);
+}
+}
+}
+async function openNote(id) {
+state.activeNoteId = id;
+renderAiView();
+try {
+const r = await plugin.action('note.get', { id });
+state.revision = r.revision;
+if (r.found && r.note) {
+$('note-viewer').hidden = false;
+$('nv-title').value = r.note.title;
+$('nv-content').value = r.note.content;
+}
+} catch (e) { toast(`读取笔记失败：${e?.message || '未知错误'}`, 'error'); }
+}
+function openPaperModal(paper = null) {
+state.editingPaperId = paper ? paper.id : null;
+$('mp-heading').textContent = paper ? `编辑论文 · ${paper.id}` : '收录新论文';
+$('pf-id').value = paper?.id || '';
+$('pf-id').disabled = Boolean(paper);
+$('pf-title').value = paper?.title || '';
+$('pf-authors').value = paper?.authors || '';
+$('pf-year').value = String(paper?.year || 2024);
+$('pf-venue').value = paper?.venue || '';
+$('pf-status').value = paper?.status || 'unread';
+$('pf-rating').value = String(paper?.rating || 4);
+$('pf-tags').value = (paper?.tags || []).join(', ');
+$('pf-method').value = paper?.method || '';
+$('pf-contrib').value = paper?.contribution || '';
+$('pf-limit').value = paper?.limitations || '';
+$('mp-del').hidden = !paper;
+const cBox = $('pf-cites-box');
+cBox.replaceChildren();
+const citeSet = new Set(paper?.cites || []);
+const others = state.papers.filter(p => p.id !== paper?.id);
+if (!others.length) {
+cBox.innerHTML = `<span class="card-sub">库中暂无其他论文可设为引用</span>`;
+} else {
+for (const o of others) {
+const lbl = document.createElement('label');
+lbl.innerHTML = `<input type="checkbox" value="${esc(o.id)}" ${citeSet.has(o.id) ? 'checked' : ''}><span>${esc(o.id)} (${o.year})</span>`;
+cBox.appendChild(lbl);
+}
+}
+$('modal-paper').hidden = false;
+$('pf-title').focus();
+}
+function openMatrixModal(p) {
+state.editingMatrixId = p.id;
+const r = getMatrixRow(p);
+$('mm-heading').textContent = `编辑对比维度 · ${p.id}`;
+$('mf-arch').value = r.architecture === '—' ? '' : r.architecture;
+$('mf-data').value = r.datasets === '—' ? '' : r.datasets;
+$('mf-met').value = r.metrics === '—' ? '' : r.metrics;
+$('mf-lim').value = r.limitations === '—' ? '' : r.limitations;
+$('mf-reu').value = r.reusable === '—' ? '' : r.reusable;
+$('modal-matrix').hidden = false;
+}
+async function loadAll() {
+if (typeof plugin?.action !== 'function') { toast('请在 Velai Desktop 中打开此插件。', 'error'); return; }
+try {
+const caps = await plugin.action('host.capabilities', {}).catch(() => ({ actions: [] }));
+state.canInsert = Array.isArray(caps?.actions) && caps.actions.includes('host.draft.insert');
+const res = await plugin.action('lab.load', {});
+state.revision = res.revision;
+state.kpi = res.kpi;
+state.papers = res.papers;
+state.matrix = res.matrix;
+state.notes = res.notes;
+renderView();
+} catch (e) { toast(`加载失败：${e?.message || '未知错误'}`, 'error'); }
+}
+async function seedDemo() {
+if (state.busy) return;
+state.busy = true;
+try {
+const r = await plugin.action('lab.seed_demo', { expected_revision: state.revision });
+if (r.status === 'seeded') {
+state.activeNoteId = null;
+$('note-viewer').hidden = true;
+await loadAll();
+toast(`已加载 ${r.seeded_papers} 篇经典论文与 ${r.seeded_notes} 篇综述笔记`, 'ok');
+} else if (r.status === 'conflict') {
+await loadAll();
+toast('版本有更新，已刷新，请再次点击加载。', 'error');
+} else {
+toast(`加载未完成：${r.status}`, 'error');
+}
+} catch (e) { toast(`加载演示集失败：${e?.message || '未知错误'}`, 'error'); }
+finally { state.busy = false; }
+}
+document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
+$('btn-theme').addEventListener('click', () => {
+const isDark = document.documentElement.dataset.theme !== 'light';
+document.documentElement.dataset.theme = isDark ? 'light' : 'dark';
+$('btn-theme').textContent = isDark ? '☾ 深色' : '☀ 浅色';
+});
+$('btn-seed').addEventListener('click', seedDemo);
+$('btn-seed-side').addEventListener('click', seedDemo);
+$('btn-seed-empty').addEventListener('click', seedDemo);
+$('btn-new-paper').addEventListener('click', () => openPaperModal(null));
+$('btn-new-empty').addEventListener('click', () => openPaperModal(null));
+$('search-paper').addEventListener('input', e => { state.search = e.target.value; renderLibrary(); });
+$('sort-paper').addEventListener('change', e => { state.sortBy = e.target.value; renderLibrary(); });
+$('status-chips').querySelectorAll('.chip').forEach(ch => ch.addEventListener('click', () => {
+state.filterStatus = ch.dataset.st;
+$('status-chips').querySelectorAll('.chip').forEach(x => x.classList.toggle('active', x === ch));
+renderLibrary();
+}));
+$('mp-close').addEventListener('click', () => { $('modal-paper').hidden = true; });
+$('mp-cancel').addEventListener('click', () => { $('modal-paper').hidden = true; });
+$('mp-save').addEventListener('click', async () => {
+if (state.busy) return;
+const title = $('pf-title').value.trim();
+const authors = $('pf-authors').value.trim();
+const year = Math.round(Number($('pf-year').value) || 2024);
+if (!title || !authors) { toast('请填写论文标题与作者。', 'error'); return; }
+const rawId = $('pf-id').value.trim();
+const id = state.editingPaperId || (rawId && /^[a-zA-Z0-9._-]+$/.test(rawId) ? rawId : `paper-${Date.now().toString(36)}`);
+const tags = $('pf-tags').value.split(/[,，]/).map(s => s.trim()).filter(Boolean).slice(0, 6);
+const cites = Array.from($('pf-cites-box').querySelectorAll('input:checked')).map(i => i.value);
+state.busy = true;
+try {
+const r = await plugin.action('paper.save', {
+expected_revision: state.revision,
+id, title, authors, year,
+venue: $('pf-venue').value.trim(),
+tags,
+rating: Number($('pf-rating').value) || 4,
+status: $('pf-status').value,
+method: $('pf-method').value.trim(),
+contribution: $('pf-contrib').value.trim(),
+limitations: $('pf-limit').value.trim(),
+cites,
+});
+if (r.status === 'saved') {
+$('modal-paper').hidden = true;
+await loadAll();
+toast('论文已保存。', 'ok');
+} else {
+toast(`保存未完成：${r.status}`, 'error');
+if (r.status === 'conflict') await loadAll();
+}
+} catch (e) { toast(`保存失败：${e?.message || '未知错误'}`, 'error'); }
+finally { state.busy = false; }
+});
+$('mp-del').addEventListener('click', async () => {
+if (state.busy || !state.editingPaperId) return;
+state.busy = true;
+try {
+const r = await plugin.action('paper.delete', { expected_revision: state.revision, id: state.editingPaperId });
+if (r.status === 'deleted') {
+$('modal-paper').hidden = true;
+await loadAll();
+toast('已删除论文并清理引用关系。', 'ok');
+} else toast(`删除未完成：${r.status}`, 'error');
+} catch (e) { toast(`删除失败：${e?.message || '未知错误'}`, 'error'); }
+finally { state.busy = false; }
+});
+$('mm-close').addEventListener('click', () => { $('modal-matrix').hidden = true; });
+$('mm-cancel').addEventListener('click', () => { $('modal-matrix').hidden = true; });
+$('mm-save').addEventListener('click', async () => {
+if (state.busy || !state.editingMatrixId) return;
+state.busy = true;
+try {
+const r = await plugin.action('matrix.save', {
+expected_revision: state.revision,
+paper_id: state.editingMatrixId,
+row: {
+architecture: $('mf-arch').value.trim(),
+datasets: $('mf-data').value.trim(),
+metrics: $('mf-met').value.trim(),
+limitations: $('mf-lim').value.trim(),
+reusable: $('mf-reu').value.trim(),
+},
+});
+if (r.status === 'saved') {
+$('modal-matrix').hidden = true;
+await loadAll();
+toast('对比矩阵条目已保存。', 'ok');
+} else toast(`保存未完成：${r.status}`, 'error');
+} catch (e) { toast(`保存失败：${e?.message || '未知错误'}`, 'error'); }
+finally { state.busy = false; }
+});
+$('btn-matrix-copy').addEventListener('click', async () => {
+try { await navigator.clipboard.writeText($('matrix-md').textContent); toast('已复制 Markdown 对比表。', 'ok'); }
+catch { toast('沙箱不支持剪贴板直写，请直接选中预览区复制。'); }
+});
+$('btn-matrix-insert').addEventListener('click', async () => {
+const text = $('matrix-md').textContent;
+if (!text) return;
+try {
+const r = await plugin.action('host.draft.insert', { text });
+toast(r?.inserted ? '已插入对比表到当前会话输入框。' : '未确认插入结果。', r?.inserted ? 'ok' : 'error');
+} catch (e) { toast(`插入失败：${e?.message || '未知错误'}`, 'error'); }
+});
+$('ai-modes').querySelectorAll('.mode-card').forEach(card => card.addEventListener('click', () => {
+state.aiMode = card.dataset.mode;
+$('ai-modes').querySelectorAll('.mode-card').forEach(c => c.classList.toggle('active', c === card));
+}));
+$('btn-ai-dispatch').addEventListener('click', async () => {
+const prompt = buildAiPrompt();
+if (!prompt) { toast('请先勾选至少 1 篇论文。', 'error'); return; }
+state.pendingWorkId = uuid();
+state.latestAiText = '';
+$('ai-turn-box').hidden = false;
+$('ai-turn-preview').hidden = true;
+$('btn-ai-adopt').hidden = true;
+$('btn-ai-check').hidden = false;
+$('ai-turn-state').textContent = '正在向 Velai 当前会话派发文献综述任务…';
+try {
+await plugin.action('session.turn.request', { prompt, work_id: state.pendingWorkId });
+$('ai-turn-state').textContent = '已派发至当前会话！待回复完成后点击「核对会话结果」。';
+} catch (e) {
+$('ai-turn-state').textContent = e?.message === 'cancelled'
+? '已取消派发，请先在 Velai 宿主中选择一个会话。'
+: `派发未确认（${e?.message || 'unknown'}），请检查当前会话。`;
+}
+});
+$('btn-ai-check').addEventListener('click', async () => {
+if (!state.pendingWorkId) return;
+$('ai-turn-state').textContent = '正在核对会话生成结果…';
+try {
+const r = await plugin.action('session.turn.result', { work_id: state.pendingWorkId });
+if (r.state === 'completed' && !r.truncated && typeof r.text === 'string' && r.text.trim()) {
+state.latestAiText = r.text.trim();
+$('ai-turn-state').textContent = '已获取完整生成结果，确认无误后可采纳存为科研笔记！';
+$('ai-turn-preview').textContent = state.latestAiText;
+$('ai-turn-preview').hidden = false;
+$('btn-ai-adopt').hidden = false;
+} else {
+$('ai-turn-state').textContent = `当前任务状态：${r.state}${r.truncated ? '（内容被截断，请回原会话查看全文）' : ''}`;
+}
+} catch (e) { $('ai-turn-state').textContent = `核对失败：${e?.message || '请回到原会话查看'}`; }
+});
+$('btn-ai-adopt').addEventListener('click', async () => {
+if (!state.latestAiText || state.busy) return;
+state.busy = true;
+try {
+const id = `note-${Date.now().toString(36)}`;
+const selIds = state.matrix.selected_ids.filter(x => state.papers.some(p => p.id === x)).slice(0, 6);
+const r = await plugin.action('note.save', {
+expected_revision: state.revision,
+id,
+title: `${MODE_LBL[state.aiMode]} (${selIds.length}篇)`,
+mode: state.aiMode,
+paper_ids: selIds,
+content: state.latestAiText.slice(0, 6000),
+});
+if (r.status === 'saved') {
+state.pendingWorkId = null;
+state.latestAiText = '';
+$('ai-turn-box').hidden = true;
+$('btn-ai-check').hidden = true;
+await loadAll();
+await openNote(id);
+toast('已采纳并保存为科研笔记！', 'ok');
+} else toast(`保存笔记未完成：${r.status}`, 'error');
+} catch (e) { toast(`保存失败：${e?.message || '未知错误'}`, 'error'); }
+finally { state.busy = false; }
+});
+$('btn-ai-insert-prompt').addEventListener('click', async () => {
+const prompt = buildAiPrompt();
+if (!prompt) { toast('请先勾选至少 1 篇论文。', 'error'); return; }
+try {
+const r = await plugin.action('host.draft.insert', { text: prompt });
+toast(r?.inserted ? '已将综述提示词插入会话输入框。' : '未确认插入结果。', r?.inserted ? 'ok' : 'error');
+} catch (e) { toast(`插入失败：${e?.message || '未知错误'}`, 'error'); }
+});
+$('btn-new-note').addEventListener('click', () => {
+state.activeNoteId = `note-${Date.now().toString(36)}`;
+$('note-viewer').hidden = false;
+$('nv-title').value = '新建科研综述笔记';
+$('nv-content').value = '';
+$('nv-title').focus();
+});
+$('nv-save').addEventListener('click', async () => {
+if (state.busy || !state.activeNoteId) return;
+const title = $('nv-title').value.trim();
+const content = $('nv-content').value.trim();
+if (!title || !content) { toast('笔记标题与正文不能为空。', 'error'); return; }
+state.busy = true;
+try {
+const exist = state.notes.find(n => n.id === state.activeNoteId);
+const r = await plugin.action('note.save', {
+expected_revision: state.revision,
+id: state.activeNoteId,
+title,
+mode: exist?.mode || 'custom',
+paper_ids: exist?.paper_ids || state.matrix.selected_ids.slice(0, 6),
+content,
+});
+if (r.status === 'saved') { await loadAll(); toast('科研笔记已保存。', 'ok'); }
+else toast(`保存未完成：${r.status}`, 'error');
+} catch (e) { toast(`保存失败：${e?.message || '未知错误'}`, 'error'); }
+finally { state.busy = false; }
+});
+$('nv-insert').addEventListener('click', async () => {
+const text = `# ${$('nv-title').value.trim()}\n\n${$('nv-content').value.trim()}`;
+try {
+const r = await plugin.action('host.draft.insert', { text });
+toast(r?.inserted ? '已插入笔记到会话输入框。' : '未确认插入结果。', r?.inserted ? 'ok' : 'error');
+} catch (e) { toast(`插入失败：${e?.message || '未知错误'}`, 'error'); }
+});
+$('nv-del').addEventListener('click', async () => {
+if (state.busy || !state.activeNoteId) return;
+state.busy = true;
+try {
+const r = await plugin.action('note.delete', { expected_revision: state.revision, id: state.activeNoteId });
+if (r.status === 'deleted') {
+state.activeNoteId = null;
+$('note-viewer').hidden = true;
+await loadAll();
+toast('已删除科研笔记。', 'ok');
+} else toast(`删除未完成：${r.status}`, 'error');
+} catch (e) { toast(`删除失败：${e?.message || '未知错误'}`, 'error'); }
+finally { state.busy = false; }
+});
+$('btn-io').addEventListener('click', async () => {
+$('modal-io').hidden = false;
+$('io-text').value = '';
+const sel = $('io-select');
+sel.replaceChildren();
+try {
+const list = await plugin.action('document.list', {});
+if (!list.items.length) {
+const opt = document.createElement('option'); opt.value = ''; opt.textContent = '暂无可导出文档（可粘贴 JSON 导入）';
+sel.appendChild(opt);
+} else {
+for (const it of list.items) {
+const opt = document.createElement('option'); opt.value = it.id; opt.textContent = it.label;
+sel.appendChild(opt);
+}
+}
+} catch (e) { toast(`读取导出清单失败：${e?.message || '未知错误'}`, 'error'); }
+});
+$('io-close').addEventListener('click', () => { $('modal-io').hidden = true; });
+$('io-export').addEventListener('click', async () => {
+const id = $('io-select').value;
+if (!id) return;
+try {
+const r = await plugin.action('document.export', { id });
+if (r.text) { $('io-text').value = r.text; toast(`已导出：${r.filename}`, 'ok'); }
+else toast(`导出失败：${r.error || '未知错误'}`, 'error');
+} catch (e) { toast(`导出失败：${e?.message || '未知错误'}`, 'error'); }
+});
+$('io-copy').addEventListener('click', async () => {
+try { await navigator.clipboard.writeText($('io-text').value); toast('已复制 JSON。', 'ok'); }
+catch { toast('请手动全选文本框复制。'); }
+});
+$('io-import').addEventListener('click', async () => {
+const text = $('io-text').value.trim();
+if (!text) { toast('请先粘贴 JSON 内容。', 'error'); return; }
+try {
+const r = await plugin.action('document.import', { text });
+if (r.imported) { $('modal-io').hidden = true; await loadAll(); toast(`导入成功（共 ${r.count ?? 1} 项）。`, 'ok'); }
+else toast(`导入失败：${r.reason || '格式无效'}`, 'error');
+} catch (e) { toast(`导入失败：${e?.message || '未知错误'}`, 'error'); }
+});
+void loadAll();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1291 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>产品需求与路线图设计台</title>
+<style>
+:root{--bg:#0b0e14;--bg-elev:#111622;--bg-card:#151c2b;--bg-hover:#1c2538;--bg-input:#0e131e;--border:#243046;--border-strong:#334362;--fg:#eef2f9;--fg-muted:#93a3bd;--fg-dim:#64748b;--accent:#6366f1;--accent-soft:rgba(99, 102, 241, 0.16);--accent-hover:#818cf8;--cyan:#22d3ee;--emerald:#10b981;--amber:#f59e0b;--rose:#f43f5e;--violet:#a855f7;--shadow:0 10px 30px rgba(0, 0, 0, 0.35);--radius:12px;--radius-sm:8px;font:13px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI", system-ui, sans-serif;}
+html[data-theme="light"]{--bg:#f4f6fa;--bg-elev:#ffffff;--bg-card:#ffffff;--bg-hover:#f1f5fb;--bg-input:#f8fafc;--border:#e2e8f0;--border-strong:#cbd5e1;--fg:#0f172a;--fg-muted:#475569;--fg-dim:#64748b;--accent:#4f46e5;--accent-soft:rgba(79, 70, 229, 0.1);--accent-hover:#4338ca;--shadow:0 6px 20px rgba(15, 23, 42, 0.08);}
+*{box-sizing:border-box;}
+html, body{height:100%;margin:0;background:var(--bg);color:var(--fg);overflow:hidden;}::-webkit-scrollbar{width:7px;height:7px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:99px;}
+.app{display:grid;grid-template-columns:212px minmax(0, 1fr);height:100vh;}
+.sidebar{background:var(--bg-elev);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:14px 12px;gap:14px;overflow-y:auto;}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 6px;}
+.brand-icon{width:30px;height:30px;border-radius:9px;flex-shrink:0;background:linear-gradient(135deg, #6366f1, #22d3ee);display:grid;place-items:center;color:#fff;font-weight:800;font-size:13px;box-shadow:0 4px 14px rgba(99, 102, 241, 0.4);}
+.brand-title{font-size:13.5px;font-weight:700;letter-spacing:-0.01em;line-height:1.2;}
+.brand-sub{font-size:11px;color:var(--fg-dim);}
+.nav{display:flex;flex-direction:column;gap:4px;}
+.nav-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;border:1px solid transparent;border-radius:9px;padding:9px 10px;background:transparent;color:var(--fg-muted);cursor:pointer;font:inherit;font-weight:500;text-align:left;transition:0.15s ease;}
+.nav-btn:hover{background:var(--bg-hover);color:var(--fg);}
+.nav-btn.active{background:var(--accent-soft);color:var(--fg);border-color:rgba(99, 102, 241, 0.35);font-weight:600;}
+.nav-left{display:flex;align-items:center;gap:8px;}
+.nav-badge{font-size:11px;padding:1px 6px;border-radius:99px;background:var(--bg-card);border:1px solid var(--border);color:var(--fg-muted);}
+.side-section{margin-top:auto;padding-top:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px;}
+.side-meta{font-size:11px;color:var(--fg-dim);display:flex;justify-content:space-between;padding:0 4px;}
+.workspace{display:flex;flex-direction:column;min-width:0;height:100vh;overflow:hidden;}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:11px 18px;border-bottom:1px solid var(--border);background:var(--bg-elev);}
+.top-title{display:flex;align-items:center;gap:10px;}
+.top-title h1{margin:0;font-size:15px;font-weight:700;}
+.rev-pill{font-size:11px;color:var(--fg-muted);background:var(--bg-card);border:1px solid var(--border);border-radius:99px;padding:2px 8px;}
+.top-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.btn{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);border-radius:8px;padding:6px 11px;background:var(--bg-card);color:var(--fg);font:inherit;font-weight:500;cursor:pointer;transition:0.15s ease;white-space:nowrap;}
+.btn:hover:not(:disabled){border-color:var(--border-strong);background:var(--bg-hover);}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+.btn.primary:hover:not(:disabled){background:var(--accent-hover);border-color:var(--accent-hover);}
+.btn.ghost{background:transparent;}
+.btn.danger{color:var(--rose);border-color:rgba(244, 63, 94, 0.35);}
+.btn.danger:hover:not(:disabled){background:rgba(244, 63, 94, 0.12);}
+.btn.sm{padding:4px 8px;font-size:12px;border-radius:7px;}
+.btn:disabled{opacity:0.5;cursor:not-allowed;}
+.kpi-strip{display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:10px;padding:12px 18px 4px;}
+.kpi-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:11px 14px;display:flex;flex-direction:column;gap:4px;position:relative;overflow:hidden;}
+.kpi-card::after{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--kpi-c, var(--accent));}
+.kpi-label{font-size:11.5px;color:var(--fg-muted);display:flex;justify-content:space-between;align-items:center;}
+.kpi-val{font-size:22px;font-weight:800;letter-spacing:-0.02em;line-height:1.15;}
+.kpi-sub{font-size:11px;color:var(--fg-dim);}
+.main-scroll{flex:1;overflow-y:auto;padding:12px 18px 24px;display:flex;flex-direction:column;gap:14px;}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;display:flex;flex-direction:column;gap:12px;}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.card-title{margin:0;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;}
+.card-sub{font-size:12px;color:var(--fg-muted);}
+.overview-grid{display:grid;grid-template-columns:minmax(0, 1.55fr) minmax(260px, 0.85fr);gap:14px;}
+.svg-wrap{position:relative;width:100%;border:1px solid var(--border);border-radius:10px;background:var(--bg-input);overflow:hidden;}
+.svg-wrap svg{display:block;width:100%;height:auto;}
+.tooltip{position:absolute;pointer-events:none;z-index:20;min-width:195px;max-width:260px;background:var(--bg-elev);border:1px solid var(--border-strong);border-radius:10px;padding:9px 11px;box-shadow:var(--shadow);font-size:12px;transition:opacity 0.1s ease;}
+.tooltip[hidden]{display:none;}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 7px;border-radius:99px;border:1px solid transparent;white-space:nowrap;}
+.st-backlog{background:rgba(148, 163, 184, 0.14);color:#94a3b8;border-color:rgba(148, 163, 184, 0.3);}
+.st-planned{background:rgba(56, 189, 248, 0.14);color:#38bdf8;border-color:rgba(56, 189, 248, 0.3);}
+.st-in_progress{background:rgba(99, 102, 241, 0.18);color:#818cf8;border-color:rgba(99, 102, 241, 0.38);}
+.st-review{background:rgba(245, 158, 11, 0.16);color:#f59e0b;border-color:rgba(245, 158, 11, 0.35);}
+.st-shipped{background:rgba(16, 185, 129, 0.16);color:#10b981;border-color:rgba(16, 185, 129, 0.35);}
+.p-P0{background:rgba(244, 63, 94, 0.16);color:#fb7185;border-color:rgba(244, 63, 94, 0.35);}
+.p-P1{background:rgba(245, 158, 11, 0.16);color:#fbbf24;border-color:rgba(245, 158, 11, 0.35);}
+.p-P2{background:rgba(99, 102, 241, 0.16);color:#818cf8;border-color:rgba(99, 102, 241, 0.35);}
+.p-P3{background:rgba(148, 163, 184, 0.14);color:#94a3b8;border-color:rgba(148, 163, 184, 0.25);}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:11.5px;color:var(--fg-muted);align-items:center;}
+.legend-dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:4px;}
+.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+input[type="text"], input[type="search"], input[type="number"], select, textarea{font:inherit;color:var(--fg);background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:6px 10px;outline:none;transition:border-color 0.15s;}
+input:focus, select:focus, textarea:focus{border-color:var(--accent);}
+textarea{resize:vertical;line-height:1.55;}
+.filter-pills{display:flex;gap:5px;flex-wrap:wrap;}
+.chip{border:1px solid var(--border);background:var(--bg-input);color:var(--fg-muted);border-radius:99px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:inherit;}
+.chip.active{background:var(--accent-soft);border-color:var(--accent);color:var(--fg);font-weight:600;}
+.req-table{width:100%;border-collapse:collapse;}
+.req-table th{text-align:left;font-size:11.5px;font-weight:600;color:var(--fg-dim);padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;}
+.req-table td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.req-table tbody tr{transition:background 0.12s;cursor:pointer;}
+.req-table tbody tr:hover{background:var(--bg-hover);}
+.req-table tbody tr.selected{background:var(--accent-soft);}
+.rice-meter{display:flex;align-items:center;gap:8px;}
+.bar-bg{flex:1;min-width:52px;height:6px;border-radius:99px;background:var(--bg-input);border:1px solid var(--border);overflow:hidden;}
+.bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg, #6366f1, #22d3ee);}
+.rank-list{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto;}
+.rank-item{border:1px solid var(--border);border-radius:10px;padding:10px 11px;background:var(--bg-input);display:flex;flex-direction:column;gap:5px;cursor:pointer;transition:0.15s;}
+.rank-item:hover{border-color:var(--accent);background:var(--bg-hover);}
+.rank-top{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.prd-layout{display:grid;grid-template-columns:245px minmax(0, 1fr);gap:14px;min-height:460px;}
+.prd-picker{display:flex;flex-direction:column;gap:6px;max-height:600px;overflow-y:auto;}
+.prd-pick{text-align:left;width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 10px;background:var(--bg-input);color:var(--fg);cursor:pointer;display:flex;flex-direction:column;gap:4px;}
+.prd-pick:hover{border-color:var(--border-strong);}
+.prd-pick.active{border-color:var(--accent);background:var(--accent-soft);}
+.prd-form{display:flex;flex-direction:column;gap:12px;}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field-label{font-size:12px;font-weight:600;color:var(--fg-muted);display:flex;justify-content:space-between;align-items:center;}
+.score-ring{display:inline-flex;align-items:center;gap:8px;padding:4px 10px;border-radius:99px;background:var(--bg-input);border:1px solid var(--border);font-weight:700;font-size:12.5px;}
+.gantt-controls{display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:10px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--bg-input);}
+.empty-state{padding:40px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;border:1px dashed var(--border-strong);border-radius:var(--radius);background:var(--bg-input);}
+.empty-state h3{margin:0;font-size:15px;}
+.empty-state p{margin:0;color:var(--fg-muted);max-width:440px;}
+.modal-backdrop{position:fixed;inset:0;background:rgba(5, 8, 15, 0.68);backdrop-filter:blur(4px);display:grid;place-items:center;z-index:50;padding:16px;}
+.modal-backdrop[hidden]{display:none;}
+.modal{width:min(640px, 100%);max-height:88vh;overflow-y:auto;background:var(--bg-elev);border:1px solid var(--border-strong);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px;}
+.form-grid{display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:10px;}
+.rice-preview{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;border-radius:10px;background:var(--accent-soft);border:1px solid rgba(99, 102, 241, 0.35);}
+.toast{position:fixed;right:18px;bottom:18px;z-index:60;padding:9px 14px;border-radius:10px;background:var(--bg-elev);border:1px solid var(--border-strong);box-shadow:var(--shadow);font-size:12.5px;font-weight:500;max-width:360px;transition:opacity 0.2s;}
+.toast[data-type="error"]{border-color:var(--rose);color:var(--rose);}
+.toast[data-type="ok"]{border-color:var(--emerald);color:var(--emerald);}
+.toast[hidden]{display:none;}
+[hidden]{display:none !important;}
+@media (max-width:820px){.app{grid-template-columns:1fr;grid-template-rows:auto 1fr;}
+.sidebar{flex-direction:row;align-items:center;overflow-x:auto;padding:8px 12px;border-right:none;border-bottom:1px solid var(--border);}
+.brand-sub, .side-section{display:none;}
+.nav{flex-direction:row;}
+.kpi-strip{grid-template-columns:repeat(2, minmax(0, 1fr));}
+.overview-grid, .prd-layout{grid-template-columns:1fr;}
+.form-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+<div class="brand">
+<div class="brand-icon">PS</div>
+<div>
+<div class="brand-title">Product Studio</div>
+<div class="brand-sub">需求 · RICE · 路线图 · PRD</div>
+</div>
+</div>
+<nav class="nav" aria-label="主导航">
+<button class="nav-btn active" data-view="overview" type="button">
+<span class="nav-left"><span>◈</span><span>RICE 矩阵总览</span></span>
+<span class="nav-badge" id="nav-count-all">0</span>
+</button>
+<button class="nav-btn" data-view="backlog" type="button">
+<span class="nav-left"><span>☰</span><span>需求池与打分</span></span>
+<span class="nav-badge" id="nav-count-p0">P0:0</span>
+</button>
+<button class="nav-btn" data-view="roadmap" type="button">
+<span class="nav-left"><span>▤</span><span>甘特图路线图</span></span>
+<span class="nav-badge" id="nav-week-tag">W5</span>
+</button>
+<button class="nav-btn" data-view="prd" type="button">
+<span class="nav-left"><span>✎</span><span>PRD 规格文档</span></span>
+<span class="nav-badge" id="nav-prd-score">0%</span>
+</button>
+</nav>
+<div class="side-section">
+<div class="side-meta"><span>作用域</span><span>Project 隔离</span></div>
+<div class="side-meta"><span>Agent Tools</span><span>prd.list / create</span></div>
+<button id="btn-seed-side" class="btn sm" type="button" style="justify-content:center">✦ 加载行业演示数据</button>
+</div>
+</aside>
+<div class="workspace">
+<header class="topbar">
+<div class="top-title">
+<h1 id="view-heading">总览与 RICE 优先级矩阵</h1>
+<span class="rev-pill" id="rev-badge">修订 #0</span>
+</div>
+<div class="top-actions">
+<button id="btn-seed" class="btn sm" type="button">✦ 演示数据集</button>
+<button id="btn-io" class="btn sm" type="button">⇅ 导入 / 导出</button>
+<button id="btn-theme" class="btn sm ghost" type="button" title="切换明暗主题">☀ 浅色</button>
+<button id="btn-new-req" class="btn sm primary" type="button">+ 新建需求</button>
+</div>
+</header>
+<section class="kpi-strip" aria-label="关键指标">
+<div class="kpi-card" style="--kpi-c:#6366f1">
+<div class="kpi-label"><span>总需求数</span><span>Backlog → Shipped</span></div>
+<div class="kpi-val" id="kpi-total">0</div>
+<div class="kpi-sub" id="kpi-total-sub">项目级隔离存储</div>
+</div>
+<div class="kpi-card" style="--kpi-c:#22d3ee">
+<div class="kpi-label"><span>推进中 / 评审</span><span>Active Sprint</span></div>
+<div class="kpi-val" id="kpi-active">0</div>
+<div class="kpi-sub" id="kpi-active-sub">含开发中与待验收</div>
+</div>
+<div class="kpi-card" style="--kpi-c:#10b981">
+<div class="kpi-label"><span>已交付上线</span><span>Shipped</span></div>
+<div class="kpi-val" id="kpi-shipped">0</div>
+<div class="kpi-sub" id="kpi-shipped-sub">交付率 0%</div>
+</div>
+<div class="kpi-card" style="--kpi-c:#f59e0b">
+<div class="kpi-label"><span>平均 RICE 评分</span><span>PRD 完整度</span></div>
+<div class="kpi-val" id="kpi-rice">0</div>
+<div class="kpi-sub" id="kpi-prd-sub">平均文档完整度 0 分</div>
+</div>
+</section>
+<main class="main-scroll">
+<section id="view-overview" class="view-pane">
+<div id="empty-overview" class="empty-state" hidden>
+<h3>欢迎来到产品需求与路线图设计台</h3>
+<p>当前项目尚未录入需求。你可以一键加载「AI 桌面插件平台 v2.0」行业级演示数据集（含 8 条需求、多泳道甘特排期与 8 篇完整 PRD），或直接新建第一条需求。</p>
+<div class="toolbar">
+<button id="btn-seed-empty" class="btn primary" type="button">✦ 一键加载 v2.0 演示数据集</button>
+<button id="btn-new-empty" class="btn" type="button">+ 创建首条需求</button>
+</div>
+</div>
+<div id="overview-content" class="overview-grid">
+<div class="card">
+<div class="card-head">
+<div>
+<h2 class="card-title">RICE 四象限价值矩阵</h2>
+<div class="card-sub">横轴：Effort 工作量（人周）· 纵轴：价值分（Reach × Impact × Confidence%）· 气泡大小映射 RICE 分</div>
+</div>
+<div class="legend">
+<span><i class="legend-dot" style="background:#10b981"></i>已交付</span>
+<span><i class="legend-dot" style="background:#f59e0b"></i>评审中</span>
+<span><i class="legend-dot" style="background:#6366f1"></i>进行中</span>
+<span><i class="legend-dot" style="background:#38bdf8"></i>已排期</span>
+<span><i class="legend-dot" style="background:#94a3b8"></i>需求池</span>
+</div>
+</div>
+<div class="svg-wrap" id="rice-wrap">
+<svg id="rice-svg" viewBox="0 0 760 410" role="img" aria-label="RICE 四象限气泡散点图"></svg>
+<div id="rice-tip" class="tooltip" hidden></div>
+</div>
+</div>
+<div class="card">
+<div class="card-head">
+<h2 class="card-title">优先级焦点与详情</h2>
+<span class="card-sub" id="focus-hint">点击气泡或条目进入 PRD</span>
+</div>
+<div id="focus-box" style="display:flex;flex-direction:column;gap:8px"></div>
+<div class="card-head" style="margin-top:4px">
+<h2 class="card-title">Top RICE 排行</h2>
+</div>
+<div id="rank-list" class="rank-list"></div>
+</div>
+</div>
+</section>
+<section id="view-backlog" class="view-pane" hidden>
+<div class="card">
+<div class="card-head">
+<div class="toolbar" style="flex:1">
+<input id="search-req" type="search" placeholder="搜索需求标题、模块、负责人或迭代…" style="min-width:210px;flex:1;max-width:340px">
+<select id="sort-req" aria-label="排序方式">
+<option value="rice_desc">按 RICE 分降序</option>
+<option value="rice_asc">按 RICE 分升序</option>
+<option value="effort_asc">按工作量升序</option>
+<option value="status">按状态分组</option>
+</select>
+</div>
+<div class="filter-pills" id="status-filters">
+<button class="chip active" data-st="all" type="button">全部</button>
+<button class="chip" data-st="backlog" type="button">需求池</button>
+<button class="chip" data-st="planned" type="button">已排期</button>
+<button class="chip" data-st="in_progress" type="button">进行中</button>
+<button class="chip" data-st="review" type="button">评审中</button>
+<button class="chip" data-st="shipped" type="button">已交付</button>
+</div>
+</div>
+<div style="overflow-x:auto">
+<table class="req-table">
+<thead>
+<tr>
+<th>需求 / 模块</th>
+<th>状态</th>
+<th>RICE 分 & 建议等级</th>
+<th>R / I / C / E</th>
+<th>负责人 / 迭代</th>
+<th>PRD 完整度</th>
+<th>操作</th>
+</tr>
+</thead>
+<tbody id="req-tbody"></tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="view-roadmap" class="view-pane" hidden>
+<div class="card">
+<div class="card-head">
+<div>
+<h2 class="card-title">多泳道甘特图路线图 (SVG)</h2>
+<div class="card-sub">按产品模块分组排期，展示里程碑菱形标记、当前周进度线及状态色带；点击任意排期条调整起止周与完成度</div>
+</div>
+<div class="toolbar">
+<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--fg-muted)">
+当前周 W<strong id="cur-week-lbl" style="color:var(--fg)">5</strong>
+<input id="cur-week-range" type="range" min="1" max="12" value="5" style="width:90px">
+</label>
+<button id="btn-save-roadmap" class="btn sm primary" type="button">保存排期</button>
+</div>
+</div>
+<div class="svg-wrap" id="gantt-wrap">
+<svg id="gantt-svg" viewBox="0 0 860 380" role="img" aria-label="多泳道甘特图路线图"></svg>
+<div id="gantt-tip" class="tooltip" hidden></div>
+</div>
+<div id="lane-editor" class="gantt-controls" hidden>
+<div class="field">
+<span class="field-label">选中排期需求</span>
+<strong id="le-title" style="padding:5px 0;font-size:13px">-</strong>
+</div>
+<div class="field">
+<span class="field-label">开始周 (W1-W12)</span>
+<input id="le-start" type="number" min="1" max="24" value="1">
+</div>
+<div class="field">
+<span class="field-label">持续周数</span>
+<input id="le-dur" type="number" min="1" max="16" value="2">
+</div>
+<div class="field">
+<span class="field-label">进度 (<span id="le-prog-val">0</span>%)</span>
+<input id="le-prog" type="range" min="0" max="100" value="0">
+</div>
+<div class="field" style="justify-content:flex-end;flex-direction:row;align-items:flex-end;gap:6px">
+<button id="le-apply" class="btn sm primary" type="button">应用并保存</button>
+<button id="le-open-prd" class="btn sm" type="button">打开 PRD</button>
+</div>
+</div>
+</div>
+</section>
+<section id="view-prd" class="view-pane" hidden>
+<div class="prd-layout">
+<div class="card">
+<div class="card-head">
+<h2 class="card-title">选择需求</h2>
+<span class="card-sub" id="prd-count-lbl">0 条</span>
+</div>
+<div id="prd-picker" class="prd-picker"></div>
+</div>
+<div class="card">
+<div class="card-head">
+<div>
+<h2 class="card-title" id="prd-title">请选择一条需求</h2>
+<div class="card-sub" id="prd-meta">在左侧点击需求加载结构化 PRD 规格</div>
+</div>
+<div class="toolbar">
+<span class="score-ring" id="prd-score-badge">完整度 0 / 100</span>
+<button id="btn-prd-insert" class="btn sm" type="button" hidden>↗ 插入会话</button>
+<button id="btn-prd-copy" class="btn sm" type="button">复制 Markdown</button>
+<button id="btn-prd-save" class="btn sm primary" type="button">保存 PRD</button>
+</div>
+</div>
+<div id="prd-editor-body" class="prd-form">
+<div class="field">
+<div class="field-label"><span>1. 背景与业务目标 (20分)</span><span id="sc-bg">0/20</span></div>
+<textarea id="sp-bg" rows="3" maxlength="1400" placeholder="说明当前痛点、为什么现在做、核心衡量指标…"></textarea>
+</div>
+<div class="field">
+<div class="field-label"><span>2. 用户故事与角色场景 (20分)</span><span id="sc-us">0/20</span></div>
+<textarea id="sp-us" rows="3" maxlength="1400" placeholder="作为 [角色]，我希望 [能力]，以便 [业务价值]…"></textarea>
+</div>
+<div class="field">
+<div class="field-label"><span>3. 核心业务流程与交互 (20分)</span><span id="sc-cf">0/20</span></div>
+<textarea id="sp-cf" rows="3" maxlength="1400" placeholder="1. 入口触发 -> 2. 状态流转 -> 3. 数据落盘与异常兜底…"></textarea>
+</div>
+<div class="field">
+<div class="field-label"><span>4. 验收标准 Acceptance Criteria (25分)</span><span id="sc-ac">0/25</span></div>
+<textarea id="sp-ac" rows="4" maxlength="1400" placeholder="逐条列出可量化、可测试的验收条件（建议至少 3 条）…"></textarea>
+</div>
+<div class="field">
+<div class="field-label"><span>5. 边界条件、依赖与风险 (15分)</span><span id="sc-rk">0/15</span></div>
+<textarea id="sp-rk" rows="3" maxlength="1000" placeholder="列出并发冲突、权限约束、容量边界及降级策略…"></textarea>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+</div>
+</div>
+<div id="modal-req" class="modal-backdrop" hidden>
+<div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-req-title">
+<div class="card-head">
+<h2 class="card-title" id="m-req-title">新建产品需求</h2>
+<button id="m-req-close" class="btn sm ghost" type="button">✕</button>
+</div>
+<div class="form-grid">
+<label class="field" style="grid-column:1/-1">
+<span class="field-label">需求标题 *</span>
+<input id="f-title" type="text" maxlength="100" placeholder="例如：QuickJS 零冷启动沙箱内核">
+</label>
+<label class="field">
+<span class="field-label">所属模块 / 泳道</span>
+<input id="f-module" type="text" maxlength="32" placeholder="运行时内核 / 安全沙箱 / 插件生态">
+</label>
+<label class="field">
+<span class="field-label">当前状态</span>
+<select id="f-status">
+<option value="backlog">需求池 (Backlog)</option>
+<option value="planned">已排期 (Planned)</option>
+<option value="in_progress">进行中 (In Progress)</option>
+<option value="review">评审中 (Review)</option>
+<option value="shipped">已交付 (Shipped)</option>
+</select>
+</label>
+<label class="field">
+<span class="field-label">负责人</span>
+<input id="f-owner" type="text" maxlength="32" placeholder="例如：林晓">
+</label>
+<label class="field">
+<span class="field-label">目标迭代</span>
+<input id="f-sprint" type="text" maxlength="32" placeholder="例如：S2 · 存储与安全">
+</label>
+<label class="field">
+<span class="field-label">Reach 月触达用户数 (1-100000)</span>
+<input id="f-reach" type="number" min="1" max="100000" value="1500">
+</label>
+<label class="field">
+<span class="field-label">Impact 影响力系数</span>
+<select id="f-impact">
+<option value="3">3.0 · 变革性影响</option>
+<option value="2" selected>2.0 · 高影响</option>
+<option value="1">1.0 · 中等影响</option>
+<option value="0.5">0.5 · 低影响</option>
+<option value="0.25">0.25 · 极微影响</option>
+</select>
+</label>
+<label class="field">
+<span class="field-label">Confidence 信心度 (<span id="f-conf-lbl">80</span>%)</span>
+<input id="f-conf" type="range" min="10" max="100" step="5" value="80">
+</label>
+<label class="field">
+<span class="field-label">Effort 工作量 (人周 0.5-52)</span>
+<input id="f-effort" type="number" min="0.5" max="52" step="0.5" value="2">
+</label>
+<div class="rice-preview" style="grid-column:1/-1">
+<div>
+<div style="font-size:11.5px;color:var(--fg-muted)">RICE 实时打分 = (Reach × Impact × Confidence%) / Effort</div>
+<div style="font-size:16px;font-weight:800;margin-top:2px">RICE: <span id="prev-rice">1200</span> · 价值分: <span id="prev-val">2400</span></div>
+</div>
+<span id="prev-pri" class="pill p-P0">P0 · 立即排期</span>
+</div>
+<label class="field" style="grid-column:1/-1">
+<span class="field-label">一句话核心说明</span>
+<input id="f-summary" type="text" maxlength="160" placeholder="简述该需求解决的核心问题与预期收益…">
+</label>
+</div>
+<div class="card-head" style="margin-top:4px">
+<button id="m-req-del" class="btn danger" type="button" hidden>删除需求</button>
+<div class="toolbar" style="margin-left:auto">
+<button id="m-req-cancel" class="btn" type="button">取消</button>
+<button id="m-req-save" class="btn primary" type="button">保存需求</button>
+</div>
+</div>
+</div>
+</div>
+<div id="modal-io" class="modal-backdrop" hidden>
+<div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-io-title">
+<div class="card-head">
+<h2 class="card-title" id="m-io-title">导入 / 导出产品文档 (JSON)</h2>
+<button id="m-io-close" class="btn sm ghost" type="button">✕</button>
+</div>
+<div class="field">
+<span class="field-label">选择导出文档</span>
+<div class="toolbar">
+<select id="io-select" style="flex:1"></select>
+<button id="io-export" class="btn sm primary" type="button">导出预览</button>
+<button id="io-copy" class="btn sm" type="button">复制 JSON</button>
+</div>
+</div>
+<div class="field">
+<span class="field-label">JSON 内容（可直接粘贴导出的 Bundle 或单篇 PRD JSON 进行导入）</span>
+<textarea id="io-text" rows="10" placeholder="点击「导出预览」查看当前项目数据，或在此粘贴 JSON 后点击「执行导入」…"></textarea>
+</div>
+<div class="card-head">
+<span class="card-sub" id="io-hint">单次导入/导出上限 12 KiB</span>
+<div class="toolbar">
+<button id="io-import" class="btn primary" type="button">执行导入</button>
+</div>
+</div>
+</div>
+</div>
+<div id="toast" class="toast" role="status" hidden></div>
+<script>
+(() => {
+const plugin = globalThis.nmasPlugin;
+const $ = id => document.getElementById(id);
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const ST_META = {
+backlog: { label: '需求池', color: '#94a3b8' },
+planned: { label: '已排期', color: '#38bdf8' },
+in_progress: { label: '进行中', color: '#6366f1' },
+review: { label: '评审中', color: '#f59e0b' },
+shipped: { label: '已交付', color: '#10b981' },
+};
+const VIEW_TITLES = {
+overview: '总览与 RICE 优先级矩阵',
+backlog: '需求池与 RICE 打分引擎',
+roadmap: '多泳道甘特图路线图',
+prd: 'PRD 结构化规格编辑器',
+};
+const state = {
+view: 'overview',
+revision: 0,
+kpi: { total: 0, in_progress: 0, shipped: 0, avg_rice: 0, avg_spec_score: 0 },
+requirements: [],
+roadmap: { total_weeks: 12, current_week: 5, milestones: [], lanes: [] },
+specScores: {},
+selectedId: null,
+editingId: null,
+selectedLaneId: null,
+currentSpec: null,
+filterStatus: 'all',
+search: '',
+sortBy: 'rice_desc',
+canInsert: false,
+busy: false,
+};
+let toastTimer = null;
+function toast(msg, type = 'info') {
+const el = $('toast');
+el.textContent = msg;
+el.dataset.type = type;
+el.hidden = false;
+clearTimeout(toastTimer);
+toastTimer = setTimeout(() => { el.hidden = true; }, 3200);
+}
+function esc(s) {
+return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function svgEl(tag, attrs = {}, text = '') {
+const node = document.createElementNS(SVG_NS, tag);
+for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+if (text) node.textContent = text;
+return node;
+}
+function calcRiceLocal(reach, impact, conf, effort) {
+const val = Math.round(reach * impact * (conf / 100));
+const rice = Math.round(val / Math.max(0.5, effort));
+const pri = rice >= 1200 ? 'P0' : rice >= 600 ? 'P1' : rice >= 250 ? 'P2' : 'P3';
+return { val, rice, pri };
+}
+function calcSpecSections(sp) {
+const len = s => Array.from((s || '').trim()).length;
+const lines = s => (s || '').trim().split(/\r?\n/).filter(l => l.trim()).length;
+const bg = len(sp.background) >= 35 ? 20 : len(sp.background) >= 15 ? 10 : 0;
+const us = len(sp.user_stories) >= 35 ? 20 : len(sp.user_stories) >= 15 ? 10 : 0;
+const cf = (len(sp.core_flow) >= 40 || lines(sp.core_flow) >= 2) ? 20 : len(sp.core_flow) >= 15 ? 10 : 0;
+const ac = (len(sp.acceptance_criteria) >= 40 || lines(sp.acceptance_criteria) >= 2) ? 25 : (len(sp.acceptance_criteria) >= 15 || lines(sp.acceptance_criteria) >= 1) ? 12 : 0;
+const rk = len(sp.risks) >= 25 ? 15 : len(sp.risks) >= 10 ? 8 : 0;
+return { bg, us, cf, ac, rk, total: Math.min(100, bg + us + cf + ac + rk) };
+}
+function switchView(v) {
+state.view = v;
+$('view-heading').textContent = VIEW_TITLES[v] || '';
+document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+document.querySelectorAll('.view-pane').forEach(p => { p.hidden = p.id !== `view-${v}`; });
+renderCurrentView();
+}
+function renderChrome() {
+$('rev-badge').textContent = `修订 #${state.revision}`;
+$('kpi-total').textContent = String(state.kpi.total);
+$('kpi-active').textContent = String(state.kpi.in_progress);
+$('kpi-shipped').textContent = String(state.kpi.shipped);
+$('kpi-rice').textContent = String(state.kpi.avg_rice);
+const pct = state.kpi.total ? Math.round((state.kpi.shipped * 100) / state.kpi.total) : 0;
+$('kpi-shipped-sub').textContent = `交付率 ${pct}%`;
+$('kpi-prd-sub').textContent = `平均 PRD 完整度 ${state.kpi.avg_spec_score} 分`;
+const p0Count = state.requirements.filter(r => r.priority === 'P0').length;
+$('nav-count-all').textContent = String(state.requirements.length);
+$('nav-count-p0').textContent = `P0:${p0Count}`;
+$('nav-week-tag').textContent = `W${state.roadmap.current_week}`;
+$('nav-prd-score').textContent = `${state.kpi.avg_spec_score}%`;
+$('btn-prd-insert').hidden = !state.canInsert;
+}
+function renderCurrentView() {
+renderChrome();
+if (state.view === 'overview') renderOverview();
+else if (state.view === 'backlog') renderBacklog();
+else if (state.view === 'roadmap') renderRoadmap();
+else if (state.view === 'prd') renderPrdPicker();
+}
+function renderOverview() {
+const hasData = state.requirements.length > 0;
+$('empty-overview').hidden = hasData;
+$('overview-content').hidden = !hasData;
+if (!hasData) return;
+if (!state.selectedId || !state.requirements.some(r => r.id === state.selectedId)) {
+const top = [...state.requirements].sort((a, b) => b.rice - a.rice)[0];
+state.selectedId = top ? top.id : null;
+}
+renderRiceSvg();
+renderFocusAndRank();
+}
+function renderRiceSvg() {
+const svg = $('rice-svg');
+svg.replaceChildren();
+const W = 760, H = 410;
+const pad = { l: 64, r: 28, t: 28, b: 46 };
+const pw = W - pad.l - pad.r;
+const ph = H - pad.t - pad.b;
+const reqs = state.requirements;
+const maxEff = Math.max(6, ...reqs.map(r => r.effort)) * 1.15;
+const maxVal = Math.max(2000, ...reqs.map(r => r.value_score)) * 1.15;
+const midEff = maxEff * 0.48;
+const midVal = maxVal * 0.45;
+const maxRice = Math.max(500, ...reqs.map(r => r.rice));
+const xOf = eff => pad.l + (eff / maxEff) * pw;
+const yOf = val => pad.t + ph - (val / maxVal) * ph;
+const mx = xOf(midEff);
+const my = yOf(midVal);
+svg.appendChild(svgEl('rect', { x: pad.l, y: pad.t, width: mx - pad.l, height: my - pad.t, fill: 'rgba(16,185,129,0.08)' }));
+svg.appendChild(svgEl('rect', { x: mx, y: pad.t, width: pad.l + pw - mx, height: my - pad.t, fill: 'rgba(99,102,241,0.08)' }));
+svg.appendChild(svgEl('rect', { x: pad.l, y: my, width: mx - pad.l, height: pad.t + ph - my, fill: 'rgba(148,163,184,0.05)' }));
+svg.appendChild(svgEl('rect', { x: mx, y: my, width: pad.l + pw - mx, height: pad.t + ph - my, fill: 'rgba(244,63,94,0.07)' }));
+for (let i = 0; i <= 4; i++) {
+const gy = pad.t + (ph * i) / 4;
+svg.appendChild(svgEl('line', { x1: pad.l, y1: gy, x2: pad.l + pw, y2: gy, stroke: 'var(--border)', 'stroke-width': 1 }));
+const valLbl = Math.round(maxVal * (1 - i / 4));
+svg.appendChild(svgEl('text', { x: pad.l - 8, y: gy + 4, 'text-anchor': 'end', fill: 'var(--fg-dim)', 'font-size': 10.5 }, valLbl >= 1000 ? `${(valLbl / 1000).toFixed(1)}k` : String(valLbl)));
+}
+for (let i = 0; i <= 5; i++) {
+const gx = pad.l + (pw * i) / 5;
+svg.appendChild(svgEl('line', { x1: gx, y1: pad.t, x2: gx, y2: pad.t + ph, stroke: 'var(--border)', 'stroke-width': 1 }));
+const effLbl = ((maxEff * i) / 5).toFixed(1);
+svg.appendChild(svgEl('text', { x: gx, y: pad.t + ph + 18, 'text-anchor': 'middle', fill: 'var(--fg-dim)', 'font-size': 10.5 }, `${effLbl}w`));
+}
+svg.appendChild(svgEl('line', { x1: mx, y1: pad.t, x2: mx, y2: pad.t + ph, stroke: 'var(--border-strong)', 'stroke-dasharray': '5 4', 'stroke-width': 1.2 }));
+svg.appendChild(svgEl('line', { x1: pad.l, y1: my, x2: pad.l + pw, y2: my, stroke: 'var(--border-strong)', 'stroke-dasharray': '5 4', 'stroke-width': 1.2 }));
+svg.appendChild(svgEl('text', { x: pad.l + 10, y: pad.t + 18, fill: '#10b981', 'font-size': 11, 'font-weight': 700 }, '★ 速赢高价值 (Quick Wins)'));
+svg.appendChild(svgEl('text', { x: pad.l + pw - 10, y: pad.t + 18, 'text-anchor': 'end', fill: '#818cf8', 'font-size': 11, 'font-weight': 700 }, '◆ 战略大项目 (Big Bets)'));
+svg.appendChild(svgEl('text', { x: pad.l + 10, y: pad.t + ph - 10, fill: '#94a3b8', 'font-size': 11, 'font-weight': 600 }, '○ 轻量补充项 (Fill-ins)'));
+svg.appendChild(svgEl('text', { x: pad.l + pw - 10, y: pad.t + ph - 10, 'text-anchor': 'end', fill: '#fb7185', 'font-size': 11, 'font-weight': 600 }, '△ 高耗低效区 (Reconsider)'));
+svg.appendChild(svgEl('text', { x: pad.l + pw / 2, y: H - 8, 'text-anchor': 'middle', fill: 'var(--fg-muted)', 'font-size': 11.5, 'font-weight': 600 }, 'Effort 工作量（人周）→'));
+const yAxisText = svgEl('text', { x: 16, y: pad.t + ph / 2, 'text-anchor': 'middle', fill: 'var(--fg-muted)', 'font-size': 11.5, 'font-weight': 600, transform: `rotate(-90 16 ${pad.t + ph / 2})` }, '价值分 (Reach×Impact×Conf%) →');
+svg.appendChild(yAxisText);
+const tip = $('rice-tip');
+const wrap = $('rice-wrap');
+for (const r of reqs) {
+const cx = xOf(r.effort);
+const cy = yOf(r.value_score);
+const radius = 11 + Math.round((r.rice / maxRice) * 16);
+const color = ST_META[r.status]?.color || '#6366f1';
+const isSel = r.id === state.selectedId;
+const g = svgEl('g', { style: 'cursor:pointer' });
+if (isSel) {
+g.appendChild(svgEl('circle', { cx, cy, r: radius + 6, fill: 'none', stroke: color, 'stroke-width': 2, 'stroke-opacity': 0.75, 'stroke-dasharray': '3 2' }));
+}
+const c = svgEl('circle', {
+cx, cy, r: radius, fill: color, 'fill-opacity': isSel ? 0.92 : 0.72,
+stroke: isSel ? '#ffffff' : color, 'stroke-width': isSel ? 2.2 : 1.4,
+});
+g.appendChild(c);
+g.appendChild(svgEl('text', { x: cx, y: cy + 3.5, 'text-anchor': 'middle', fill: '#ffffff', 'font-size': 10, 'font-weight': 700, style: 'pointer-events:none' }, r.priority));
+const shortTitle = r.title.length > 10 ? `${r.title.slice(0, 10)}…` : r.title;
+const lblX = cx + radius + 6 > W - 80 ? cx - radius - 6 : cx + radius + 6;
+const anchor = cx + radius + 6 > W - 80 ? 'end' : 'start';
+g.appendChild(svgEl('text', { x: lblX, y: cy + 4, 'text-anchor': anchor, fill: 'var(--fg)', 'font-size': 11, 'font-weight': isSel ? 700 : 500 }, shortTitle));
+g.addEventListener('mouseenter', ev => {
+c.setAttribute('fill-opacity', '0.98');
+tip.innerHTML = `
+<div style="font-weight:700;margin-bottom:4px">${esc(r.title)}</div>
+<div style="display:flex;gap:5px;margin-bottom:5px">
+<span class="pill p-${esc(r.priority)}">${esc(r.priority)}</span>
+<span class="pill st-${esc(r.status)}">${esc(ST_META[r.status]?.label || r.status)}</span>
+</div>
+<div style="color:var(--fg-muted)">RICE: <strong style="color:var(--fg)">${r.rice}</strong> · 价值分: ${r.value_score}</div>
+<div style="color:var(--fg-muted)">Effort: ${r.effort}人周 · 负责人: ${esc(r.owner || '未指派')}</div>
+`;
+tip.hidden = false;
+const rect = wrap.getBoundingClientRect();
+const tx = Math.min(rect.width - 230, Math.max(8, ev.clientX - rect.left + 14));
+const ty = Math.min(rect.height - 110, Math.max(8, ev.clientY - rect.top - 10));
+tip.style.left = `${tx}px`;
+tip.style.top = `${ty}px`;
+});
+g.addEventListener('mouseleave', () => {
+c.setAttribute('fill-opacity', isSel ? '0.92' : '0.72');
+tip.hidden = true;
+});
+g.addEventListener('click', () => {
+state.selectedId = r.id;
+renderRiceSvg();
+renderFocusAndRank();
+});
+svg.appendChild(g);
+}
+}
+function renderFocusAndRank() {
+const focusBox = $('focus-box');
+const sel = state.requirements.find(r => r.id === state.selectedId);
+if (sel) {
+const sc = state.specScores[sel.id]?.score || 0;
+focusBox.innerHTML = `
+<div class="rank-item" style="border-color:var(--accent);background:var(--accent-soft);cursor:default">
+<div class="rank-top">
+<strong style="font-size:13.5px">${esc(sel.title)}</strong>
+<span class="pill p-${esc(sel.priority)}">${esc(sel.priority)} · ${sel.rice}</span>
+</div>
+<div style="font-size:12px;color:var(--fg-muted)">${esc(sel.summary || '暂无简介')}</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;font-size:11.5px;color:var(--fg-muted)">
+<span class="pill st-${esc(sel.status)}">${esc(ST_META[sel.status]?.label || sel.status)}</span>
+<span>模块：${esc(sel.module)}</span>
+<span>工作量：${sel.effort}w</span>
+<span>PRD：${sc}分</span>
+</div>
+<div class="toolbar" style="margin-top:4px">
+<button class="btn sm primary" id="focus-open-prd" type="button">✎ 打开 PRD 编辑器</button>
+<button class="btn sm" id="focus-edit-req" type="button">编辑打分</button>
+</div>
+</div>
+`;
+$('focus-open-prd').addEventListener('click', () => openPrdFor(sel.id));
+$('focus-edit-req').addEventListener('click', () => openReqModal(sel));
+} else {
+focusBox.innerHTML = '';
+}
+const list = $('rank-list');
+list.replaceChildren();
+const sorted = [...state.requirements].sort((a, b) => b.rice - a.rice);
+for (const r of sorted) {
+const div = document.createElement('div');
+div.className = 'rank-item';
+if (r.id === state.selectedId) div.style.borderColor = 'var(--accent)';
+const sc = state.specScores[r.id]?.score || 0;
+div.innerHTML = `
+<div class="rank-top">
+<strong style="font-size:12.5px">${esc(r.title)}</strong>
+<span class="pill p-${esc(r.priority)}">${r.rice}</span>
+</div>
+<div class="rank-top" style="font-size:11.5px;color:var(--fg-muted)">
+<span>${esc(r.module)} · ${esc(r.sprint || '未排迭代')}</span>
+<span>PRD ${sc}%</span>
+</div>
+`;
+div.addEventListener('click', () => {
+state.selectedId = r.id;
+renderRiceSvg();
+renderFocusAndRank();
+});
+list.appendChild(div);
+}
+}
+function renderBacklog() {
+const tbody = $('req-tbody');
+tbody.replaceChildren();
+const kw = state.search.trim().toLowerCase();
+let list = state.requirements.filter(r => {
+if (state.filterStatus !== 'all' && r.status !== state.filterStatus) return false;
+if (kw) {
+const hay = `${r.title} ${r.module} ${r.owner} ${r.sprint} ${r.summary}`.toLowerCase();
+if (!hay.includes(kw)) return false;
+}
+return true;
+});
+if (state.sortBy === 'rice_desc') list.sort((a, b) => b.rice - a.rice);
+else if (state.sortBy === 'rice_asc') list.sort((a, b) => a.rice - b.rice);
+else if (state.sortBy === 'effort_asc') list.sort((a, b) => a.effort - b.effort);
+else if (state.sortBy === 'status') {
+const order = { in_progress: 0, review: 1, planned: 2, backlog: 3, shipped: 4 };
+list.sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9));
+}
+const maxRice = Math.max(100, ...state.requirements.map(r => r.rice));
+if (!list.length) {
+const tr = document.createElement('tr');
+tr.innerHTML = `<td colspan="7" style="text-align:center;color:var(--fg-dim);padding:28px">暂无符合条件的需求</td>`;
+tbody.appendChild(tr);
+return;
+}
+for (const r of list) {
+const tr = document.createElement('tr');
+if (r.id === state.selectedId) tr.className = 'selected';
+const sc = state.specScores[r.id]?.score || 0;
+const pct = Math.min(100, Math.round((r.rice * 100) / maxRice));
+tr.innerHTML = `
+<td>
+<div style="font-weight:600">${esc(r.title)}</div>
+<div style="font-size:11.5px;color:var(--fg-dim)">${esc(r.module)} · ${esc(r.summary || '')}</div>
+</td>
+<td><span class="pill st-${esc(r.status)}">${esc(ST_META[r.status]?.label || r.status)}</span></td>
+<td>
+<div class="rice-meter">
+<span class="pill p-${esc(r.priority)}">${esc(r.priority)}</span>
+<strong style="min-width:44px">${r.rice}</strong>
+<div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
+</div>
+</td>
+<td style="font-size:11.5px;color:var(--fg-muted);white-space:nowrap">${r.reach} / ${r.impact}× / ${r.confidence}% / ${r.effort}w</td>
+<td style="font-size:12px">
+<div>${esc(r.owner || '-')}</div>
+<div style="font-size:11px;color:var(--fg-dim)">${esc(r.sprint || '-')}</div>
+</td>
+<td><span class="pill" style="background:var(--bg-input);border-color:var(--border);color:${sc >= 80 ? '#10b981' : sc >= 40 ? '#f59e0b' : 'var(--fg-muted)'}">${sc} 分</span></td>
+<td style="white-space:nowrap">
+<button class="btn sm" data-act="edit" type="button">编辑</button>
+<button class="btn sm" data-act="prd" type="button">PRD</button>
+</td>
+`;
+tr.querySelector('[data-act="edit"]').addEventListener('click', e => { e.stopPropagation(); openReqModal(r); });
+tr.querySelector('[data-act="prd"]').addEventListener('click', e => { e.stopPropagation(); openPrdFor(r.id); });
+tr.addEventListener('click', () => { state.selectedId = r.id; openReqModal(r); });
+tbody.appendChild(tr);
+}
+}
+function renderRoadmap() {
+const svg = $('gantt-svg');
+svg.replaceChildren();
+const rm = state.roadmap;
+const totalWeeks = Math.max(8, rm.total_weeks || 12);
+$('cur-week-range').max = String(totalWeeks);
+$('cur-week-range').value = String(rm.current_week || 1);
+$('cur-week-lbl').textContent = String(rm.current_week || 1);
+const reqById = new Map(state.requirements.map(r => [r.id, r]));
+const lanes = rm.lanes.filter(l => reqById.has(l.req_id));
+const groups = new Map();
+for (const l of lanes) {
+const gName = l.lane || reqById.get(l.req_id).module || '默认泳道';
+if (!groups.has(gName)) groups.set(gName, []);
+groups.get(gName).push(l);
+}
+const rows = [];
+for (const [gName, items] of groups.entries()) {
+items.sort((a, b) => a.start_week - b.start_week);
+rows.push({ kind: 'group', label: gName, count: items.length });
+for (const item of items) rows.push({ kind: 'bar', lane: item, req: reqById.get(item.req_id) });
+}
+const W = 860;
+const leftCol = 215;
+const topHead = 58;
+const rowH = 34;
+const H = Math.max(240, topHead + rows.length * rowH + 26);
+svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+const gridW = W - leftCol - 20;
+const weekW = gridW / totalWeeks;
+const xWeek = w => leftCol + (w - 1) * weekW;
+svg.appendChild(svgEl('rect', { x: 0, y: 0, width: W, height: topHead, fill: 'var(--bg-elev)' }));
+svg.appendChild(svgEl('line', { x1: 0, y1: topHead, x2: W, y2: topHead, stroke: 'var(--border-strong)', 'stroke-width': 1 }));
+svg.appendChild(svgEl('line', { x1: leftCol, y1: 0, x2: leftCol, y2: H, stroke: 'var(--border-strong)', 'stroke-width': 1 }));
+svg.appendChild(svgEl('text', { x: 14, y: 35, fill: 'var(--fg-muted)', 'font-size': 12, 'font-weight': 700 }, '模块泳道 / 需求条目'));
+for (let w = 1; w <= totalWeeks; w++) {
+const x = xWeek(w);
+if (w % 2 === 0) {
+svg.appendChild(svgEl('rect', { x, y: topHead, width: weekW, height: H - topHead, fill: 'rgba(148,163,184,0.03)' }));
+}
+svg.appendChild(svgEl('line', { x1: x, y1: topHead - 18, x2: x, y2: H, stroke: 'var(--border)', 'stroke-width': 1 }));
+svg.appendChild(svgEl('text', { x: x + weekW / 2, y: topHead - 6, 'text-anchor': 'middle', fill: 'var(--fg-dim)', 'font-size': 10.5, 'font-weight': 600 }, `W${w}`));
+}
+for (const ms of rm.milestones || []) {
+const mx = xWeek(ms.week) + weekW * 0.5;
+svg.appendChild(svgEl('line', { x1: mx, y1: 24, x2: mx, y2: H, stroke: ms.color || '#6366f1', 'stroke-opacity': 0.25, 'stroke-dasharray': '3 3', 'stroke-width': 1.2 }));
+svg.appendChild(svgEl('polygon', { points: `${mx},12 ${mx + 6},18 ${mx},24 ${mx - 6},18`, fill: ms.color || '#6366f1' }));
+svg.appendChild(svgEl('text', { x: mx + 9, y: 21, fill: ms.color || '#6366f1', 'font-size': 10, 'font-weight': 700 }, ms.title));
+}
+const tip = $('gantt-tip');
+const wrap = $('gantt-wrap');
+rows.forEach((row, idx) => {
+const y = topHead + idx * rowH;
+if (row.kind === 'group') {
+svg.appendChild(svgEl('rect', { x: 0, y, width: W, height: rowH, fill: 'rgba(99,102,241,0.07)' }));
+svg.appendChild(svgEl('text', { x: 14, y: y + 21, fill: 'var(--accent-hover)', 'font-size': 11.5, 'font-weight': 700 }, `▸ ${row.label} (${row.count})`));
+svg.appendChild(svgEl('line', { x1: 0, y1: y + rowH, x2: W, y2: y + rowH, stroke: 'var(--border)', 'stroke-width': 1 }));
+} else {
+const { lane, req } = row;
+const color = ST_META[req.status]?.color || '#6366f1';
+const isSel = state.selectedLaneId === lane.req_id;
+if (isSel) svg.appendChild(svgEl('rect', { x: 0, y, width: W, height: rowH, fill: 'var(--accent-soft)' }));
+svg.appendChild(svgEl('line', { x1: 0, y1: y + rowH, x2: W, y2: y + rowH, stroke: 'var(--border)', 'stroke-width': 0.8 }));
+const shortName = req.title.length > 14 ? `${req.title.slice(0, 14)}…` : req.title;
+svg.appendChild(svgEl('text', { x: 20, y: y + 21, fill: 'var(--fg)', 'font-size': 11.5, 'font-weight': isSel ? 700 : 500 }, shortName));
+const bx = xWeek(lane.start_week) + 2;
+const bw = Math.max(18, lane.duration_weeks * weekW - 4);
+const by = y + 6;
+const bh = rowH - 12;
+const g = svgEl('g', { style: 'cursor:pointer' });
+g.appendChild(svgEl('rect', {
+x: bx, y: by, width: bw, height: bh, rx: 6,
+fill: color, 'fill-opacity': 0.24, stroke: isSel ? '#ffffff' : color, 'stroke-width': isSel ? 1.8 : 1.1,
+}));
+const progW = Math.round((bw * Math.min(100, Math.max(0, lane.progress))) / 100);
+if (progW > 0) {
+g.appendChild(svgEl('rect', { x: bx, y: by, width: progW, height: bh, rx: 6, fill: color, 'fill-opacity': 0.85 }));
+}
+g.appendChild(svgEl('text', { x: bx + 8, y: by + 15, fill: '#ffffff', 'font-size': 10.5, 'font-weight': 700, style: 'pointer-events:none' }, `${req.priority} · ${lane.progress}%`));
+g.addEventListener('mouseenter', ev => {
+tip.innerHTML = `
+<div style="font-weight:700;margin-bottom:3px">${esc(req.title)}</div>
+<div style="color:var(--fg-muted)">周期：W${lane.start_week} → W${lane.start_week + lane.duration_weeks - 1}（${lane.duration_weeks} 周）</div>
+<div style="color:var(--fg-muted)">进度：${lane.progress}% · RICE：${req.rice} · ${esc(req.owner || '')}</div>
+`;
+tip.hidden = false;
+const rect = wrap.getBoundingClientRect();
+tip.style.left = `${Math.min(rect.width - 230, Math.max(8, ev.clientX - rect.left + 12))}px`;
+tip.style.top = `${Math.min(rect.height - 90, Math.max(8, ev.clientY - rect.top - 10))}px`;
+});
+g.addEventListener('mouseleave', () => { tip.hidden = true; });
+g.addEventListener('click', () => selectLaneEditor(lane, req));
+svg.appendChild(g);
+}
+});
+const curX = xWeek(rm.current_week) + weekW * 0.5;
+svg.appendChild(svgEl('line', { x1: curX, y1: topHead - 18, x2: curX, y2: H, stroke: '#f43f5e', 'stroke-width': 2 }));
+svg.appendChild(svgEl('rect', { x: curX - 24, y: topHead - 36, width: 48, height: 17, rx: 8, fill: '#f43f5e' }));
+svg.appendChild(svgEl('text', { x: curX, y: topHead - 24, 'text-anchor': 'middle', fill: '#ffffff', 'font-size': 10, 'font-weight': 700 }, `当前 W${rm.current_week}`));
+if (!rows.length) {
+svg.appendChild(svgEl('text', { x: W / 2, y: 140, 'text-anchor': 'middle', fill: 'var(--fg-dim)', 'font-size': 13 }, '暂无排期数据，请先新建需求或加载演示数据集'));
+}
+}
+function selectLaneEditor(lane, req) {
+state.selectedLaneId = lane.req_id;
+$('lane-editor').hidden = false;
+$('le-title').textContent = `${req.title} (${req.priority})`;
+$('le-start').value = String(lane.start_week);
+$('le-dur').value = String(lane.duration_weeks);
+$('le-prog').value = String(lane.progress);
+$('le-prog-val').textContent = String(lane.progress);
+renderRoadmap();
+}
+function renderPrdPicker() {
+const box = $('prd-picker');
+box.replaceChildren();
+$('prd-count-lbl').textContent = `${state.requirements.length} 条`;
+if (!state.requirements.length) {
+box.innerHTML = `<div style="color:var(--fg-dim);font-size:12px;padding:12px">暂无需求</div>`;
+$('prd-title').textContent = '暂无可选需求';
+$('prd-meta').textContent = '请先创建需求或加载演示数据';
+return;
+}
+if (!state.selectedId || !state.requirements.some(r => r.id === state.selectedId)) {
+state.selectedId = state.requirements[0].id;
+}
+for (const r of state.requirements) {
+const btn = document.createElement('button');
+btn.type = 'button';
+btn.className = `prd-pick${r.id === state.selectedId ? ' active' : ''}`;
+const sc = state.specScores[r.id]?.score || 0;
+btn.innerHTML = `
+<div style="display:flex;justify-content:space-between;gap:6px;align-items:center">
+<strong style="font-size:12.5px">${esc(r.title)}</strong>
+<span class="pill p-${esc(r.priority)}">${esc(r.priority)}</span>
+</div>
+<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--fg-muted)">
+<span>${esc(r.module)}</span>
+<span style="color:${sc >= 80 ? '#10b981' : sc >= 40 ? '#f59e0b' : 'var(--fg-dim)'}">完整度 ${sc}%</span>
+</div>
+`;
+btn.addEventListener('click', () => loadSpec(r.id));
+box.appendChild(btn);
+}
+if (!state.currentSpec || state.currentSpec.req_id !== state.selectedId) {
+void loadSpec(state.selectedId);
+}
+}
+async function openPrdFor(reqId) {
+state.selectedId = reqId;
+switchView('prd');
+await loadSpec(reqId);
+}
+async function loadSpec(reqId) {
+state.selectedId = reqId;
+const req = state.requirements.find(r => r.id === reqId);
+if (!req) return;
+$('prd-title').textContent = req.title;
+$('prd-meta').textContent = `${req.module} · ${req.priority} (RICE ${req.rice}) · 负责人 ${req.owner || '未指派'} · ${req.sprint || '未排迭代'}`;
+document.querySelectorAll('.prd-pick').forEach((el, idx) => {
+el.classList.toggle('active', state.requirements[idx]?.id === reqId);
+});
+try {
+const res = await plugin.action('spec.get', { req_id: reqId });
+state.revision = res.revision;
+state.currentSpec = res.spec;
+$('sp-bg').value = res.spec.background || '';
+$('sp-us').value = res.spec.user_stories || '';
+$('sp-cf').value = res.spec.core_flow || '';
+$('sp-ac').value = res.spec.acceptance_criteria || '';
+$('sp-rk').value = res.spec.risks || '';
+updateSpecScoreLive();
+} catch (e) {
+toast(`读取 PRD 失败：${e?.message || '未知错误'}`, 'error');
+}
+}
+function updateSpecScoreLive() {
+const s = calcSpecSections({
+background: $('sp-bg').value,
+user_stories: $('sp-us').value,
+core_flow: $('sp-cf').value,
+acceptance_criteria: $('sp-ac').value,
+risks: $('sp-rk').value,
+});
+$('sc-bg').textContent = `${s.bg}/20`;
+$('sc-us').textContent = `${s.us}/20`;
+$('sc-cf').textContent = `${s.cf}/20`;
+$('sc-ac').textContent = `${s.ac}/25`;
+$('sc-rk').textContent = `${s.rk}/15`;
+const badge = $('prd-score-badge');
+badge.textContent = `完整度 ${s.total} / 100`;
+badge.style.color = s.total >= 80 ? '#10b981' : s.total >= 40 ? '#f59e0b' : 'var(--fg-muted)';
+}
+function buildPrdMarkdown() {
+const req = state.requirements.find(r => r.id === state.selectedId);
+if (!req) return '';
+return [
+`# PRD: ${req.title}`,
+`- 模块：${req.module} | 优先级：${req.priority} (RICE ${req.rice}) | 负责人：${req.owner || '-'} | 迭代：${req.sprint || '-'}`,
+'',
+'## 1. 背景与目标',
+$('sp-bg').value.trim() || '（待补充）',
+'',
+'## 2. 用户故事',
+$('sp-us').value.trim() || '（待补充）',
+'',
+'## 3. 核心业务流程',
+$('sp-cf').value.trim() || '（待补充）',
+'',
+'## 4. 验收标准 (AC)',
+$('sp-ac').value.trim() || '（待补充）',
+'',
+'## 5. 边界与风险',
+$('sp-rk').value.trim() || '（待补充）',
+].join('\n');
+}
+function updateRiceModalPreview() {
+const reach = Math.max(1, Number($('f-reach').value) || 1);
+const impact = Number($('f-impact').value) || 1;
+const conf = Number($('f-conf').value) || 80;
+const effort = Math.max(0.5, Number($('f-effort').value) || 1);
+$('f-conf-lbl').textContent = String(conf);
+const { val, rice, pri } = calcRiceLocal(reach, impact, conf, effort);
+$('prev-rice').textContent = String(rice);
+$('prev-val').textContent = String(val);
+const priMap = { P0: 'P0 · 立即排期', P1: 'P1 · 重点推进', P2: 'P2 · 常规排期', P3: 'P3 · 暂缓观察' };
+const el = $('prev-pri');
+el.className = `pill p-${pri}`;
+el.textContent = priMap[pri];
+}
+function openReqModal(req = null) {
+state.editingId = req ? req.id : null;
+$('m-req-title').textContent = req ? '编辑需求与 RICE 评分' : '新建产品需求';
+$('f-title').value = req?.title || '';
+$('f-module').value = req?.module || '运行时内核';
+$('f-status').value = req?.status || 'planned';
+$('f-owner').value = req?.owner || '';
+$('f-sprint').value = req?.sprint || 'S2 · 插件生态';
+$('f-reach').value = String(req?.reach ?? 1500);
+$('f-impact').value = String(req?.impact ?? 2);
+$('f-conf').value = String(req?.confidence ?? 80);
+$('f-effort').value = String(req?.effort ?? 2);
+$('f-summary').value = req?.summary || '';
+$('m-req-del').hidden = !req;
+updateRiceModalPreview();
+$('modal-req').hidden = false;
+$('f-title').focus();
+}
+async function loadAll(preferId = null) {
+if (typeof plugin?.action !== 'function') {
+toast('请在 Velai Desktop 中打开此插件。', 'error');
+return;
+}
+try {
+const caps = await plugin.action('host.capabilities', {}).catch(() => ({ actions: [] }));
+state.canInsert = Array.isArray(caps?.actions) && caps.actions.includes('host.draft.insert');
+const res = await plugin.action('studio.load', {});
+state.revision = res.revision;
+state.kpi = res.kpi;
+state.requirements = res.requirements;
+state.roadmap = res.roadmap;
+state.specScores = res.spec_scores || {};
+if (preferId && state.requirements.some(r => r.id === preferId)) state.selectedId = preferId;
+renderCurrentView();
+} catch (e) {
+toast(`加载数据失败：${e?.message || '未知错误'}`, 'error');
+}
+}
+async function seedDemo() {
+if (state.busy) return;
+state.busy = true;
+try {
+const res = await plugin.action('studio.seed_demo', { expected_revision: state.revision });
+if (res.status === 'seeded') {
+state.currentSpec = null;
+await loadAll();
+toast(`已加载「AI 桌面插件平台 v2.0」演示数据集（${res.seeded_count} 条需求与完整 PRD）`, 'ok');
+} else if (res.status === 'conflict') {
+await loadAll();
+toast('数据版本有变化，已刷新，请再次点击加载。', 'error');
+} else {
+toast(`加载未完成：${res.status}`, 'error');
+}
+} catch (e) {
+toast(`加载演示数据失败：${e?.message || '未知错误'}`, 'error');
+} finally {
+state.busy = false;
+}
+}
+document.querySelectorAll('.nav-btn').forEach(btn => {
+btn.addEventListener('click', () => switchView(btn.dataset.view));
+});
+$('btn-theme').addEventListener('click', () => {
+const isDark = document.documentElement.dataset.theme !== 'light';
+document.documentElement.dataset.theme = isDark ? 'light' : 'dark';
+$('btn-theme').textContent = isDark ? '☾ 深色' : '☀ 浅色';
+});
+$('btn-seed').addEventListener('click', seedDemo);
+$('btn-seed-side').addEventListener('click', seedDemo);
+$('btn-seed-empty').addEventListener('click', seedDemo);
+$('btn-new-req').addEventListener('click', () => openReqModal(null));
+$('btn-new-empty').addEventListener('click', () => openReqModal(null));
+$('m-req-close').addEventListener('click', () => { $('modal-req').hidden = true; });
+$('m-req-cancel').addEventListener('click', () => { $('modal-req').hidden = true; });
+['f-reach', 'f-impact', 'f-conf', 'f-effort'].forEach(id => $(id).addEventListener('input', updateRiceModalPreview));
+$('m-req-save').addEventListener('click', async () => {
+if (state.busy) return;
+const title = $('f-title').value.trim();
+if (!title) { toast('请填写需求标题。', 'error'); return; }
+state.busy = true;
+try {
+const id = state.editingId || `req-${Date.now().toString(36)}`;
+const res = await plugin.action('req.save', {
+expected_revision: state.revision,
+id,
+title,
+module: $('f-module').value.trim() || '核心模块',
+status: $('f-status').value,
+reach: Math.max(1, Math.round(Number($('f-reach').value) || 1)),
+impact: Number($('f-impact').value) || 1,
+confidence: Math.round(Number($('f-conf').value) || 80),
+effort: Math.max(0.5, Number($('f-effort').value) || 1),
+owner: $('f-owner').value.trim(),
+sprint: $('f-sprint').value.trim(),
+summary: $('f-summary').value.trim(),
+});
+if (res.status === 'saved') {
+$('modal-req').hidden = true;
+await loadAll(id);
+toast(`已保存需求（RICE ${res.rice} · ${res.priority}）`, 'ok');
+} else {
+toast(`保存未完成：${res.status}`, 'error');
+if (res.status === 'conflict') await loadAll();
+}
+} catch (e) {
+toast(`保存失败：${e?.message || '未知错误'}`, 'error');
+} finally { state.busy = false; }
+});
+$('m-req-del').addEventListener('click', async () => {
+if (state.busy || !state.editingId) return;
+state.busy = true;
+try {
+const res = await plugin.action('req.delete', { expected_revision: state.revision, id: state.editingId });
+if (res.status === 'deleted') {
+$('modal-req').hidden = true;
+state.currentSpec = null;
+await loadAll();
+toast('已删除需求及关联排期。', 'ok');
+} else {
+toast(`删除未完成：${res.status}`, 'error');
+}
+} catch (e) {
+toast(`删除失败：${e?.message || '未知错误'}`, 'error');
+} finally { state.busy = false; }
+});
+$('search-req').addEventListener('input', e => { state.search = e.target.value; renderBacklog(); });
+$('sort-req').addEventListener('change', e => { state.sortBy = e.target.value; renderBacklog(); });
+$('status-filters').querySelectorAll('.chip').forEach(ch => {
+ch.addEventListener('click', () => {
+state.filterStatus = ch.dataset.st;
+$('status-filters').querySelectorAll('.chip').forEach(x => x.classList.toggle('active', x === ch));
+renderBacklog();
+});
+});
+$('cur-week-range').addEventListener('input', e => {
+state.roadmap.current_week = Number(e.target.value);
+$('cur-week-lbl').textContent = String(state.roadmap.current_week);
+renderRoadmap();
+});
+$('le-prog').addEventListener('input', e => { $('le-prog-val').textContent = e.target.value; });
+$('le-open-prd').addEventListener('click', () => { if (state.selectedLaneId) void openPrdFor(state.selectedLaneId); });
+async function persistRoadmap() {
+if (state.busy) return;
+state.busy = true;
+try {
+const res = await plugin.action('roadmap.save', {
+expected_revision: state.revision,
+total_weeks: state.roadmap.total_weeks,
+current_week: state.roadmap.current_week,
+milestones: state.roadmap.milestones,
+lanes: state.roadmap.lanes,
+});
+if (res.status === 'saved') {
+await loadAll();
+toast('路线图排期已保存。', 'ok');
+} else {
+toast(`保存排期未完成：${res.status}`, 'error');
+}
+} catch (e) {
+toast(`保存排期失败：${e?.message || '未知错误'}`, 'error');
+} finally { state.busy = false; }
+}
+$('btn-save-roadmap').addEventListener('click', persistRoadmap);
+$('le-apply').addEventListener('click', () => {
+const lane = state.roadmap.lanes.find(l => l.req_id === state.selectedLaneId);
+if (!lane) return;
+lane.start_week = Math.max(1, Math.min(state.roadmap.total_weeks, Number($('le-start').value) || 1));
+lane.duration_weeks = Math.max(1, Math.min(16, Number($('le-dur').value) || 1));
+lane.progress = Math.max(0, Math.min(100, Number($('le-prog').value) || 0));
+void persistRoadmap();
+});
+['sp-bg', 'sp-us', 'sp-cf', 'sp-ac', 'sp-rk'].forEach(id => $(id).addEventListener('input', updateSpecScoreLive));
+$('btn-prd-save').addEventListener('click', async () => {
+if (state.busy || !state.selectedId) return;
+state.busy = true;
+try {
+const res = await plugin.action('spec.save', {
+expected_revision: state.revision,
+req_id: state.selectedId,
+background: $('sp-bg').value,
+user_stories: $('sp-us').value,
+core_flow: $('sp-cf').value,
+acceptance_criteria: $('sp-ac').value,
+risks: $('sp-rk').value,
+});
+if (res.status === 'saved') {
+await loadAll(state.selectedId);
+toast(`PRD 已保存（文档完整度 ${res.score} 分）`, 'ok');
+} else {
+toast(`保存 PRD 未完成：${res.status}`, 'error');
+if (res.status === 'conflict') await loadAll(state.selectedId);
+}
+} catch (e) {
+toast(`保存 PRD 失败：${e?.message || '未知错误'}`, 'error');
+} finally { state.busy = false; }
+});
+$('btn-prd-copy').addEventListener('click', async () => {
+const md = buildPrdMarkdown();
+if (!md) return;
+try { await navigator.clipboard.writeText(md); toast('已复制 PRD Markdown。', 'ok'); }
+catch { toast('当前沙箱禁止直接访问剪贴板，请通过导入导出复制。'); }
+});
+$('btn-prd-insert').addEventListener('click', async () => {
+const md = buildPrdMarkdown();
+if (!md) return;
+try {
+const r = await plugin.action('host.draft.insert', { text: md });
+toast(r?.inserted ? '已插入当前会话输入框。' : '未能确认插入，请检查输入框。', r?.inserted ? 'ok' : 'error');
+} catch (e) { toast(`插入失败：${e?.message || '未知错误'}`, 'error'); }
+});
+$('btn-io').addEventListener('click', async () => {
+$('modal-io').hidden = false;
+$('io-text').value = '';
+const sel = $('io-select');
+sel.replaceChildren();
+try {
+const list = await plugin.action('document.list', {});
+if (!list.items.length) {
+const opt = document.createElement('option');
+opt.value = '';
+opt.textContent = '暂无可导出文档（仍可直接粘贴 JSON 导入）';
+sel.appendChild(opt);
+} else {
+for (const it of list.items) {
+const opt = document.createElement('option');
+opt.value = it.id;
+opt.textContent = it.label;
+sel.appendChild(opt);
+}
+}
+} catch (e) { toast(`读取导出列表失败：${e?.message || '未知错误'}`, 'error'); }
+});
+$('m-io-close').addEventListener('click', () => { $('modal-io').hidden = true; });
+$('io-export').addEventListener('click', async () => {
+const id = $('io-select').value;
+if (!id) return;
+try {
+const r = await plugin.action('document.export', { id });
+if (r.text) {
+$('io-text').value = r.text;
+toast(`已生成导出内容：${r.filename}`, 'ok');
+} else {
+toast(`导出失败：${r.error || '未知错误'}`, 'error');
+}
+} catch (e) { toast(`导出失败：${e?.message || '未知错误'}`, 'error'); }
+});
+$('io-copy').addEventListener('click', async () => {
+const txt = $('io-text').value;
+if (!txt) return;
+try { await navigator.clipboard.writeText(txt); toast('已复制 JSON 内容。', 'ok'); }
+catch { toast('请手动全选文本框内容复制。'); }
+});
+$('io-import').addEventListener('click', async () => {
+const text = $('io-text').value.trim();
+if (!text) { toast('请先粘贴要导入的 JSON。', 'error'); return; }
+try {
+const r = await plugin.action('document.import', { text });
+if (r.imported) {
+$('modal-io').hidden = true;
+state.currentSpec = null;
+await loadAll();
+toast(`导入成功（共 ${r.count ?? 1} 项）。`, 'ok');
+} else {
+toast(`导入被拒绝：${r.reason || '格式无效'}`, 'error');
+}
+} catch (e) { toast(`导入失败：${e?.message || '未知错误'}`, 'error'); }
+});
+void loadAll();
+})();
+</script>
+</body>
+</html>

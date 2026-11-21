@@ -1,0 +1,482 @@
+{
+  "manifest_version": 1,
+  "plugin_id": "product-studio",
+  "name": "产品需求与路线图设计台",
+  "version": "1.0.0",
+  "host_api": 1,
+  "backend": "backend/index.js",
+  "page": "ui/index.html",
+  "ui": {
+    "icon": "table",
+    "surfaces": ["workspace", "chat"]
+  },
+  "permissions": ["data.read", "data.write"],
+  "actions": [
+    {
+      "id": "studio.load",
+      "title": "加载产品工作台全景数据",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["revision", "kpi", "requirements", "roadmap", "spec_scores"],
+        "properties": {
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "kpi": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["total", "in_progress", "shipped", "avg_rice", "avg_spec_score"],
+            "properties": {
+              "total": { "type": "integer", "minimum": 0, "maximum": 128 },
+              "in_progress": { "type": "integer", "minimum": 0, "maximum": 128 },
+              "shipped": { "type": "integer", "minimum": 0, "maximum": 128 },
+              "avg_rice": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+              "avg_spec_score": { "type": "integer", "minimum": 0, "maximum": 100 }
+            }
+          },
+          "requirements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "title", "module", "status", "reach", "impact", "confidence", "effort", "value_score", "rice", "priority", "owner", "sprint", "summary"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 40 },
+                "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+                "module": { "type": "string", "maxLength": 32 },
+                "status": { "type": "string", "enum": ["backlog", "planned", "in_progress", "review", "shipped"] },
+                "reach": { "type": "integer", "minimum": 1, "maximum": 100000 },
+                "impact": { "type": "number", "minimum": 0.25, "maximum": 3 },
+                "confidence": { "type": "integer", "minimum": 10, "maximum": 100 },
+                "effort": { "type": "number", "minimum": 0.5, "maximum": 52 },
+                "value_score": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+                "rice": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+                "priority": { "type": "string", "enum": ["P0", "P1", "P2", "P3"] },
+                "owner": { "type": "string", "maxLength": 32 },
+                "sprint": { "type": "string", "maxLength": 32 },
+                "summary": { "type": "string", "maxLength": 160 }
+              }
+            }
+          },
+          "roadmap": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["total_weeks", "current_week", "milestones", "lanes"],
+            "properties": {
+              "total_weeks": { "type": "integer", "minimum": 4, "maximum": 24 },
+              "current_week": { "type": "integer", "minimum": 1, "maximum": 24 },
+              "milestones": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["id", "title", "week", "color"],
+                  "properties": {
+                    "id": { "type": "string", "minLength": 1, "maxLength": 24 },
+                    "title": { "type": "string", "minLength": 1, "maxLength": 48 },
+                    "week": { "type": "integer", "minimum": 1, "maximum": 24 },
+                    "color": { "type": "string", "maxLength": 16 }
+                  }
+                }
+              },
+              "lanes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["req_id", "lane", "start_week", "duration_weeks", "progress"],
+                  "properties": {
+                    "req_id": { "type": "string", "minLength": 1, "maxLength": 40 },
+                    "lane": { "type": "string", "maxLength": 32 },
+                    "start_week": { "type": "integer", "minimum": 1, "maximum": 24 },
+                    "duration_weeks": { "type": "integer", "minimum": 1, "maximum": 16 },
+                    "progress": { "type": "integer", "minimum": 0, "maximum": 100 }
+                  }
+                }
+              }
+            }
+          },
+          "spec_scores": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      }
+    },
+    {
+      "id": "req.save",
+      "title": "新增或更新产品需求并计算 RICE 评分",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id", "title", "module", "status", "reach", "impact", "confidence", "effort", "owner", "sprint", "summary"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 40 },
+          "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "module": { "type": "string", "maxLength": 32 },
+          "status": { "type": "string", "enum": ["backlog", "planned", "in_progress", "review", "shipped"] },
+          "reach": { "type": "integer", "minimum": 1, "maximum": 100000 },
+          "impact": { "type": "number", "minimum": 0.25, "maximum": 3 },
+          "confidence": { "type": "integer", "minimum": 10, "maximum": 100 },
+          "effort": { "type": "number", "minimum": 0.5, "maximum": 52 },
+          "owner": { "type": "string", "maxLength": 32 },
+          "sprint": { "type": "string", "maxLength": 32 },
+          "summary": { "type": "string", "maxLength": 160 },
+          "start_week": { "type": "integer", "minimum": 1, "maximum": 24 },
+          "duration_weeks": { "type": "integer", "minimum": 1, "maximum": 16 },
+          "progress": { "type": "integer", "minimum": 0, "maximum": 100 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "rice": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+          "priority": { "type": "string", "enum": ["P0", "P1", "P2", "P3"] }
+        }
+      }
+    },
+    {
+      "id": "req.delete",
+      "title": "删除需求及关联排期与 PRD",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 40 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["deleted", "not_found", "conflict"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "roadmap.save",
+      "title": "保存甘特图路线图排期与里程碑",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "total_weeks", "current_week", "milestones", "lanes"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "total_weeks": { "type": "integer", "minimum": 4, "maximum": 24 },
+          "current_week": { "type": "integer", "minimum": 1, "maximum": 24 },
+          "milestones": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "title", "week", "color"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 24 },
+                "title": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "week": { "type": "integer", "minimum": 1, "maximum": 24 },
+                "color": { "type": "string", "maxLength": 16 }
+              }
+            }
+          },
+          "lanes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["req_id", "lane", "start_week", "duration_weeks", "progress"],
+              "properties": {
+                "req_id": { "type": "string", "minLength": 1, "maxLength": 40 },
+                "lane": { "type": "string", "maxLength": 32 },
+                "start_week": { "type": "integer", "minimum": 1, "maximum": 24 },
+                "duration_weeks": { "type": "integer", "minimum": 1, "maximum": 16 },
+                "progress": { "type": "integer", "minimum": 0, "maximum": 100 }
+              }
+            }
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "spec.get",
+      "title": "读取需求结构化 PRD 规格",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["req_id"],
+        "properties": {
+          "req_id": { "type": "string", "minLength": 1, "maxLength": 40 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["revision", "spec"],
+        "properties": {
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "spec": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["req_id", "background", "user_stories", "core_flow", "acceptance_criteria", "risks", "score", "updated_at"],
+            "properties": {
+              "req_id": { "type": "string", "minLength": 1, "maxLength": 40 },
+              "background": { "type": "string", "maxLength": 1400 },
+              "user_stories": { "type": "string", "maxLength": 1400 },
+              "core_flow": { "type": "string", "maxLength": 1400 },
+              "acceptance_criteria": { "type": "string", "maxLength": 1400 },
+              "risks": { "type": "string", "maxLength": 1000 },
+              "score": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "updated_at": { "type": "string", "maxLength": 24 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "spec.save",
+      "title": "保存需求 PRD 规格并计算完整度",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "req_id", "background", "user_stories", "core_flow", "acceptance_criteria", "risks"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "req_id": { "type": "string", "minLength": 1, "maxLength": 40 },
+          "background": { "type": "string", "maxLength": 1400 },
+          "user_stories": { "type": "string", "maxLength": 1400 },
+          "core_flow": { "type": "string", "maxLength": 1400 },
+          "acceptance_criteria": { "type": "string", "maxLength": 1400 },
+          "risks": { "type": "string", "maxLength": 1000 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision", "score"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "score": { "type": "integer", "minimum": 0, "maximum": 100 }
+        }
+      }
+    },
+    {
+      "id": "studio.seed_demo",
+      "title": "加载 AI 桌面插件平台 v2.0 演示数据集",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision", "seeded_count"],
+        "properties": {
+          "status": { "type": "string", "enum": ["seeded", "conflict", "limit"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "seeded_count": { "type": "integer", "minimum": 0, "maximum": 32 }
+        }
+      }
+    },
+    {
+      "id": "document.list",
+      "title": "列出可导出的产品设计与 PRD 文档",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["items"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "label"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "label": { "type": "string", "minLength": 1, "maxLength": 120 }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "document.export",
+      "title": "导出产品需求池或单篇 PRD JSON",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "filename": { "type": "string", "maxLength": 80 },
+          "text": { "type": "string", "maxLength": 12288 },
+          "error": { "type": "string", "maxLength": 64 }
+        }
+      }
+    },
+    {
+      "id": "document.import",
+      "title": "导入产品需求池或 PRD 规格 JSON",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text"],
+        "properties": {
+          "text": { "type": "string", "minLength": 2, "maxLength": 12288 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["imported"],
+        "properties": {
+          "imported": { "type": "boolean" },
+          "reason": { "type": "string", "maxLength": 64 },
+          "count": { "type": "integer", "minimum": 0, "maximum": 128 }
+        }
+      }
+    }
+  ],
+  "tools": [
+    {
+      "id": "prd.list",
+      "title": "查询项目产品需求与 RICE 评分",
+      "description": "按状态、优先级或关键词检索当前项目的产品需求列表、RICE 分、负责人、排期迭代与 PRD 完整度评分。",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "status": { "type": "string", "enum": ["backlog", "planned", "in_progress", "review", "shipped"] },
+          "priority": { "type": "string", "enum": ["P0", "P1", "P2", "P3"] },
+          "keyword": { "type": "string", "maxLength": 64 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status", "total", "avg_rice", "items"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["ready", "storage_error"] },
+          "total": { "type": "integer", "minimum": 0, "maximum": 128 },
+          "avg_rice": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "title", "module", "status", "rice", "priority", "owner", "sprint", "spec_score"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 40 },
+                "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+                "module": { "type": "string", "maxLength": 32 },
+                "status": { "type": "string", "enum": ["backlog", "planned", "in_progress", "review", "shipped"] },
+                "rice": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+                "priority": { "type": "string", "enum": ["P0", "P1", "P2", "P3"] },
+                "owner": { "type": "string", "maxLength": 32 },
+                "sprint": { "type": "string", "maxLength": 32 },
+                "spec_score": { "type": "integer", "minimum": 0, "maximum": 100 }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "prd.create",
+      "title": "新增带 RICE 评分的产品需求",
+      "description": "向当前项目需求池新增一条需求，根据 Reach/Impact/Confidence/Effort 自动计算 RICE 分与 P0-P3 建议等级并加入路线图排期。",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "reach", "impact", "confidence", "effort"],
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "module": { "type": "string", "maxLength": 32 },
+          "status": { "type": "string", "enum": ["backlog", "planned", "in_progress", "review", "shipped"] },
+          "reach": { "type": "integer", "minimum": 1, "maximum": 100000 },
+          "impact": { "type": "number", "minimum": 0.25, "maximum": 3 },
+          "confidence": { "type": "integer", "minimum": 10, "maximum": 100 },
+          "effort": { "type": "number", "minimum": 0.5, "maximum": 52 },
+          "owner": { "type": "string", "maxLength": 32 },
+          "sprint": { "type": "string", "maxLength": 32 },
+          "summary": { "type": "string", "maxLength": 160 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input"] },
+          "id": { "type": "string", "maxLength": 40 },
+          "rice": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+          "priority": { "type": "string", "enum": ["P0", "P1", "P2", "P3"] }
+        }
+      }
+    }
+  ],
+  "data": [
+    { "collection": "requirements", "scope": "project", "schema_version": 1 },
+    { "collection": "roadmap", "scope": "project", "schema_version": 1 },
+    { "collection": "specs", "scope": "project", "schema_version": 1 }
+  ],
+  "http": [],
+  "tasks": [],
+  "files": []
+}

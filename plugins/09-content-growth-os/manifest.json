@@ -1,0 +1,702 @@
+{
+  "manifest_version": 1,
+  "plugin_id": "content-growth-os",
+  "name": "全渠道内容工厂与增长运营台",
+  "version": "1.0.0",
+  "host_api": 1,
+  "backend": "backend/index.js",
+  "page": "ui/index.html",
+  "ui": {
+    "icon": "media",
+    "surfaces": ["workspace", "chat", "assistant"]
+  },
+  "permissions": ["data.read", "data.write", "tasks.start", "tasks.read", "tasks.cancel"],
+  "actions": [
+    {
+      "id": "growth.dashboard",
+      "title": "加载内容运营驾驶舱与全量索引",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["revision", "kpis", "calendar", "drafts", "periods", "channel_totals"],
+        "properties": {
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "kpis": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["total_published", "total_views", "avg_engagement_rate", "weekly_scheduled", "total_drafts"],
+            "properties": {
+              "total_published": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+              "total_views": { "type": "integer", "minimum": 0, "maximum": 2000000000 },
+              "avg_engagement_rate": { "type": "number", "minimum": 0, "maximum": 100 },
+              "weekly_scheduled": { "type": "integer", "minimum": 0, "maximum": 10000 },
+              "total_drafts": { "type": "integer", "minimum": 0, "maximum": 10000 }
+            }
+          },
+          "calendar": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "title", "stage", "channels", "publish_date", "hook", "viral_score", "draft_id", "tags"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+                "stage": { "type": "string", "enum": ["idea", "drafting", "scheduled", "published"] },
+                "channels": {
+                  "type": "array",
+                  "items": { "type": "string", "enum": ["wechat", "xiaohongshu", "zhihu", "x", "youtube", "bilibili"] }
+                },
+                "publish_date": { "type": "string", "minLength": 10, "maxLength": 10 },
+                "hook": { "type": "string", "maxLength": 240 },
+                "viral_score": { "type": "integer", "minimum": 0, "maximum": 100 },
+                "draft_id": { "type": "string", "maxLength": 48 },
+                "tags": { "type": "array", "items": { "type": "string", "maxLength": 24 } }
+              }
+            }
+          },
+          "drafts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "title", "primary_channel", "updated_at", "word_count", "read_minutes", "headline_score", "variants_count"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+                "primary_channel": { "type": "string", "enum": ["wechat", "xiaohongshu", "zhihu", "x", "youtube", "bilibili"] },
+                "updated_at": { "type": "string", "minLength": 10, "maxLength": 24 },
+                "word_count": { "type": "integer", "minimum": 0, "maximum": 100000 },
+                "read_minutes": { "type": "number", "minimum": 0, "maximum": 240 },
+                "headline_score": { "type": "integer", "minimum": 0, "maximum": 100 },
+                "variants_count": { "type": "integer", "minimum": 0, "maximum": 16 }
+              }
+            }
+          },
+          "periods": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["period", "label", "views", "engagements", "engagement_rate", "published_count", "by_channel"],
+              "properties": {
+                "period": { "type": "string", "minLength": 1, "maxLength": 16 },
+                "label": { "type": "string", "minLength": 1, "maxLength": 24 },
+                "views": { "type": "integer", "minimum": 0, "maximum": 500000000 },
+                "engagements": { "type": "integer", "minimum": 0, "maximum": 500000000 },
+                "engagement_rate": { "type": "number", "minimum": 0, "maximum": 100 },
+                "published_count": { "type": "integer", "minimum": 0, "maximum": 1000 },
+                "by_channel": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["wechat", "xiaohongshu", "zhihu", "x", "youtube", "bilibili"],
+                  "properties": {
+                    "wechat": { "type": "integer", "minimum": 0, "maximum": 500000000 },
+                    "xiaohongshu": { "type": "integer", "minimum": 0, "maximum": 500000000 },
+                    "zhihu": { "type": "integer", "minimum": 0, "maximum": 500000000 },
+                    "x": { "type": "integer", "minimum": 0, "maximum": 500000000 },
+                    "youtube": { "type": "integer", "minimum": 0, "maximum": 500000000 },
+                    "bilibili": { "type": "integer", "minimum": 0, "maximum": 500000000 }
+                  }
+                }
+              }
+            }
+          },
+          "channel_totals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["channel", "views", "share_pct"],
+              "properties": {
+                "channel": { "type": "string", "enum": ["wechat", "xiaohongshu", "zhihu", "x", "youtube", "bilibili"] },
+                "views": { "type": "integer", "minimum": 0, "maximum": 2000000000 },
+                "share_pct": { "type": "number", "minimum": 0, "maximum": 100 }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "calendar.save",
+      "title": "保存选题排期卡片",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id", "title", "stage", "channels", "publish_date", "hook"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "stage": { "type": "string", "enum": ["idea", "drafting", "scheduled", "published"] },
+          "channels": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["wechat", "xiaohongshu", "zhihu", "x", "youtube", "bilibili"] }
+          },
+          "publish_date": { "type": "string", "minLength": 10, "maxLength": 10 },
+          "hook": { "type": "string", "maxLength": 240 },
+          "viral_score": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "draft_id": { "type": "string", "maxLength": 48 },
+          "tags": { "type": "array", "items": { "type": "string", "maxLength": 24 } }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "id": { "type": "string", "maxLength": 48 },
+          "viral_score": { "type": "integer", "minimum": 0, "maximum": 100 }
+        }
+      }
+    },
+    {
+      "id": "calendar.move",
+      "title": "流转选题看板阶段",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id", "stage"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "stage": { "type": "string", "enum": ["idea", "drafting", "scheduled", "published"] }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "not_found", "conflict", "invalid_input"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "calendar.delete",
+      "title": "删除选题排期卡片",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["deleted", "not_found", "conflict"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "draft.read",
+      "title": "读取主稿正文、诊断与多渠道衍生稿",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["found", "revision"],
+        "properties": {
+          "found": { "type": "boolean" },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "draft": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "title", "primary_channel", "updated_at", "body", "variants"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+              "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+              "primary_channel": { "type": "string", "enum": ["wechat", "xiaohongshu", "zhihu", "x", "youtube", "bilibili"] },
+              "updated_at": { "type": "string", "minLength": 10, "maxLength": 24 },
+              "body": { "type": "string", "maxLength": 6000 },
+              "variants": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["mode", "content", "updated_at"],
+                  "properties": {
+                    "mode": { "type": "string", "enum": ["xiaohongshu", "x_thread", "zhihu", "short_video"] },
+                    "content": { "type": "string", "maxLength": 2600 },
+                    "updated_at": { "type": "string", "minLength": 10, "maxLength": 24 }
+                  }
+                }
+              }
+            }
+          },
+          "diagnosis": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["score", "grade", "word_count", "read_minutes", "paragraph_count", "dimensions", "highlights", "suggestions"],
+            "properties": {
+              "score": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "grade": { "type": "string", "enum": ["S", "A", "B", "C"] },
+              "word_count": { "type": "integer", "minimum": 0, "maximum": 100000 },
+              "read_minutes": { "type": "number", "minimum": 0, "maximum": 240 },
+              "paragraph_count": { "type": "integer", "minimum": 0, "maximum": 2000 },
+              "dimensions": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["length", "numbers", "value_hook", "tension", "readability"],
+                "properties": {
+                  "length": { "type": "integer", "minimum": 0, "maximum": 20 },
+                  "numbers": { "type": "integer", "minimum": 0, "maximum": 20 },
+                  "value_hook": { "type": "integer", "minimum": 0, "maximum": 20 },
+                  "tension": { "type": "integer", "minimum": 0, "maximum": 20 },
+                  "readability": { "type": "integer", "minimum": 0, "maximum": 20 }
+                }
+              },
+              "highlights": { "type": "array", "items": { "type": "string", "maxLength": 64 } },
+              "suggestions": { "type": "array", "items": { "type": "string", "maxLength": 120 } }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "draft.save",
+      "title": "保存主稿并执行标题诊断",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id", "title", "primary_channel", "body"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "primary_channel": { "type": "string", "enum": ["wechat", "xiaohongshu", "zhihu", "x", "youtube", "bilibili"] },
+          "body": { "type": "string", "maxLength": 6000 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "id": { "type": "string", "maxLength": 48 },
+          "headline_score": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "word_count": { "type": "integer", "minimum": 0, "maximum": 100000 }
+        }
+      }
+    },
+    {
+      "id": "draft.delete",
+      "title": "删除主稿与衍生稿",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["deleted", "not_found", "conflict"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "draft.diagnose",
+      "title": "实时评估标题吸引力与正文可读性",
+      "permissions": [],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "body"],
+        "properties": {
+          "title": { "type": "string", "maxLength": 160 },
+          "body": { "type": "string", "maxLength": 6000 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["score", "grade", "word_count", "read_minutes", "paragraph_count", "dimensions", "highlights", "suggestions"],
+        "properties": {
+          "score": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "grade": { "type": "string", "enum": ["S", "A", "B", "C"] },
+          "word_count": { "type": "integer", "minimum": 0, "maximum": 100000 },
+          "read_minutes": { "type": "number", "minimum": 0, "maximum": 240 },
+          "paragraph_count": { "type": "integer", "minimum": 0, "maximum": 2000 },
+          "dimensions": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["length", "numbers", "value_hook", "tension", "readability"],
+            "properties": {
+              "length": { "type": "integer", "minimum": 0, "maximum": 20 },
+              "numbers": { "type": "integer", "minimum": 0, "maximum": 20 },
+              "value_hook": { "type": "integer", "minimum": 0, "maximum": 20 },
+              "tension": { "type": "integer", "minimum": 0, "maximum": 20 },
+              "readability": { "type": "integer", "minimum": 0, "maximum": 20 }
+            }
+          },
+          "highlights": { "type": "array", "items": { "type": "string", "maxLength": 64 } },
+          "suggestions": { "type": "array", "items": { "type": "string", "maxLength": 120 } }
+        }
+      }
+    },
+    {
+      "id": "draft.variant.save",
+      "title": "保存一稿多改渠道衍生稿",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "draft_id", "mode", "content"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "draft_id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "mode": { "type": "string", "enum": ["xiaohongshu", "x_thread", "zhihu", "short_video"] },
+          "content": { "type": "string", "minLength": 1, "maxLength": 2600 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "not_found", "conflict", "limit", "invalid_input"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "variants_count": { "type": "integer", "minimum": 0, "maximum": 16 }
+        }
+      }
+    },
+    {
+      "id": "metrics.record",
+      "title": "录入或更新周期复盘数据",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "period", "label", "engagements", "published_count", "by_channel"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "period": { "type": "string", "minLength": 1, "maxLength": 16 },
+          "label": { "type": "string", "minLength": 1, "maxLength": 24 },
+          "engagements": { "type": "integer", "minimum": 0, "maximum": 500000000 },
+          "published_count": { "type": "integer", "minimum": 0, "maximum": 1000 },
+          "by_channel": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["wechat", "xiaohongshu", "zhihu", "x", "youtube", "bilibili"],
+            "properties": {
+              "wechat": { "type": "integer", "minimum": 0, "maximum": 500000000 },
+              "xiaohongshu": { "type": "integer", "minimum": 0, "maximum": 500000000 },
+              "zhihu": { "type": "integer", "minimum": 0, "maximum": 500000000 },
+              "x": { "type": "integer", "minimum": 0, "maximum": 500000000 },
+              "youtube": { "type": "integer", "minimum": 0, "maximum": 500000000 },
+              "bilibili": { "type": "integer", "minimum": 0, "maximum": 500000000 }
+            }
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "demo.seed",
+      "title": "加载 AI 开发者 IP 内容矩阵演示数据",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["seeded", "conflict", "limit"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "calendar_count": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "drafts_count": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "periods_count": { "type": "integer", "minimum": 0, "maximum": 100 }
+        }
+      }
+    },
+    {
+      "id": "document.list",
+      "title": "列出可导出的内容主稿与排期清单",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["items"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "label"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "label": { "type": "string", "minLength": 1, "maxLength": 160 }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "document.export",
+      "title": "导出主稿或排期数据 JSON",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "filename": { "type": "string", "maxLength": 80 },
+          "text": { "type": "string", "maxLength": 12288 },
+          "error": { "type": "string", "maxLength": 64 }
+        }
+      }
+    },
+    {
+      "id": "document.import",
+      "title": "导入内容主稿或排期数据 JSON",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text"],
+        "properties": {
+          "text": { "type": "string", "minLength": 2, "maxLength": 12288 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["imported"],
+        "properties": {
+          "imported": { "type": "boolean" },
+          "reason": { "type": "string", "maxLength": 64 },
+          "id": { "type": "string", "maxLength": 48 }
+        }
+      }
+    },
+    {
+      "id": "session.turn.request",
+      "title": "派发一稿多改任务给当前会话",
+      "permissions": ["tasks.start"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["prompt", "work_id"],
+        "properties": {
+          "prompt": { "type": "string", "minLength": 1, "maxLength": 2048 },
+          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["task_id", "state"],
+        "properties": {
+          "task_id": { "type": "string", "minLength": 36, "maxLength": 36 },
+          "state": { "type": "string", "enum": ["dispatching"] }
+        }
+      }
+    },
+    {
+      "id": "session.turn.result",
+      "title": "核对一稿多改会话结果",
+      "permissions": ["tasks.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["work_id"],
+        "properties": {
+          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["work_id", "state", "truncated"],
+        "properties": {
+          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 },
+          "state": { "type": "string", "enum": ["dispatching", "running", "waiting", "completed", "cancelled", "failed", "unknown", "unavailable"] },
+          "truncated": { "type": "boolean" }
+        }
+      }
+    }
+  ],
+  "tools": [
+    {
+      "id": "content.pipeline",
+      "title": "查询内容排期队列与渠道数据汇总",
+      "description": "获取全渠道内容排期进度、总阅读/互动率 KPI 与各平台流量占比，支持按阶段、渠道或关键词筛选。",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "stage": { "type": "string", "enum": ["idea", "drafting", "scheduled", "published"] },
+          "channel": { "type": "string", "enum": ["wechat", "xiaohongshu", "zhihu", "x", "youtube", "bilibili"] },
+          "keyword": { "type": "string", "maxLength": 64 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status", "summary", "items", "channel_totals"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["ready", "storage_error"] },
+          "summary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["total_published", "total_views", "avg_engagement_rate", "weekly_scheduled", "total_items"],
+            "properties": {
+              "total_published": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+              "total_views": { "type": "integer", "minimum": 0, "maximum": 2000000000 },
+              "avg_engagement_rate": { "type": "number", "minimum": 0, "maximum": 100 },
+              "weekly_scheduled": { "type": "integer", "minimum": 0, "maximum": 10000 },
+              "total_items": { "type": "integer", "minimum": 0, "maximum": 10000 }
+            }
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "title", "stage", "channels", "publish_date", "viral_score", "draft_id"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+                "stage": { "type": "string", "enum": ["idea", "drafting", "scheduled", "published"] },
+                "channels": {
+                  "type": "array",
+                  "items": { "type": "string", "enum": ["wechat", "xiaohongshu", "zhihu", "x", "youtube", "bilibili"] }
+                },
+                "publish_date": { "type": "string", "minLength": 10, "maxLength": 10 },
+                "viral_score": { "type": "integer", "minimum": 0, "maximum": 100 },
+                "draft_id": { "type": "string", "maxLength": 48 }
+              }
+            }
+          },
+          "channel_totals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["channel", "views", "share_pct"],
+              "properties": {
+                "channel": { "type": "string", "enum": ["wechat", "xiaohongshu", "zhihu", "x", "youtube", "bilibili"] },
+                "views": { "type": "integer", "minimum": 0, "maximum": 2000000000 },
+                "share_pct": { "type": "number", "minimum": 0, "maximum": 100 }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "content.draft.save",
+      "title": "新建或更新选题与主稿",
+      "description": "创建或更新一篇多渠道内容主稿，自动执行爆款标题评分并同步更新排期看板卡片。",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "primary_channel", "body"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "primary_channel": { "type": "string", "enum": ["wechat", "xiaohongshu", "zhihu", "x", "youtube", "bilibili"] },
+          "stage": { "type": "string", "enum": ["idea", "drafting", "scheduled", "published"] },
+          "publish_date": { "type": "string", "minLength": 10, "maxLength": 10 },
+          "hook": { "type": "string", "maxLength": 240 },
+          "body": { "type": "string", "minLength": 1, "maxLength": 6000 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input"] },
+          "id": { "type": "string", "maxLength": 48 },
+          "headline_score": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "word_count": { "type": "integer", "minimum": 0, "maximum": 100000 },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    }
+  ],
+  "data": [
+    { "collection": "calendar", "scope": "account", "schema_version": 1 },
+    { "collection": "drafts", "scope": "account", "schema_version": 1 },
+    { "collection": "metrics", "scope": "account", "schema_version": 1 }
+  ],
+  "http": [],
+  "tasks": [],
+  "files": []
+}

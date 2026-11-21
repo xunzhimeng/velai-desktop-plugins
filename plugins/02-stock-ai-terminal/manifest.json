@@ -1,0 +1,557 @@
+{
+  "manifest_version": 1,
+  "plugin_id": "stock-ai-terminal",
+  "name": "股票 AI 投研与量化终端",
+  "version": "1.0.0",
+  "host_api": 1,
+  "backend": "backend/index.js",
+  "page": "ui/index.html",
+  "ui": {
+    "icon": "table",
+    "surfaces": ["workspace", "chat", "assistant"]
+  },
+  "permissions": ["data.read", "data.write", "tasks.start", "tasks.read", "tasks.cancel"],
+  "actions": [
+    {
+      "id": "stock.bootstrap",
+      "title": "读取投研终端总览",
+      "permissions": ["data.read"],
+      "input_schema": { "type": "object", "additionalProperties": false, "required": [], "properties": {} },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["revision", "cash", "watchlist", "positions", "notes", "summary"],
+        "properties": {
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "cash": { "type": "number", "minimum": 0, "maximum": 100000000000 },
+          "summary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["total_assets", "market_value", "total_cost", "unrealized_pnl", "pnl_pct", "cash_pct"],
+            "properties": {
+              "total_assets": { "type": "number" },
+              "market_value": { "type": "number" },
+              "total_cost": { "type": "number" },
+              "unrealized_pnl": { "type": "number" },
+              "pnl_pct": { "type": "number" },
+              "cash_pct": { "type": "number" }
+            }
+          },
+          "watchlist": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["symbol", "name", "market", "sector", "price", "change_pct", "pe", "pb", "roe", "rev_growth"],
+              "properties": {
+                "symbol": { "type": "string", "minLength": 1, "maxLength": 16 },
+                "name": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "market": { "type": "string", "enum": ["US", "HK", "CN"] },
+                "sector": { "type": "string", "maxLength": 32 },
+                "price": { "type": "number", "minimum": 0.01, "maximum": 1000000 },
+                "change_pct": { "type": "number", "minimum": -100, "maximum": 1000 },
+                "pe": { "type": "number", "minimum": -1000, "maximum": 10000 },
+                "pb": { "type": "number", "minimum": 0, "maximum": 1000 },
+                "roe": { "type": "number", "minimum": -200, "maximum": 500 },
+                "rev_growth": { "type": "number", "minimum": -100, "maximum": 1000 }
+              }
+            }
+          },
+          "positions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["symbol", "shares", "avg_cost", "stop_loss", "target_price"],
+              "properties": {
+                "symbol": { "type": "string", "minLength": 1, "maxLength": 16 },
+                "shares": { "type": "number", "minimum": 0, "maximum": 100000000 },
+                "avg_cost": { "type": "number", "minimum": 0.01, "maximum": 1000000 },
+                "stop_loss": { "type": "number", "minimum": 0, "maximum": 1000000 },
+                "target_price": { "type": "number", "minimum": 0, "maximum": 1000000 }
+              }
+            }
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "symbol", "rating", "target_price", "thesis", "risks", "date"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "symbol": { "type": "string", "minLength": 1, "maxLength": 16 },
+                "rating": { "type": "string", "enum": ["strong_buy", "buy", "hold", "reduce", "sell"] },
+                "target_price": { "type": "number", "minimum": 0, "maximum": 1000000 },
+                "thesis": { "type": "string", "maxLength": 800 },
+                "risks": { "type": "string", "maxLength": 400 },
+                "date": { "type": "string", "minLength": 10, "maxLength": 10 }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "stock.kline.get",
+      "title": "读取标的 K 线与技术指标",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["symbol"],
+        "properties": { "symbol": { "type": "string", "minLength": 1, "maxLength": 16 } }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["found", "bars", "indicators"],
+        "properties": {
+          "found": { "type": "boolean" },
+          "bars": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["d", "o", "h", "l", "c", "v"],
+              "properties": {
+                "d": { "type": "string", "maxLength": 12 },
+                "o": { "type": "number" },
+                "h": { "type": "number" },
+                "l": { "type": "number" },
+                "c": { "type": "number" },
+                "v": { "type": "number" }
+              }
+            }
+          },
+          "indicators": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["ma5", "ma10", "ma20", "rsi14", "volatility_pct", "signal"],
+            "properties": {
+              "ma5": { "type": "number" },
+              "ma10": { "type": "number" },
+              "ma20": { "type": "number" },
+              "rsi14": { "type": "number" },
+              "volatility_pct": { "type": "number" },
+              "signal": { "type": "string", "maxLength": 32 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "stock.backtest",
+      "title": "运行量化策略回测",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["symbol", "strategy", "fast", "slow"],
+        "properties": {
+          "symbol": { "type": "string", "minLength": 1, "maxLength": 16 },
+          "strategy": { "type": "string", "enum": ["ma_cross", "rsi_revert", "bollinger"] },
+          "fast": { "type": "integer", "minimum": 2, "maximum": 20 },
+          "slow": { "type": "integer", "minimum": 5, "maximum": 30 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ok", "metrics", "equity", "benchmark", "trades"],
+        "properties": {
+          "ok": { "type": "boolean" },
+          "metrics": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["strategy_return_pct", "benchmark_return_pct", "alpha_pct", "max_drawdown_pct", "win_rate_pct", "sharpe", "trade_count"],
+            "properties": {
+              "strategy_return_pct": { "type": "number" },
+              "benchmark_return_pct": { "type": "number" },
+              "alpha_pct": { "type": "number" },
+              "max_drawdown_pct": { "type": "number" },
+              "win_rate_pct": { "type": "number" },
+              "sharpe": { "type": "number" },
+              "trade_count": { "type": "integer", "minimum": 0, "maximum": 200 }
+            }
+          },
+          "equity": { "type": "array", "items": { "type": "number" } },
+          "benchmark": { "type": "array", "items": { "type": "number" } },
+          "trades": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["date", "side", "price", "pnl_pct"],
+              "properties": {
+                "date": { "type": "string", "maxLength": 12 },
+                "side": { "type": "string", "enum": ["BUY", "SELL"] },
+                "price": { "type": "number" },
+                "pnl_pct": { "type": "number" }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "stock.dcf",
+      "title": "DCF 现金流折现估值测算",
+      "permissions": [],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fcf_billion", "growth_pct", "terminal_pct", "wacc_pct", "shares_billion", "current_price"],
+        "properties": {
+          "fcf_billion": { "type": "number", "minimum": 0.01, "maximum": 100000 },
+          "growth_pct": { "type": "number", "minimum": -20, "maximum": 100 },
+          "terminal_pct": { "type": "number", "minimum": 0, "maximum": 8 },
+          "wacc_pct": { "type": "number", "minimum": 4, "maximum": 30 },
+          "shares_billion": { "type": "number", "minimum": 0.01, "maximum": 10000 },
+          "current_price": { "type": "number", "minimum": 0.01, "maximum": 1000000 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["intrinsic_value", "margin_of_safety_pct", "enterprise_value_billion", "verdict"],
+        "properties": {
+          "intrinsic_value": { "type": "number" },
+          "margin_of_safety_pct": { "type": "number" },
+          "enterprise_value_billion": { "type": "number" },
+          "verdict": { "type": "string", "enum": ["undervalued", "fair", "overvalued"] }
+        }
+      }
+    },
+    {
+      "id": "stock.watchlist.upsert",
+      "title": "新增或更新自选标的",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "symbol", "name", "market", "sector", "price", "change_pct", "pe", "pb", "roe", "rev_growth"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "symbol": { "type": "string", "minLength": 1, "maxLength": 16 },
+          "name": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "market": { "type": "string", "enum": ["US", "HK", "CN"] },
+          "sector": { "type": "string", "maxLength": 32 },
+          "price": { "type": "number", "minimum": 0.01, "maximum": 1000000 },
+          "change_pct": { "type": "number", "minimum": -100, "maximum": 1000 },
+          "pe": { "type": "number", "minimum": -1000, "maximum": 10000 },
+          "pb": { "type": "number", "minimum": 0, "maximum": 1000 },
+          "roe": { "type": "number", "minimum": -200, "maximum": 500 },
+          "rev_growth": { "type": "number", "minimum": -100, "maximum": 1000 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "stock.portfolio.save",
+      "title": "保存持仓组合与现金",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "cash", "positions"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "cash": { "type": "number", "minimum": 0, "maximum": 100000000000 },
+          "positions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["symbol", "shares", "avg_cost", "stop_loss", "target_price"],
+              "properties": {
+                "symbol": { "type": "string", "minLength": 1, "maxLength": 16 },
+                "shares": { "type": "number", "minimum": 0, "maximum": 100000000 },
+                "avg_cost": { "type": "number", "minimum": 0.01, "maximum": 1000000 },
+                "stop_loss": { "type": "number", "minimum": 0, "maximum": 1000000 },
+                "target_price": { "type": "number", "minimum": 0, "maximum": 1000000 }
+              }
+            }
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "stock.note.save",
+      "title": "保存 AI 投研笔记",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id", "symbol", "rating", "target_price", "thesis", "risks"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "symbol": { "type": "string", "minLength": 1, "maxLength": 16 },
+          "rating": { "type": "string", "enum": ["strong_buy", "buy", "hold", "reduce", "sell"] },
+          "target_price": { "type": "number", "minimum": 0, "maximum": 1000000 },
+          "thesis": { "type": "string", "minLength": 1, "maxLength": 800 },
+          "risks": { "type": "string", "maxLength": 400 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "stock.seed_demo",
+      "title": "加载跨市场演示投研组合",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision"],
+        "properties": { "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 } }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["seeded", "conflict"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "session.turn.request",
+      "title": "派发 AI 深度投研任务",
+      "permissions": ["tasks.start"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["prompt", "work_id"],
+        "properties": {
+          "prompt": { "type": "string", "minLength": 1, "maxLength": 2048 },
+          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["task_id", "state"],
+        "properties": {
+          "task_id": { "type": "string", "minLength": 36, "maxLength": 36 },
+          "state": { "type": "string", "enum": ["dispatching"] }
+        }
+      }
+    },
+    {
+      "id": "session.turn.result",
+      "title": "核对 AI 投研结果",
+      "permissions": ["tasks.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["work_id"],
+        "properties": { "work_id": { "type": "string", "minLength": 36, "maxLength": 36 } }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["work_id", "state", "truncated"],
+        "properties": {
+          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 },
+          "state": { "type": "string", "enum": ["dispatching", "running", "waiting", "completed", "cancelled", "failed", "unknown", "unavailable"] },
+          "truncated": { "type": "boolean" }
+        }
+      }
+    },
+    {
+      "id": "document.list",
+      "title": "列出可导出的组合报告",
+      "permissions": ["data.read"],
+      "input_schema": { "type": "object", "additionalProperties": false, "required": [], "properties": {} },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "label"],
+              "properties": {
+                "id": { "type": "string", "maxLength": 32 },
+                "label": { "type": "string", "maxLength": 100 }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "document.export",
+      "title": "导出投研组合快照",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": { "id": { "type": "string", "maxLength": 32 } }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "filename": { "type": "string", "maxLength": 64 },
+          "text": { "type": "string", "maxLength": 12288 },
+          "error": { "type": "string", "maxLength": 64 }
+        }
+      }
+    },
+    {
+      "id": "document.import",
+      "title": "导入投研组合快照",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text"],
+        "properties": { "text": { "type": "string", "minLength": 2, "maxLength": 12288 } }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["imported"],
+        "properties": {
+          "imported": { "type": "boolean" },
+          "reason": { "type": "string", "maxLength": 64 }
+        }
+      }
+    }
+  ],
+  "tools": [
+    {
+      "id": "stock.portfolio",
+      "title": "读取股票持仓与风控总览",
+      "description": "获取当前投研终端的现金余额、各持仓市值、盈亏比例及单股仓位权重，用于组合风控与调仓分析。",
+      "permissions": ["data.read"],
+      "input_schema": { "type": "object", "additionalProperties": false, "required": [], "properties": {} },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status", "total_assets", "positions"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["ready", "empty"] },
+          "total_assets": { "type": "number" },
+          "unrealized_pnl": { "type": "number" },
+          "positions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["symbol", "name", "shares", "price", "avg_cost", "pnl_pct", "weight_pct"],
+              "properties": {
+                "symbol": { "type": "string", "maxLength": 16 },
+                "name": { "type": "string", "maxLength": 48 },
+                "shares": { "type": "number" },
+                "price": { "type": "number" },
+                "avg_cost": { "type": "number" },
+                "pnl_pct": { "type": "number" },
+                "weight_pct": { "type": "number" }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "stock.analyze",
+      "title": "分析单只股票技术与基本面因子",
+      "description": "按股票代码返回财务指标(PE/PB/ROE/增速)、MA5/MA10/MA20 均线、RSI14、波动率信号以及最新投研笔记。",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["symbol"],
+        "properties": { "symbol": { "type": "string", "minLength": 1, "maxLength": 16 } }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["ready", "not_found"] },
+          "name": { "type": "string", "maxLength": 48 },
+          "price": { "type": "number" },
+          "pe": { "type": "number" },
+          "roe": { "type": "number" },
+          "rsi14": { "type": "number" },
+          "signal": { "type": "string", "maxLength": 32 },
+          "latest_thesis": { "type": "string", "maxLength": 800 }
+        }
+      }
+    },
+    {
+      "id": "stock.note.add",
+      "title": "记录股票 AI 投研评级与逻辑",
+      "description": "向指定标的写入一条结构化投研观点（评级、目标价、核心多头逻辑与关键风险）。",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["symbol", "rating", "thesis"],
+        "properties": {
+          "symbol": { "type": "string", "minLength": 1, "maxLength": 16 },
+          "rating": { "type": "string", "enum": ["strong_buy", "buy", "hold", "reduce", "sell"] },
+          "target_price": { "type": "number", "minimum": 0, "maximum": 1000000 },
+          "thesis": { "type": "string", "minLength": 1, "maxLength": 800 },
+          "risks": { "type": "string", "maxLength": 400 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit"] },
+          "id": { "type": "string", "maxLength": 48 }
+        }
+      }
+    }
+  ],
+  "data": [
+    { "collection": "watchlist", "scope": "account", "schema_version": 1 },
+    { "collection": "portfolio", "scope": "account", "schema_version": 1 },
+    { "collection": "research", "scope": "account", "schema_version": 1 },
+    { "collection": "strategies", "scope": "account", "schema_version": 1 }
+  ],
+  "http": [],
+  "tasks": [],
+  "files": []
+}

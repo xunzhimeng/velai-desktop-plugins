@@ -1,0 +1,573 @@
+{
+  "manifest_version": 1,
+  "plugin_id": "code-audit-warroom",
+  "name": "安全审计与故障复盘作战室 (COE)",
+  "version": "1.0.0",
+  "host_api": 1,
+  "backend": "backend/index.js",
+  "page": "ui/index.html",
+  "ui": {
+    "icon": "edit",
+    "surfaces": ["workspace", "chat"]
+  },
+  "permissions": ["data.read", "data.write"],
+  "actions": [
+    {
+      "id": "warroom.state",
+      "title": "加载作战室风险态势与全部台账",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["revision", "kpis", "radar_scores", "findings", "incidents", "actions"],
+        "properties": {
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "kpis": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["open_p0_p1", "mttr_min", "closure_rate", "health_score", "total_findings", "total_incidents", "total_actions"],
+            "properties": {
+              "open_p0_p1": { "type": "integer", "minimum": 0, "maximum": 10000 },
+              "mttr_min": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+              "closure_rate": { "type": "number", "minimum": 0, "maximum": 100 },
+              "health_score": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "total_findings": { "type": "integer", "minimum": 0, "maximum": 10000 },
+              "total_incidents": { "type": "integer", "minimum": 0, "maximum": 10000 },
+              "total_actions": { "type": "integer", "minimum": 0, "maximum": 10000 }
+            }
+          },
+          "radar_scores": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["auth", "isolation", "validation", "supply_chain", "observability"],
+            "properties": {
+              "auth": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "isolation": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "validation": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "supply_chain": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "observability": { "type": "integer", "minimum": 0, "maximum": 100 }
+            }
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "title", "category", "dimension", "severity", "impact", "likelihood", "risk_score", "status", "component", "remediation", "created_at"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 24 },
+                "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+                "category": { "type": "string", "enum": ["owasp", "architecture", "performance", "compliance"] },
+                "dimension": { "type": "string", "enum": ["auth", "isolation", "validation", "supply_chain", "observability"] },
+                "severity": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
+                "impact": { "type": "integer", "minimum": 1, "maximum": 5 },
+                "likelihood": { "type": "integer", "minimum": 1, "maximum": 5 },
+                "risk_score": { "type": "integer", "minimum": 1, "maximum": 25 },
+                "status": { "type": "string", "enum": ["open", "mitigating", "verified", "wontfix"] },
+                "component": { "type": "string", "minLength": 1, "maxLength": 80 },
+                "remediation": { "type": "string", "maxLength": 420 },
+                "created_at": { "type": "string", "minLength": 10, "maxLength": 10 }
+              }
+            }
+          },
+          "incidents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "title", "severity", "duration_min", "status", "occurred_at", "impact_summary", "timeline", "five_whys", "lessons"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 24 },
+                "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+                "severity": { "type": "string", "enum": ["SEV1", "SEV2", "SEV3", "SEV4"] },
+                "duration_min": { "type": "integer", "minimum": 0, "maximum": 100000 },
+                "status": { "type": "string", "enum": ["investigating", "mitigated", "closed"] },
+                "occurred_at": { "type": "string", "minLength": 10, "maxLength": 10 },
+                "impact_summary": { "type": "string", "maxLength": 240 },
+                "timeline": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["time", "event"],
+                    "properties": {
+                      "time": { "type": "string", "minLength": 1, "maxLength": 24 },
+                      "event": { "type": "string", "minLength": 1, "maxLength": 160 }
+                    }
+                  }
+                },
+                "five_whys": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["level", "question", "answer"],
+                    "properties": {
+                      "level": { "type": "integer", "minimum": 1, "maximum": 5 },
+                      "question": { "type": "string", "minLength": 1, "maxLength": 140 },
+                      "answer": { "type": "string", "minLength": 1, "maxLength": 200 }
+                    }
+                  }
+                },
+                "lessons": { "type": "string", "maxLength": 300 }
+              }
+            }
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "title", "source_type", "source_id", "owner", "due_date", "priority", "status", "verification_note"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 24 },
+                "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+                "source_type": { "type": "string", "enum": ["finding", "incident"] },
+                "source_id": { "type": "string", "maxLength": 24 },
+                "owner": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "due_date": { "type": "string", "minLength": 10, "maxLength": 10 },
+                "priority": { "type": "string", "enum": ["P0", "P1", "P2"] },
+                "status": { "type": "string", "enum": ["todo", "in_progress", "verified"] },
+                "verification_note": { "type": "string", "maxLength": 240 }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "finding.save",
+      "title": "新增或更新安全审计发现",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id", "title", "category", "dimension", "severity", "impact", "likelihood", "status", "component", "remediation"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 24 },
+          "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "category": { "type": "string", "enum": ["owasp", "architecture", "performance", "compliance"] },
+          "dimension": { "type": "string", "enum": ["auth", "isolation", "validation", "supply_chain", "observability"] },
+          "severity": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
+          "impact": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "likelihood": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "status": { "type": "string", "enum": ["open", "mitigating", "verified", "wontfix"] },
+          "component": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "remediation": { "type": "string", "maxLength": 420 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "id": { "type": "string", "maxLength": 24 },
+          "risk_score": { "type": "integer", "minimum": 1, "maximum": 25 }
+        }
+      }
+    },
+    {
+      "id": "finding.delete",
+      "title": "删除安全审计发现",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 24 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["deleted", "not_found", "conflict"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "incident.save",
+      "title": "新增或更新故障复盘 COE",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id", "title", "severity", "duration_min", "status", "occurred_at", "impact_summary", "timeline", "five_whys", "lessons"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 24 },
+          "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "severity": { "type": "string", "enum": ["SEV1", "SEV2", "SEV3", "SEV4"] },
+          "duration_min": { "type": "integer", "minimum": 0, "maximum": 100000 },
+          "status": { "type": "string", "enum": ["investigating", "mitigated", "closed"] },
+          "occurred_at": { "type": "string", "minLength": 10, "maxLength": 10 },
+          "impact_summary": { "type": "string", "maxLength": 240 },
+          "timeline": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["time", "event"],
+              "properties": {
+                "time": { "type": "string", "minLength": 1, "maxLength": 24 },
+                "event": { "type": "string", "minLength": 1, "maxLength": 160 }
+              }
+            }
+          },
+          "five_whys": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["level", "question", "answer"],
+              "properties": {
+                "level": { "type": "integer", "minimum": 1, "maximum": 5 },
+                "question": { "type": "string", "minLength": 1, "maxLength": 140 },
+                "answer": { "type": "string", "minLength": 1, "maxLength": 200 }
+              }
+            }
+          },
+          "lessons": { "type": "string", "maxLength": 300 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "id": { "type": "string", "maxLength": 24 }
+        }
+      }
+    },
+    {
+      "id": "incident.delete",
+      "title": "删除故障复盘记录",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 24 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["deleted", "not_found", "conflict"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "action_item.save",
+      "title": "新增或更新整改行动项",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id", "title", "source_type", "source_id", "owner", "due_date", "priority", "status", "verification_note"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 24 },
+          "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "source_type": { "type": "string", "enum": ["finding", "incident"] },
+          "source_id": { "type": "string", "maxLength": 24 },
+          "owner": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "due_date": { "type": "string", "minLength": 10, "maxLength": 10 },
+          "priority": { "type": "string", "enum": ["P0", "P1", "P2"] },
+          "status": { "type": "string", "enum": ["todo", "in_progress", "verified"] },
+          "verification_note": { "type": "string", "maxLength": 240 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "id": { "type": "string", "maxLength": 24 }
+        }
+      }
+    },
+    {
+      "id": "action_item.delete",
+      "title": "删除整改行动项",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 24 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["deleted", "not_found", "conflict"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "report.generate",
+      "title": "生成 Markdown 安全审计与 COE 复盘报告",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "incident_id": { "type": "string", "maxLength": 24 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["markdown", "health_score"],
+        "properties": {
+          "markdown": { "type": "string", "maxLength": 10240 },
+          "health_score": { "type": "integer", "minimum": 0, "maximum": 100 }
+        }
+      }
+    },
+    {
+      "id": "demo.seed",
+      "title": "加载桌面端插件沙箱与网关安全审计演示数据",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["seeded", "conflict", "limit"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "findings_count": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "incidents_count": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "actions_count": { "type": "integer", "minimum": 0, "maximum": 100 }
+        }
+      }
+    },
+    {
+      "id": "document.list",
+      "title": "列出可导出的审计发现与 COE 复盘文档",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["items"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "label"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 24 },
+                "label": { "type": "string", "minLength": 1, "maxLength": 160 }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "document.export",
+      "title": "导出审计发现、COE 复盘或作战室快照 JSON",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "maxLength": 24 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "filename": { "type": "string", "maxLength": 80 },
+          "text": { "type": "string", "maxLength": 12288 },
+          "error": { "type": "string", "maxLength": 64 }
+        }
+      }
+    },
+    {
+      "id": "document.import",
+      "title": "导入审计发现或 COE 复盘 JSON",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text"],
+        "properties": {
+          "text": { "type": "string", "minLength": 2, "maxLength": 12288 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["imported"],
+        "properties": {
+          "imported": { "type": "boolean" },
+          "reason": { "type": "string", "maxLength": 64 },
+          "id": { "type": "string", "maxLength": 24 }
+        }
+      }
+    }
+  ],
+  "tools": [
+    {
+      "id": "audit.summary",
+      "title": "读取项目安全健康分与高危风险摘要",
+      "description": "获取当前项目安全健康分 (0-100)、五维雷达分、未闭环高危漏洞、MTTR 与历史故障 COE 教训摘要。",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "include_closed": { "type": "boolean" }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status", "health_score", "open_p0_p1", "mttr_min", "closure_rate", "radar_scores", "high_risk_findings", "incident_lessons", "pending_actions_count"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["ready", "storage_error"] },
+          "health_score": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "open_p0_p1": { "type": "integer", "minimum": 0, "maximum": 10000 },
+          "mttr_min": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+          "closure_rate": { "type": "number", "minimum": 0, "maximum": 100 },
+          "radar_scores": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["auth", "isolation", "validation", "supply_chain", "observability"],
+            "properties": {
+              "auth": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "isolation": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "validation": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "supply_chain": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "observability": { "type": "integer", "minimum": 0, "maximum": 100 }
+            }
+          },
+          "high_risk_findings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "title", "severity", "risk_score", "status", "component"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 24 },
+                "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+                "severity": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
+                "risk_score": { "type": "integer", "minimum": 1, "maximum": 25 },
+                "status": { "type": "string", "enum": ["open", "mitigating", "verified", "wontfix"] },
+                "component": { "type": "string", "minLength": 1, "maxLength": 80 }
+              }
+            }
+          },
+          "incident_lessons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "title", "severity", "duration_min", "lessons"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 24 },
+                "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+                "severity": { "type": "string", "enum": ["SEV1", "SEV2", "SEV3", "SEV4"] },
+                "duration_min": { "type": "integer", "minimum": 0, "maximum": 100000 },
+                "lessons": { "type": "string", "maxLength": 300 }
+              }
+            }
+          },
+          "pending_actions_count": { "type": "integer", "minimum": 0, "maximum": 10000 }
+        }
+      }
+    },
+    {
+      "id": "audit.finding.add",
+      "title": "登记新的安全审计发现",
+      "description": "向当前项目作战室登记一条安全漏洞或架构缺陷，自动分配 SEC-NNN 编号并计算风险分。",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "category", "severity", "impact", "likelihood", "component"],
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "category": { "type": "string", "enum": ["owasp", "architecture", "performance", "compliance"] },
+          "dimension": { "type": "string", "enum": ["auth", "isolation", "validation", "supply_chain", "observability"] },
+          "severity": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
+          "impact": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "likelihood": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "component": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "remediation": { "type": "string", "maxLength": 420 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input"] },
+          "id": { "type": "string", "maxLength": 24 },
+          "risk_score": { "type": "integer", "minimum": 1, "maximum": 25 },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    }
+  ],
+  "data": [
+    { "collection": "incidents", "scope": "project", "schema_version": 1 },
+    { "collection": "findings", "scope": "project", "schema_version": 1 },
+    { "collection": "actions", "scope": "project", "schema_version": 1 }
+  ],
+  "http": [],
+  "tasks": [],
+  "files": []
+}
