@@ -1,0 +1,137 @@
+{
+  "manifest_version": 1,
+  "plugin_id": "json-workbench",
+  "name": "JSON 与结构化数据工坊",
+  "version": "1.0.0",
+  "host_api": 1,
+  "backend": "backend/index.js",
+  "page": "ui/index.html",
+  "ui": {
+    "icon": "app",
+    "surfaces": ["workspace", "chat", "assistant"]
+  },
+  "permissions": [],
+  "actions": [
+    {
+      "id": "json.format",
+      "title": "格式化或压缩 JSON",
+      "permissions": [],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text", "mode"],
+        "properties": {
+          "text": { "type": "string", "minLength": 1, "maxLength": 10000 },
+          "mode": { "type": "string", "enum": ["pretty", "minify", "canonical"] }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["valid"],
+        "properties": {
+          "valid": { "type": "boolean" },
+          "output": { "type": "string", "maxLength": 12000 },
+          "root_type": { "type": "string", "maxLength": 16 },
+          "depth": { "type": "integer", "minimum": 0, "maximum": 64 },
+          "keys": { "type": "integer", "minimum": 0, "maximum": 10000 },
+          "error": { "type": "string", "maxLength": 200 }
+        }
+      }
+    },
+    {
+      "id": "json.query",
+      "title": "按路径提取 JSON 值",
+      "permissions": [],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text", "path"],
+        "properties": {
+          "text": { "type": "string", "minLength": 1, "maxLength": 10000 },
+          "path": { "type": "string", "maxLength": 256 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["found"],
+        "properties": {
+          "found": { "type": "boolean" },
+          "result": { "type": "string", "maxLength": 12000 },
+          "error": { "type": "string", "maxLength": 200 }
+        }
+      }
+    },
+    {
+      "id": "json.diff",
+      "title": "结构化对比两段 JSON",
+      "permissions": [],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["left", "right"],
+        "properties": {
+          "left": { "type": "string", "minLength": 1, "maxLength": 6000 },
+          "right": { "type": "string", "minLength": 1, "maxLength": 6000 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ok", "changes"],
+        "properties": {
+          "ok": { "type": "boolean" },
+          "error": { "type": "string", "maxLength": 200 },
+          "changes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "kind", "detail"],
+              "properties": {
+                "path": { "type": "string", "maxLength": 256 },
+                "kind": { "type": "string", "enum": ["added", "removed", "changed"] },
+                "detail": { "type": "string", "maxLength": 300 }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "tools": [
+    {
+      "id": "json.analyze",
+      "title": "分析并规范化 JSON",
+      "description": "校验一段 JSON 字符串的合法性，返回根类型、嵌套深度、键总数及按键名排序后的规范 JSON。",
+      "permissions": [],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text"],
+        "properties": {
+          "text": { "type": "string", "minLength": 1, "maxLength": 8000 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["valid", "invalid_json"] },
+          "root_type": { "type": "string", "maxLength": 16 },
+          "depth": { "type": "integer", "minimum": 0, "maximum": 64 },
+          "keys": { "type": "integer", "minimum": 0, "maximum": 10000 },
+          "canonical": { "type": "string", "maxLength": 8000 },
+          "error": { "type": "string", "maxLength": 200 }
+        }
+      }
+    }
+  ],
+  "data": [],
+  "http": [],
+  "tasks": [],
+  "files": []
+}

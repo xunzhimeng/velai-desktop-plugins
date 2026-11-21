@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>提示词模板库</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: Canvas; --fg: CanvasText; --muted: color-mix(in srgb, CanvasText 60%, transparent);
+      --border: color-mix(in srgb, CanvasText 18%, transparent);
+      --card: color-mix(in srgb, CanvasText 4%, Canvas);
+      --accent: #2563eb; --danger: #dc2626; --ok: #16a34a;
+      font: 14px/1.55 system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); }
+    main { max-width: 960px; margin: 0 auto; padding: clamp(12px, 2.5vw, 20px); display: flex; flex-direction: column; gap: 12px; }
+    header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+    h1 { font-size: 18px; margin: 0; }
+    h2 { font-size: 14px; margin: 0 0 8px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .grid { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 14px; }
+    @media (max-width: 680px) { .grid { grid-template-columns: 1fr; } }
+    .panel { border: 1px solid var(--border); border-radius: 10px; padding: 12px; background: var(--card); display: flex; flex-direction: column; gap: 10px; }
+    .list { display: flex; flex-direction: column; gap: 6px; max-height: 420px; overflow: auto; }
+    .item { text-align: left; width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--bg); color: var(--fg); cursor: pointer; }
+    .item.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .item-title { font-weight: 600; display: block; }
+    .item-meta { font-size: 12px; color: var(--muted); }
+    label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-size: 13px; }
+    input, select, textarea, button { font: inherit; color: inherit; border: 1px solid var(--border); border-radius: 7px; padding: 6px 10px; background: var(--bg); }
+    textarea { min-height: 120px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+    button { cursor: pointer; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .vars { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+    .preview { white-space: pre-wrap; word-break: break-word; padding: 10px; border-radius: 8px; border: 1px dashed var(--border); background: var(--bg); min-height: 54px; margin: 0; font-size: 13px; }
+    .status { font-size: 13px; margin: 0; color: var(--muted); }
+    .status[data-kind="error"] { color: var(--danger); }
+    .status[data-kind="ok"] { color: var(--ok); }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>提示词模板库</h1>
+      <div class="toolbar">
+        <select id="filter-cat" aria-label="按分类筛选">
+          <option value="">全部分类</option>
+          <option value="general">通用</option>
+          <option value="coding">编程开发</option>
+          <option value="writing">写作润色</option>
+          <option value="analysis">分析总结</option>
+          <option value="translation">翻译校对</option>
+        </select>
+        <input id="search" type="search" placeholder="搜索模板…" autocomplete="off">
+        <button id="btn-new" class="primary" type="button">+ 新建模板</button>
+      </div>
+    </header>
+
+    <p id="status" class="status" role="status">正在加载模板库…</p>
+
+    <div class="grid">
+      <section class="panel">
+        <h2>模板列表 (<span id="count">0</span>)</h2>
+        <div id="list" class="list"></div>
+      </section>
+
+      <section class="panel">
+        <div class="toolbar" style="justify-content:space-between">
+          <h2 id="editor-heading" style="margin:0">编辑模板</h2>
+          <div class="toolbar">
+            <button id="btn-save" class="primary" type="button">保存</button>
+            <button id="btn-delete" class="danger" type="button" hidden>删除</button>
+          </div>
+        </div>
+        <div class="toolbar">
+          <label style="flex:1;min-width:160px">模板名称
+            <input id="f-title" placeholder="例如：代码审查清单" maxlength="80" autocomplete="off">
+          </label>
+          <label style="width:140px">分类
+            <select id="f-cat">
+              <option value="general">通用</option>
+              <option value="coding">编程开发</option>
+              <option value="writing">写作润色</option>
+              <option value="analysis">分析总结</option>
+              <option value="translation">翻译校对</option>
+            </select>
+          </label>
+        </div>
+        <label>模板正文（使用 <code>{{变量名}}</code> 定义变量）
+          <textarea id="f-content" placeholder="请从安全性、边界条件和可维护性审查以下 {{语言}} 代码：&#10;{{代码}}"></textarea>
+        </label>
+
+        <div id="render-box" hidden>
+          <h2>快速填充与使用</h2>
+          <div id="var-inputs" class="vars"></div>
+          <pre id="preview" class="preview"></pre>
+          <div class="toolbar" style="margin-top:8px">
+            <button id="btn-insert" class="primary" type="button" hidden>插入到会话输入框</button>
+            <button id="btn-copy" type="button">复制渲染结果</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+  <script>
+    (() => {
+      const plugin = globalThis.nmasPlugin;
+      const $ = id => document.getElementById(id);
+      const CAT_LABELS = { general: '通用', coding: '编程开发', writing: '写作润色', analysis: '分析总结', translation: '翻译校对' };
+      let revision = 0, templates = [], activeId = null, canInsert = false, busy = false;
+      const varValues = new Map();
+
+      const setStatus = (msg, kind = '') => { $('status').textContent = msg; $('status').dataset.kind = kind; };
+      const extractVars = text => {
+        const out = [], seen = new Set();
+        text.replace(/\{\{\s*([a-zA-Z0-9_\-\u4e00-\u9fff]{1,40})\s*\}\}/g, (_, n) => {
+          if (!seen.has(n)) { seen.add(n); out.push(n); }
+        });
+        return out;
+      };
+      const renderPreview = () => {
+        const content = $('f-content').value;
+        const vars = extractVars(content);
+        const box = $('render-box');
+        box.hidden = !content.trim();
+        const rendered = content.replace(/\{\{\s*([a-zA-Z0-9_\-\u4e00-\u9fff]{1,40})\s*\}\}/g, (m, n) => varValues.get(n) || m);
+        $('preview').textContent = rendered;
+        $('btn-insert').hidden = !canInsert;
+      };
+      const rebuildVarInputs = () => {
+        const vars = extractVars($('f-content').value);
+        const container = $('var-inputs');
+        container.replaceChildren();
+        for (const name of vars) {
+          const label = document.createElement('label');
+          label.textContent = name;
+          const input = document.createElement('input');
+          input.value = varValues.get(name) || '';
+          input.placeholder = `填入 ${name}`;
+          input.addEventListener('input', () => { varValues.set(name, input.value); renderPreview(); });
+          label.appendChild(input);
+          container.appendChild(label);
+        }
+        renderPreview();
+      };
+      const renderList = () => {
+        const cat = $('filter-cat').value;
+        const kw = $('search').value.trim().toLowerCase();
+        const shown = templates.filter(t => (!cat || t.category === cat) && (!kw || t.title.toLowerCase().includes(kw) || t.content.toLowerCase().includes(kw)));
+        $('count').textContent = String(shown.length);
+        const list = $('list');
+        list.replaceChildren();
+        if (!shown.length) {
+          const p = document.createElement('p');
+          p.className = 'status';
+          p.textContent = templates.length ? '没有匹配的模板' : '暂无模板，点击「新建模板」创建第一条';
+          list.appendChild(p);
+          return;
+        }
+        for (const t of shown) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = `item${t.id === activeId ? ' active' : ''}`;
+          const title = document.createElement('span');
+          title.className = 'item-title';
+          title.textContent = t.title;
+          const meta = document.createElement('span');
+          meta.className = 'item-meta';
+          meta.textContent = `${CAT_LABELS[t.category] || t.category}${t.variables.length ? ` · ${t.variables.length} 个变量` : ''}`;
+          btn.append(title, meta);
+          btn.addEventListener('click', () => selectTemplate(t.id));
+          list.appendChild(btn);
+        }
+      };
+      const selectTemplate = id => {
+        activeId = id;
+        varValues.clear();
+        const tpl = templates.find(t => t.id === id);
+        $('f-title').value = tpl?.title ?? '';
+        $('f-cat').value = tpl?.category ?? 'general';
+        $('f-content').value = tpl?.content ?? '';
+        $('btn-delete').hidden = !tpl;
+        $('editor-heading').textContent = tpl ? '编辑模板' : '新建模板';
+        renderList();
+        rebuildVarInputs();
+      };
+      async function load() {
+        if (typeof plugin?.action !== 'function') { setStatus('请在 Velai Desktop 中打开此插件。', 'error'); return; }
+        try {
+          const caps = await plugin.action('host.capabilities', {}).catch(() => ({ actions: [] }));
+          canInsert = Array.isArray(caps?.actions) && caps.actions.includes('host.draft.insert');
+          const res = await plugin.action('vault.list', {});
+          revision = res.revision;
+          templates = res.templates;
+          selectTemplate(templates[0]?.id ?? null);
+          setStatus(`已加载 ${templates.length} 条模板（修订 #${revision}）`);
+        } catch (err) {
+          setStatus(`加载失败：${err?.message || '未知错误'}`, 'error');
+        }
+      }
+      $('filter-cat').addEventListener('change', renderList);
+      $('search').addEventListener('input', renderList);
+      $('f-content').addEventListener('input', rebuildVarInputs);
+      $('btn-new').addEventListener('click', () => { selectTemplate(null); $('f-title').focus(); });
+      $('btn-save').addEventListener('click', async () => {
+        if (busy) return;
+        const title = $('f-title').value.trim();
+        const content = $('f-content').value.trim();
+        if (!title || !content) { setStatus('请填写模板名称和正文。', 'error'); return; }
+        busy = true;
+        try {
+          const id = activeId || `tpl-${Date.now().toString(36)}`;
+          const res = await plugin.action('vault.save', {
+            expected_revision: revision,
+            id,
+            title,
+            category: $('f-cat').value,
+            content,
+          });
+          if (res.status === 'saved') {
+            await load();
+            selectTemplate(id);
+            setStatus('模板已保存。', 'ok');
+          } else if (res.status === 'conflict') {
+            setStatus('数据已被其他窗口修改，请刷新后重试。', 'error');
+          } else if (res.status === 'limit') {
+            setStatus('超出容量上限（最多 48 条 / 12 KiB）。', 'error');
+          } else {
+            setStatus(`保存未完成：${res.status}`, 'error');
+          }
+        } catch (err) {
+          setStatus(`保存失败：${err?.message || '未知错误'}`, 'error');
+        } finally { busy = false; }
+      });
+      $('btn-delete').addEventListener('click', async () => {
+        if (busy || !activeId) return;
+        busy = true;
+        try {
+          const res = await plugin.action('vault.delete', { expected_revision: revision, id: activeId });
+          if (res.status === 'deleted') {
+            await load();
+            setStatus('模板已删除。', 'ok');
+          } else {
+            setStatus(`删除未完成：${res.status}`, 'error');
+          }
+        } catch (err) {
+          setStatus(`删除失败：${err?.message || '未知错误'}`, 'error');
+        } finally { busy = false; }
+      });
+      $('btn-insert').addEventListener('click', async () => {
+        const text = $('preview').textContent.trim();
+        if (!text) return;
+        try {
+          const r = await plugin.action('host.draft.insert', { text });
+          if (r?.inserted) setStatus('已插入当前会话输入框。', 'ok');
+          else setStatus('未能确认插入结果，请检查输入框。', 'error');
+        } catch (err) {
+          setStatus(`插入失败：${err?.message || '未知错误'}`, 'error');
+        }
+      });
+      $('btn-copy').addEventListener('click', async () => {
+        const text = $('preview').textContent;
+        if (!text) return;
+        try {
+          await navigator.clipboard.writeText(text);
+          setStatus('已复制渲染结果。', 'ok');
+        } catch {
+          setStatus('当前沙箱不允许直接写入剪贴板，请手动选中复制。');
+        }
+      });
+      void load();
+    })();
+  </script>
+</body>
+</html>

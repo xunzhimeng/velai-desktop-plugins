@@ -1,0 +1,250 @@
+{
+  "manifest_version": 1,
+  "plugin_id": "project-checklist",
+  "name": "项目任务清单",
+  "version": "1.0.0",
+  "host_api": 1,
+  "backend": "backend/index.js",
+  "page": "ui/index.html",
+  "ui": {
+    "icon": "table",
+    "surfaces": ["workspace", "chat"]
+  },
+  "permissions": ["data.read", "data.write"],
+  "actions": [
+    {
+      "id": "tasks.list",
+      "title": "读取项目任务清单",
+      "permissions": ["data.read"],
+      "input_schema": { "type": "object", "additionalProperties": false, "required": [], "properties": {} },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["revision", "items", "summary"],
+        "properties": {
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "summary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["total", "todo", "doing", "done", "completion_pct"],
+            "properties": {
+              "total": { "type": "integer", "minimum": 0, "maximum": 128 },
+              "todo": { "type": "integer", "minimum": 0, "maximum": 128 },
+              "doing": { "type": "integer", "minimum": 0, "maximum": 128 },
+              "done": { "type": "integer", "minimum": 0, "maximum": 128 },
+              "completion_pct": { "type": "integer", "minimum": 0, "maximum": 100 }
+            }
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "title", "milestone", "priority", "state", "note"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+                "milestone": { "type": "string", "maxLength": 48 },
+                "priority": { "type": "string", "enum": ["high", "medium", "low"] },
+                "state": { "type": "string", "enum": ["todo", "doing", "done"] },
+                "note": { "type": "string", "maxLength": 300 }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "tasks.upsert",
+      "title": "新增或更新任务",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id", "title", "milestone", "priority", "state", "note"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "milestone": { "type": "string", "maxLength": 48 },
+          "priority": { "type": "string", "enum": ["high", "medium", "low"] },
+          "state": { "type": "string", "enum": ["todo", "doing", "done"] },
+          "note": { "type": "string", "maxLength": 300 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "tasks.remove",
+      "title": "删除任务",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["deleted", "not_found", "conflict"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "document.list",
+      "title": "列出可导出的清单",
+      "permissions": ["data.read"],
+      "input_schema": { "type": "object", "additionalProperties": false, "required": [], "properties": {} },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "label"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 32 },
+                "label": { "type": "string", "minLength": 1, "maxLength": 80 }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "document.export",
+      "title": "导出清单 JSON",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 32 } }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "filename": { "type": "string", "maxLength": 64 },
+          "text": { "type": "string", "maxLength": 12288 },
+          "error": { "type": "string", "maxLength": 64 }
+        }
+      }
+    },
+    {
+      "id": "document.import",
+      "title": "导入清单任务",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text"],
+        "properties": { "text": { "type": "string", "minLength": 2, "maxLength": 12288 } }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["imported"],
+        "properties": {
+          "imported": { "type": "boolean" },
+          "reason": { "type": "string", "maxLength": 64 }
+        }
+      }
+    }
+  ],
+  "tools": [
+    {
+      "id": "checklist.list",
+      "title": "查询当前项目任务清单",
+      "description": "按状态或里程碑读取当前项目已登记的待办事项与完成率。",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "state": { "type": "string", "enum": ["todo", "doing", "done"] },
+          "milestone": { "type": "string", "maxLength": 48 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status", "items"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["ready", "storage_error"] },
+          "completion_pct": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "title", "milestone", "priority", "state"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+                "milestone": { "type": "string", "maxLength": 48 },
+                "priority": { "type": "string", "enum": ["high", "medium", "low"] },
+                "state": { "type": "string", "enum": ["todo", "doing", "done"] }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "checklist.add",
+      "title": "登记项目待办任务",
+      "description": "向当前项目的任务清单追加一条新的待办事项，支持指定里程碑、优先级和备注。",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title"],
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "milestone": { "type": "string", "maxLength": 48 },
+          "priority": { "type": "string", "enum": ["high", "medium", "low"] },
+          "note": { "type": "string", "maxLength": 300 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input"] },
+          "id": { "type": "string", "maxLength": 48 }
+        }
+      }
+    }
+  ],
+  "data": [
+    { "collection": "checklist", "scope": "project", "schema_version": 1 }
+  ],
+  "http": [],
+  "tasks": [],
+  "files": []
+}

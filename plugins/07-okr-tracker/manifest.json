@@ -1,0 +1,237 @@
+{
+  "manifest_version": 1,
+  "plugin_id": "okr-tracker",
+  "name": "目标进度追踪器 (OKR)",
+  "version": "1.0.0",
+  "host_api": 1,
+  "backend": "backend/index.js",
+  "page": "ui/index.html",
+  "ui": {
+    "icon": "table",
+    "surfaces": ["workspace", "chat"]
+  },
+  "permissions": ["data.read", "data.write"],
+  "actions": [
+    {
+      "id": "okr.read",
+      "title": "读取全部 OKR",
+      "permissions": ["data.read"],
+      "input_schema": { "type": "object", "additionalProperties": false, "required": [], "properties": {} },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["revision", "overall_pct", "objectives"],
+        "properties": {
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "overall_pct": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "objectives": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "cycle", "title", "progress_pct", "krs"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "cycle": { "type": "string", "minLength": 1, "maxLength": 24 },
+                "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+                "progress_pct": { "type": "integer", "minimum": 0, "maximum": 100 },
+                "krs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["id", "title", "current", "target", "unit", "pct"],
+                    "properties": {
+                      "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                      "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+                      "current": { "type": "number", "minimum": 0, "maximum": 1000000000 },
+                      "target": { "type": "number", "minimum": 0.0001, "maximum": 1000000000 },
+                      "unit": { "type": "string", "maxLength": 16 },
+                      "pct": { "type": "integer", "minimum": 0, "maximum": 100 }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "okr.save",
+      "title": "保存或更新目标",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id", "cycle", "title", "krs"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "cycle": { "type": "string", "minLength": 1, "maxLength": 24 },
+          "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "krs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "title", "current", "target", "unit"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+                "current": { "type": "number", "minimum": 0, "maximum": 1000000000 },
+                "target": { "type": "number", "minimum": 0.0001, "maximum": 1000000000 },
+                "unit": { "type": "string", "maxLength": 16 }
+              }
+            }
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "okr.delete",
+      "title": "删除目标",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["deleted", "not_found", "conflict"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "document.list",
+      "title": "列出可导出的 OKR 周期",
+      "permissions": ["data.read"],
+      "input_schema": { "type": "object", "additionalProperties": false, "required": [], "properties": {} },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "label"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 32 },
+                "label": { "type": "string", "minLength": 1, "maxLength": 80 }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "document.export",
+      "title": "导出 OKR JSON",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 32 } }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "filename": { "type": "string", "maxLength": 64 },
+          "text": { "type": "string", "maxLength": 12288 },
+          "error": { "type": "string", "maxLength": 64 }
+        }
+      }
+    },
+    {
+      "id": "document.import",
+      "title": "导入 OKR JSON",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text"],
+        "properties": { "text": { "type": "string", "minLength": 2, "maxLength": 12288 } }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["imported"],
+        "properties": {
+          "imported": { "type": "boolean" },
+          "reason": { "type": "string", "maxLength": 64 }
+        }
+      }
+    }
+  ],
+  "tools": [
+    {
+      "id": "okr.summary",
+      "title": "获取 OKR 进展摘要",
+      "description": "汇总当前账号各周期的目标 (O) 与关键结果 (KR) 达成率，便于撰写周报或评估风险。",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "cycle": { "type": "string", "maxLength": 24 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status", "overall_pct", "objectives"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["ready", "storage_error"] },
+          "overall_pct": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "objectives": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "cycle", "title", "progress_pct", "kr_count"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+                "cycle": { "type": "string", "minLength": 1, "maxLength": 24 },
+                "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+                "progress_pct": { "type": "integer", "minimum": 0, "maximum": 100 },
+                "kr_count": { "type": "integer", "minimum": 0, "maximum": 16 }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "data": [
+    { "collection": "okr", "scope": "account", "schema_version": 1 }
+  ],
+  "http": [],
+  "tasks": [],
+  "files": []
+}

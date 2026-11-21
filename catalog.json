@@ -1,0 +1,360 @@
+{
+  "schema_version": 1,
+  "repository": "xunzhimeng/velai-desktop-plugins",
+  "total_plugins": 10,
+  "total_tools": 12,
+  "plugins": [
+    {
+      "dir": "01-prompt-vault",
+      "plugin_id": "prompt-vault",
+      "name": "提示词模板库",
+      "version": "1.0.0",
+      "file": "dist/prompt-vault.nmas-plugin",
+      "bytes": 29430,
+      "file_sha256": "0c477be7c9a9e214fb056ab81c00b1100e401529d4d4fb23ad7f6dcfe4c64c3a",
+      "package_digest": "8361b6a8c6f214ea841cc2bc7a8c83b1aa84db13a96fe17d17a528396936e69c",
+      "icon": "text",
+      "surfaces": [
+        "workspace",
+        "chat",
+        "assistant"
+      ],
+      "permissions": [
+        "data.read",
+        "data.write"
+      ],
+      "data_scope": "account",
+      "actions": [
+        "vault.list",
+        "vault.save",
+        "vault.delete",
+        "vault.render",
+        "document.list",
+        "document.export",
+        "document.import"
+      ],
+      "tools": [
+        {
+          "id": "prompt.list",
+          "title": "查询提示词模板"
+        },
+        {
+          "id": "prompt.render",
+          "title": "渲染提示词模板"
+        }
+      ],
+      "http": []
+    },
+    {
+      "dir": "02-project-checklist",
+      "plugin_id": "project-checklist",
+      "name": "项目任务清单",
+      "version": "1.0.0",
+      "file": "dist/project-checklist.nmas-plugin",
+      "bytes": 24273,
+      "file_sha256": "e0a554472ae972c77fef8b689107453d42fbb19104d13553101ab1f1e441cf4c",
+      "package_digest": "790e834772d713f33cb83d723397583632bb08e584b95c0002641a7f2d32be26",
+      "icon": "table",
+      "surfaces": [
+        "workspace",
+        "chat"
+      ],
+      "permissions": [
+        "data.read",
+        "data.write"
+      ],
+      "data_scope": "project",
+      "actions": [
+        "tasks.list",
+        "tasks.upsert",
+        "tasks.remove",
+        "document.list",
+        "document.export",
+        "document.import"
+      ],
+      "tools": [
+        {
+          "id": "checklist.list",
+          "title": "查询当前项目任务清单"
+        },
+        {
+          "id": "checklist.add",
+          "title": "登记项目待办任务"
+        }
+      ],
+      "http": []
+    },
+    {
+      "dir": "03-decision-log",
+      "plugin_id": "decision-log",
+      "name": "项目决策记录 (ADR)",
+      "version": "1.0.0",
+      "file": "dist/decision-log.nmas-plugin",
+      "bytes": 22711,
+      "file_sha256": "eebdcc2570a1d130ff0d2669b976b5ccd4091011c2936aa5ee1cf7323c049627",
+      "package_digest": "ff6f5529e57e2ee6143bf8bcb652f6e67e5036d3803333af9b04a4bfd2312a39",
+      "icon": "edit",
+      "surfaces": [
+        "workspace",
+        "chat"
+      ],
+      "permissions": [
+        "data.read",
+        "data.write"
+      ],
+      "data_scope": "project",
+      "actions": [
+        "adr.list",
+        "adr.save",
+        "adr.delete",
+        "document.list",
+        "document.export",
+        "document.import"
+      ],
+      "tools": [
+        {
+          "id": "decision.list",
+          "title": "查询项目架构决策"
+        },
+        {
+          "id": "decision.record",
+          "title": "新增项目架构决策"
+        }
+      ],
+      "http": []
+    },
+    {
+      "dir": "04-snippet-box",
+      "plugin_id": "snippet-box",
+      "name": "常用片段剪贴箱",
+      "version": "1.0.0",
+      "file": "dist/snippet-box.nmas-plugin",
+      "bytes": 17487,
+      "file_sha256": "b3c0eb3e7e52be1e991e1c44f25f01e509bb877ddde72f4d1b3782df1d14eede",
+      "package_digest": "241fa059a841f0b6fe793c54b355e643b9deb7e057669b44d23c7afe0bfcf2f6",
+      "icon": "app",
+      "surfaces": [
+        "workspace",
+        "chat",
+        "assistant"
+      ],
+      "permissions": [
+        "data.read",
+        "data.write"
+      ],
+      "data_scope": "account",
+      "actions": [
+        "snippet.list",
+        "snippet.save",
+        "snippet.delete"
+      ],
+      "tools": [
+        {
+          "id": "snippet.search",
+          "title": "检索常用片段"
+        }
+      ],
+      "http": []
+    },
+    {
+      "dir": "05-meeting-minutes",
+      "plugin_id": "meeting-minutes",
+      "name": "会议纪要工作台",
+      "version": "1.0.0",
+      "file": "dist/meeting-minutes.nmas-plugin",
+      "bytes": 21498,
+      "file_sha256": "917062865f02257b4204572132250112ae5c68f2c66d4b4e89242d1da303e2da",
+      "package_digest": "4154ddb9ef35e92908b7947b9dd498300c3dc7c02338eeabeb0000249afc6abe",
+      "icon": "chat",
+      "surfaces": [
+        "workspace",
+        "chat",
+        "assistant"
+      ],
+      "permissions": [
+        "data.read",
+        "data.write",
+        "tasks.start",
+        "tasks.read",
+        "tasks.cancel"
+      ],
+      "data_scope": "account",
+      "actions": [
+        "minutes.read",
+        "minutes.save",
+        "minutes.delete",
+        "session.turn.request",
+        "session.turn.result"
+      ],
+      "tools": [
+        {
+          "id": "minutes.list",
+          "title": "查询历史会议纪要"
+        }
+      ],
+      "http": []
+    },
+    {
+      "dir": "06-glossary-hub",
+      "plugin_id": "glossary-hub",
+      "name": "项目术语表",
+      "version": "1.0.0",
+      "file": "dist/glossary-hub.nmas-plugin",
+      "bytes": 20536,
+      "file_sha256": "6b7d18d7c962073e4a3f8e094a7b41952fda13bd80caab97a2cc076755fc59d9",
+      "package_digest": "f81f8f35c36dac61f613be7e29f036d404eba952d4daa5a70b15201d99a4a871",
+      "icon": "text",
+      "surfaces": [
+        "workspace",
+        "chat"
+      ],
+      "permissions": [
+        "data.read",
+        "data.write"
+      ],
+      "data_scope": "project",
+      "actions": [
+        "glossary.list",
+        "glossary.save",
+        "glossary.delete",
+        "document.list",
+        "document.export",
+        "document.import"
+      ],
+      "tools": [
+        {
+          "id": "glossary.lookup",
+          "title": "查询项目术语定义"
+        },
+        {
+          "id": "glossary.upsert",
+          "title": "登记项目术语"
+        }
+      ],
+      "http": []
+    },
+    {
+      "dir": "07-okr-tracker",
+      "plugin_id": "okr-tracker",
+      "name": "目标进度追踪器 (OKR)",
+      "version": "1.0.0",
+      "file": "dist/okr-tracker.nmas-plugin",
+      "bytes": 23917,
+      "file_sha256": "410c54730a62047e54ce25273b5cd59f272a160f728c7b65e0375636cb9f77df",
+      "package_digest": "0745f4df498b59793adb4b73e32b93110b30feb8fe8c4a1a5335a9a17b8e4867",
+      "icon": "table",
+      "surfaces": [
+        "workspace",
+        "chat"
+      ],
+      "permissions": [
+        "data.read",
+        "data.write"
+      ],
+      "data_scope": "account",
+      "actions": [
+        "okr.read",
+        "okr.save",
+        "okr.delete",
+        "document.list",
+        "document.export",
+        "document.import"
+      ],
+      "tools": [
+        {
+          "id": "okr.summary",
+          "title": "获取 OKR 进展摘要"
+        }
+      ],
+      "http": []
+    },
+    {
+      "dir": "08-reply-polisher",
+      "plugin_id": "reply-polisher",
+      "name": "回复改写与格式助手",
+      "version": "1.0.0",
+      "file": "dist/reply-polisher.nmas-plugin",
+      "bytes": 13494,
+      "file_sha256": "82ae3f5c4e8a339050fb59a221b841ada6850f8305ca34311bc3903283154339",
+      "package_digest": "0a8c90e7125e234971cf6f84823b3addb65a3239d095cfb6427ee84bd1f7c500",
+      "icon": "edit",
+      "surfaces": [
+        "workspace",
+        "chat",
+        "assistant"
+      ],
+      "permissions": [
+        "tasks.start",
+        "tasks.read",
+        "tasks.cancel"
+      ],
+      "data_scope": "none",
+      "actions": [
+        "text.transform",
+        "session.turn.request",
+        "session.turn.result"
+      ],
+      "tools": [],
+      "http": []
+    },
+    {
+      "dir": "09-json-workbench",
+      "plugin_id": "json-workbench",
+      "name": "JSON 与结构化数据工坊",
+      "version": "1.0.0",
+      "file": "dist/json-workbench.nmas-plugin",
+      "bytes": 17500,
+      "file_sha256": "1aed001bc3d585e18442e0212157c0c3e99e9b895529bb558d1de3a5f7530766",
+      "package_digest": "d29e8d596c6117240cb54d4e8501f61de8491bb9a10365713c8b01b7b892d7c7",
+      "icon": "app",
+      "surfaces": [
+        "workspace",
+        "chat",
+        "assistant"
+      ],
+      "permissions": [],
+      "data_scope": "none",
+      "actions": [
+        "json.format",
+        "json.query",
+        "json.diff"
+      ],
+      "tools": [
+        {
+          "id": "json.analyze",
+          "title": "分析并规范化 JSON"
+        }
+      ],
+      "http": []
+    },
+    {
+      "dir": "10-fx-market-board",
+      "plugin_id": "fx-market-board",
+      "name": "实时汇率换算看板",
+      "version": "1.0.0",
+      "file": "dist/fx-market-board.nmas-plugin",
+      "bytes": 13923,
+      "file_sha256": "8731caf104229d67d6321c3fda647db469b5f6b0caacb3e173f7cc14654079b0",
+      "package_digest": "f1d38369fa472a3530f8d9b91746355a13cc6a731e0d59f3957690970963ec4b",
+      "icon": "table",
+      "surfaces": [
+        "workspace",
+        "chat"
+      ],
+      "permissions": [
+        "http.request"
+      ],
+      "data_scope": "none",
+      "actions": [
+        "fx.rates",
+        "fx.currencies",
+        "fx.convert"
+      ],
+      "tools": [],
+      "http": [
+        "https://api.frankfurter.dev/v1/latest",
+        "https://api.frankfurter.dev/v1/currencies"
+      ]
+    }
+  ]
+}

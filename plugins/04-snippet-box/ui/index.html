@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>常用片段剪贴箱</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: Canvas; --fg: CanvasText; --muted: color-mix(in srgb, CanvasText 60%, transparent);
+      --border: color-mix(in srgb, CanvasText 18%, transparent);
+      --card: color-mix(in srgb, CanvasText 4%, Canvas);
+      --accent: #2563eb; --danger: #dc2626;
+      font: 14px/1.5 system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); }
+    main { max-width: 900px; margin: 0 auto; padding: clamp(12px, 2.5vw, 20px); display: flex; flex-direction: column; gap: 12px; }
+    header, .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+    h1 { font-size: 18px; margin: 0; }
+    .composer { border: 1px solid var(--border); border-radius: 10px; padding: 12px; background: var(--card); display: flex; flex-direction: column; gap: 8px; }
+    input, textarea, button { font: inherit; color: inherit; border: 1px solid var(--border); border-radius: 7px; padding: 6px 10px; background: var(--bg); }
+    textarea { width: 100%; min-height: 78px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+    button { cursor: pointer; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button.danger { color: var(--danger); }
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+    .card { border: 1px solid var(--border); border-radius: 10px; padding: 10px; background: var(--card); display: flex; flex-direction: column; gap: 8px; }
+    .card pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; max-height: 120px; overflow: auto; padding: 8px; border-radius: 6px; background: var(--bg); border: 1px solid var(--border); }
+    .tag { font-size: 11px; padding: 1px 7px; border-radius: 99px; border: 1px solid var(--border); color: var(--muted); }
+    .status { font-size: 13px; color: var(--muted); margin: 0; }
+    .status[data-error="true"] { color: var(--danger); }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>常用片段剪贴箱</h1>
+      <div class="row">
+        <input id="search" type="search" placeholder="搜索标题、标签或正文…" autocomplete="off">
+        <button id="btn-from-selection" type="button" hidden>收藏当前选中回复</button>
+      </div>
+    </header>
+
+    <section class="composer">
+      <div class="row">
+        <input id="f-title" placeholder="片段名称（如：SQL 慢查询排查）" maxlength="80" style="flex:1;min-width:160px" autocomplete="off">
+        <input id="f-tag" placeholder="标签（如：sql / shell）" maxlength="32" style="width:140px" autocomplete="off">
+        <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input id="f-pinned" type="checkbox"> 置顶</label>
+        <button id="btn-save" class="primary" type="button">保存片段</button>
+      </div>
+      <textarea id="f-body" maxlength="2048" placeholder="粘贴常用命令、代码模板或回复话术…"></textarea>
+    </section>
+
+    <p id="status" class="status" role="status">正在加载片段箱…</p>
+    <section id="cards" class="cards"></section>
+  </main>
+  <script>
+    (() => {
+      const plugin = globalThis.nmasPlugin;
+      const $ = id => document.getElementById(id);
+      let revision = 0, snippets = [], editingId = null, canReadSel = false, canInsert = false, busy = false;
+      const setStatus = (t, err = false) => { $('status').textContent = t; $('status').dataset.error = String(err); };
+
+      function render() {
+        const kw = $('search').value.trim().toLowerCase();
+        const shown = snippets.filter(s => !kw || `${s.title} ${s.tag} ${s.body}`.toLowerCase().includes(kw));
+        const box = $('cards');
+        box.replaceChildren();
+        if (!shown.length) {
+          const p = document.createElement('p');
+          p.className = 'status';
+          p.textContent = snippets.length ? '未找到匹配片段' : '还没有保存任何片段';
+          box.appendChild(p);
+          return;
+        }
+        for (const s of shown) {
+          const card = document.createElement('article');
+          card.className = 'card';
+          const top = document.createElement('div');
+          top.className = 'row';
+          const title = document.createElement('strong');
+          title.textContent = `${s.pinned ? '★ ' : ''}${s.title}`;
+          top.appendChild(title);
+          if (s.tag) {
+            const tag = document.createElement('span');
+            tag.className = 'tag';
+            tag.textContent = s.tag;
+            top.appendChild(tag);
+          }
+          const pre = document.createElement('pre');
+          pre.textContent = s.body;
+          const actions = document.createElement('div');
+          actions.className = 'row';
+          if (canInsert) {
+            const ins = document.createElement('button');
+            ins.type = 'button';
+            ins.className = 'primary';
+            ins.textContent = '插入输入框';
+            ins.addEventListener('click', async () => {
+              try {
+                const r = await plugin.action('host.draft.insert', { text: s.body });
+                setStatus(r?.inserted ? `已插入「${s.title}」` : '未能确认插入结果', !r?.inserted);
+              } catch (e) { setStatus(`插入失败：${e?.message || '未知错误'}`, true); }
+            });
+            actions.appendChild(ins);
+          }
+          const edit = document.createElement('button');
+          edit.type = 'button';
+          edit.textContent = '编辑';
+          edit.addEventListener('click', () => {
+            editingId = s.id;
+            $('f-title').value = s.title;
+            $('f-tag').value = s.tag;
+            $('f-pinned').checked = s.pinned;
+            $('f-body').value = s.body;
+            $('f-title').focus();
+          });
+          const del = document.createElement('button');
+          del.type = 'button';
+          del.className = 'danger';
+          del.textContent = '删除';
+          del.addEventListener('click', () => remove(s.id));
+          actions.append(edit, del);
+          card.append(top, pre, actions);
+          box.appendChild(card);
+        }
+      }
+
+      async function load() {
+        if (typeof plugin?.action !== 'function') { setStatus('请在 Velai Desktop 中打开此插件。', true); return; }
+        try {
+          const caps = await plugin.action('host.capabilities', {}).catch(() => ({ actions: [] }));
+          const list = Array.isArray(caps?.actions) ? caps.actions : [];
+          canReadSel = list.includes('host.selection.read');
+          canInsert = list.includes('host.draft.insert');
+          $('btn-from-selection').hidden = !canReadSel;
+          const res = await plugin.action('snippet.list', {});
+          revision = res.revision;
+          snippets = res.snippets;
+          render();
+          setStatus(`共 ${snippets.length} 条片段（修订 #${revision}）`);
+        } catch (e) { setStatus(`加载失败：${e?.message || '未知错误'}`, true); }
+      }
+
+      async function remove(id) {
+        if (busy) return;
+        busy = true;
+        try {
+          const res = await plugin.action('snippet.delete', { expected_revision: revision, id });
+          if (res.status === 'deleted') await load();
+          else setStatus(`删除未完成：${res.status}`, true);
+        } catch (e) { setStatus(`删除失败：${e?.message || '未知错误'}`, true); }
+        finally { busy = false; }
+      }
+
+      $('btn-save').addEventListener('click', async () => {
+        if (busy) return;
+        const title = $('f-title').value.trim();
+        const body = $('f-body').value.trim();
+        if (!title || !body) { setStatus('请填写片段名称和内容。', true); return; }
+        busy = true;
+        try {
+          const id = editingId || `sn-${Date.now().toString(36)}`;
+          const res = await plugin.action('snippet.save', {
+            expected_revision: revision,
+            id,
+            title,
+            tag: $('f-tag').value.trim(),
+            pinned: $('f-pinned').checked,
+            body,
+          });
+          if (res.status === 'saved') {
+            editingId = null;
+            $('f-title').value = '';
+            $('f-tag').value = '';
+            $('f-pinned').checked = false;
+            $('f-body').value = '';
+            await load();
+            setStatus('片段已保存。');
+          } else setStatus(`保存未完成：${res.status}`, true);
+        } catch (e) { setStatus(`保存失败：${e?.message || '未知错误'}`, true); }
+        finally { busy = false; }
+      });
+
+      $('btn-from-selection').addEventListener('click', async () => {
+        try {
+          const res = await plugin.action('host.selection.read', {});
+          if (typeof res?.text === 'string' && res.text.trim()) {
+            $('f-body').value = res.text.slice(0, 2048);
+            if (!$('f-title').value.trim()) $('f-title').value = res.text.trim().split('\n')[0].slice(0, 40);
+            setStatus('已读入当前选中的回复，确认后点击保存。');
+          } else setStatus('请先在聊天中点选一条回复。', true);
+        } catch { setStatus('无法读取选中回复，请先在聊天中点选消息。', true); }
+      });
+
+      $('search').addEventListener('input', render);
+      void load();
+    })();
+  </script>
+</body>
+</html>

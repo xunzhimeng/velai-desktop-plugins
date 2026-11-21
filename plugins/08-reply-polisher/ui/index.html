@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>回复改写与格式助手</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: Canvas; --fg: CanvasText; --muted: color-mix(in srgb, CanvasText 60%, transparent);
+      --border: color-mix(in srgb, CanvasText 18%, transparent);
+      --card: color-mix(in srgb, CanvasText 4%, Canvas);
+      --accent: #2563eb; --danger: #dc2626;
+      font: 14px/1.55 system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); }
+    main { max-width: 860px; margin: 0 auto; padding: clamp(12px, 2.5vw, 20px); display: flex; flex-direction: column; gap: 10px; }
+    header, .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+    h1 { font-size: 18px; margin: 0; }
+    .panel { border: 1px solid var(--border); border-radius: 10px; padding: 12px; background: var(--card); display: flex; flex-direction: column; gap: 8px; }
+    textarea, select, button { font: inherit; color: inherit; border: 1px solid var(--border); border-radius: 7px; padding: 6px 10px; background: var(--bg); }
+    textarea { width: 100%; min-height: 140px; resize: vertical; }
+    button { cursor: pointer; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    .status { font-size: 13px; color: var(--muted); margin: 0; }
+    .status[data-error="true"] { color: var(--danger); }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>回复改写与格式助手</h1>
+      <div class="row">
+        <button id="btn-read" type="button" hidden>读入选中回复</button>
+        <button id="btn-insert" class="primary" type="button" hidden>填回会话输入框</button>
+      </div>
+    </header>
+
+    <section class="panel">
+      <div class="row">
+        <strong>编辑区</strong>
+        <span id="stats" class="status">0 字 · 0 行</span>
+      </div>
+      <textarea id="editor" placeholder="输入文本，或在聊天中点选回复后点击「读入选中回复」…"></textarea>
+      <div class="row" style="justify-content:flex-start">
+        <button data-mode="tidy" type="button">整理空行空格</button>
+        <button data-mode="strip_markdown" type="button">去除 Markdown</button>
+        <button data-mode="to_bullets" type="button">转为要点列表</button>
+        <button data-mode="quote_reply" type="button">转为引用块</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="row">
+        <strong>交给当前会话改写</strong>
+        <div class="row">
+          <select id="tone">
+            <option value="concise">精简压缩（保留关键信息）</option>
+            <option value="professional">专业正式（适合对外沟通）</option>
+            <option value="english">地道英文（专业技术风格）</option>
+            <option value="bullets">结构化结论 + 行动要点</option>
+          </select>
+          <button id="btn-rewrite" class="primary" type="button">发送改写</button>
+          <button id="btn-check" type="button" hidden>核对改写结果</button>
+        </div>
+      </div>
+      <p id="status" class="status" role="status">就绪</p>
+    </section>
+  </main>
+  <script>
+    (() => {
+      const plugin = globalThis.nmasPlugin;
+      const $ = id => document.getElementById(id);
+      const TONES = {
+        concise: '请将以下文字改写得更加精炼清晰，删除冗余表述，保留核心信息。只返回改写后的正文：',
+        professional: '请将以下文字润色为专业、礼貌、条理清晰的正式职场表达。只返回改写后的正文：',
+        english: 'Please translate and polish the following text into natural, clear, professional English. Return only the revised text:',
+        bullets: '请将以下内容整理为“核心结论 + 分条要点”的结构化文本。只返回整理后的正文：',
+      };
+      let workId = null;
+      const setStatus = (t, err = false) => { $('status').textContent = t; $('status').dataset.error = String(err); };
+
+      function uuid() {
+        const b = crypto.getRandomValues(new Uint8Array(16));
+        b[6] = (b[6] & 0x0f) | 0x40;
+        b[8] = (b[8] & 0x3f) | 0x80;
+        const h = Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+        return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+      }
+
+      function updateStats() {
+        const val = $('editor').value;
+        const chars = Array.from(val).length;
+        const lines = val ? val.split('\n').length : 0;
+        $('stats').textContent = `${chars} 字 · ${lines} 行`;
+      }
+
+      async function initHost() {
+        if (typeof plugin?.action !== 'function') { setStatus('请在 Velai Desktop 中打开此插件。', true); return; }
+        try {
+          const caps = await plugin.action('host.capabilities', {});
+          const acts = Array.isArray(caps?.actions) ? caps.actions : [];
+          $('btn-read').hidden = !acts.includes('host.selection.read');
+          $('btn-insert').hidden = !acts.includes('host.draft.insert');
+        } catch {
+          setStatus('当前环境仅支持本地编辑。');
+        }
+      }
+
+      document.querySelectorAll('button[data-mode]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const text = $('editor').value;
+          if (!text.trim()) { setStatus('请先输入文本。', true); return; }
+          try {
+            const res = await plugin.action('text.transform', { mode: btn.dataset.mode, text });
+            $('editor').value = res.result;
+            updateStats();
+            setStatus(`已完成变换（${res.words} 词 / ${res.lines} 行）`);
+          } catch (e) { setStatus(`变换失败：${e?.message || '未知错误'}`, true); }
+        });
+      });
+
+      $('btn-read').addEventListener('click', async () => {
+        try {
+          const res = await plugin.action('host.selection.read', {});
+          if (typeof res?.text === 'string' && res.text.trim()) {
+            $('editor').value = res.text;
+            updateStats();
+            setStatus('已读入当前选中的回复。');
+          } else setStatus('请先在会话中点选一条回复。', true);
+        } catch { setStatus('无法读取选中回复。', true); }
+      });
+
+      $('btn-insert').addEventListener('click', async () => {
+        const text = $('editor').value.trim();
+        if (!text) { setStatus('编辑区为空。', true); return; }
+        try {
+          const res = await plugin.action('host.draft.insert', { text });
+          setStatus(res?.inserted ? '已填回会话输入框。' : '插入结果未确认。', !res?.inserted);
+        } catch (e) { setStatus(`插入失败：${e?.message || '未知错误'}`, true); }
+      });
+
+      $('btn-rewrite').addEventListener('click', async () => {
+        const text = $('editor').value.trim();
+        if (!text) { setStatus('请先输入需要改写的文本。', true); return; }
+        const prompt = `${TONES[$('tone').value]}\n\n${text}`;
+        if (Array.from(prompt).length > 2048) { setStatus('文本过长，请控制在 1900 字以内。', true); return; }
+        workId = uuid();
+        $('btn-check').hidden = false;
+        setStatus('正在提交给当前会话改写…');
+        try {
+          await plugin.action('session.turn.request', { prompt, work_id: workId });
+          setStatus('已派发，请在会话回复完成后点击「核对改写结果」。');
+        } catch (e) {
+          setStatus(e?.message === 'cancelled' ? '未选择目标会话，已取消发送。' : '发送结果未确认，请到原会话查看。', true);
+        }
+      });
+
+      $('btn-check').addEventListener('click', async () => {
+        if (!workId) return;
+        try {
+          const res = await plugin.action('session.turn.result', { work_id: workId });
+          if (res.state === 'completed' && !res.truncated && typeof res.text === 'string' && res.text.trim()) {
+            $('editor').value = res.text.trim();
+            updateStats();
+            workId = null;
+            $('btn-check').hidden = true;
+            setStatus('已取得改写结果并更新至编辑区。');
+          } else {
+            setStatus(`当前状态：${res.state}`);
+          }
+        } catch (e) { setStatus(`核对失败：${e?.message || '请回到原会话查看'}`, true); }
+      });
+
+      $('editor').addEventListener('input', updateStats);
+      void initHost();
+    })();
+  </script>
+</body>
+</html>

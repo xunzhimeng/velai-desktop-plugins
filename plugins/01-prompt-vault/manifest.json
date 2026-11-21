@@ -1,0 +1,287 @@
+{
+  "manifest_version": 1,
+  "plugin_id": "prompt-vault",
+  "name": "提示词模板库",
+  "version": "1.0.0",
+  "host_api": 1,
+  "backend": "backend/index.js",
+  "page": "ui/index.html",
+  "ui": {
+    "icon": "text",
+    "surfaces": ["workspace", "chat", "assistant"]
+  },
+  "permissions": ["data.read", "data.write"],
+  "actions": [
+    {
+      "id": "vault.list",
+      "title": "读取模板列表",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["revision", "templates"],
+        "properties": {
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "templates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "title", "category", "content", "variables", "updated_at"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 64 },
+                "title": { "type": "string", "minLength": 1, "maxLength": 80 },
+                "category": { "type": "string", "enum": ["general", "coding", "writing", "analysis", "translation"] },
+                "content": { "type": "string", "minLength": 1, "maxLength": 2048 },
+                "variables": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 40 } },
+                "updated_at": { "type": "string", "minLength": 10, "maxLength": 32 }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "vault.save",
+      "title": "保存或更新模板",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id", "title", "category", "content"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "title": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "category": { "type": "string", "enum": ["general", "coding", "writing", "analysis", "translation"] },
+          "content": { "type": "string", "minLength": 1, "maxLength": 2048 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "variables": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 40 } }
+        }
+      }
+    },
+    {
+      "id": "vault.delete",
+      "title": "删除模板",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "id"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 64 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["deleted", "not_found", "conflict"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "vault.render",
+      "title": "填充模板变量",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "values"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name", "value"],
+              "properties": {
+                "name": { "type": "string", "minLength": 1, "maxLength": 40 },
+                "value": { "type": "string", "maxLength": 1024 }
+              }
+            }
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status"],
+        "properties": {
+          "status": { "type": "string", "enum": ["ready", "not_found"] },
+          "rendered": { "type": "string", "maxLength": 6144 },
+          "missing": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 40 } }
+        }
+      }
+    },
+    {
+      "id": "document.list",
+      "title": "列出可导出的模板",
+      "permissions": ["data.read"],
+      "input_schema": { "type": "object", "additionalProperties": false, "required": [], "properties": {} },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "label"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 64 },
+                "label": { "type": "string", "minLength": 1, "maxLength": 120 }
+              }
+            }
+          },
+          "error": { "type": "string", "maxLength": 64 }
+        }
+      }
+    },
+    {
+      "id": "document.export",
+      "title": "导出模板 JSON",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 64 } }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "filename": { "type": "string", "maxLength": 80 },
+          "text": { "type": "string", "maxLength": 8192 },
+          "error": { "type": "string", "maxLength": 64 }
+        }
+      }
+    },
+    {
+      "id": "document.import",
+      "title": "导入模板 JSON",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text"],
+        "properties": { "text": { "type": "string", "minLength": 2, "maxLength": 8192 } }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["imported"],
+        "properties": {
+          "imported": { "type": "boolean" },
+          "reason": { "type": "string", "maxLength": 64 }
+        }
+      }
+    }
+  ],
+  "tools": [
+    {
+      "id": "prompt.list",
+      "title": "查询提示词模板",
+      "description": "按分类或关键词列出当前账号保存的提示词模板标题、ID 与变量清单。",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "category": { "type": "string", "enum": ["general", "coding", "writing", "analysis", "translation"] },
+          "keyword": { "type": "string", "maxLength": 64 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status", "templates"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["ready", "storage_error"] },
+          "templates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "title", "category", "variables"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1, "maxLength": 64 },
+                "title": { "type": "string", "minLength": 1, "maxLength": 80 },
+                "category": { "type": "string", "minLength": 1, "maxLength": 32 },
+                "variables": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 40 } }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "prompt.render",
+      "title": "渲染提示词模板",
+      "description": "按模板 ID 读取并替换 {{变量}} 占位符，返回完整可用的提示词正文。",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name", "value"],
+              "properties": {
+                "name": { "type": "string", "minLength": 1, "maxLength": 40 },
+                "value": { "type": "string", "maxLength": 1024 }
+              }
+            }
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["ready", "not_found", "storage_error"] },
+          "title": { "type": "string", "maxLength": 80 },
+          "rendered": { "type": "string", "maxLength": 6144 },
+          "missing": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 40 } }
+        }
+      }
+    }
+  ],
+  "data": [
+    { "collection": "prompts", "scope": "account", "schema_version": 1 }
+  ],
+  "http": [],
+  "tasks": [],
+  "files": []
+}

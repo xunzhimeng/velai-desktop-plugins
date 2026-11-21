@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>实时汇率换算看板</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: Canvas; --fg: CanvasText; --muted: color-mix(in srgb, CanvasText 60%, transparent);
+      --border: color-mix(in srgb, CanvasText 18%, transparent);
+      --card: color-mix(in srgb, CanvasText 4%, Canvas);
+      --accent: #2563eb; --danger: #dc2626;
+      font: 14px/1.55 system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); }
+    main { max-width: 860px; margin: 0 auto; padding: clamp(12px, 2.5vw, 20px); display: flex; flex-direction: column; gap: 12px; }
+    header, .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+    h1 { font-size: 18px; margin: 0; }
+    .panel { border: 1px solid var(--border); border-radius: 10px; padding: 14px; background: var(--card); display: flex; flex-direction: column; gap: 10px; }
+    .calc { display: grid; grid-template-columns: 1fr 110px auto 110px; gap: 8px; align-items: center; }
+    @media (max-width: 560px) { .calc { grid-template-columns: 1fr 1fr; } }
+    input, select, button { font: inherit; color: inherit; border: 1px solid var(--border); border-radius: 7px; padding: 7px 10px; background: var(--bg); }
+    button { cursor: pointer; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .result { font-size: 22px; font-weight: 700; color: var(--accent); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+    .tile { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--bg); }
+    .tile strong { display: block; font-size: 15px; }
+    .tile span { font-size: 12px; color: var(--muted); }
+    .status { font-size: 13px; color: var(--muted); margin: 0; }
+    .status[data-error="true"] { color: var(--danger); }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>实时汇率换算看板</h1>
+      <div class="row">
+        <button id="btn-insert" class="primary" type="button" hidden>插入换算结果到输入框</button>
+        <button id="btn-refresh" type="button">刷新参考汇率</button>
+      </div>
+    </header>
+
+    <p id="status" class="status" role="status">正在从欧央行公开源 (api.frankfurter.dev) 获取最新汇率…</p>
+
+    <section class="panel">
+      <div class="calc">
+        <input id="amount" type="number" min="0" step="any" value="1000" aria-label="金额">
+        <select id="from" aria-label="源币种"></select>
+        <button id="btn-swap" type="button" title="互换币种">⇄</button>
+        <select id="to" aria-label="目标币种"></select>
+      </div>
+      <div class="row">
+        <div id="result" class="result">--</div>
+        <div id="rate-note" class="status"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="row">
+        <strong>常见货币对人民币 (CNY) 参考牌价</strong>
+        <span id="rate-date" class="status"></span>
+      </div>
+      <div id="tiles" class="grid"></div>
+    </section>
+  </main>
+  <script>
+    (() => {
+      const plugin = globalThis.nmasPlugin;
+      const $ = id => document.getElementById(id);
+      const ZH = { CNY: '人民币', USD: '美元', EUR: '欧元', HKD: '港币', JPY: '日元', GBP: '英镑', SGD: '新加坡元', AUD: '澳元', CAD: '加元', CHF: '瑞士法郎', KRW: '韩元' };
+      let rateMap = new Map(), nameMap = new Map(), rateDate = '', lastSummary = '';
+      const setStatus = (t, err = false) => { $('status').textContent = t; $('status').dataset.error = String(err); };
+
+      async function recalc() {
+        const from = $('from').value, to = $('to').value;
+        const amount = Number($('amount').value);
+        if (!rateMap.has(from) || !rateMap.has(to) || !Number.isFinite(amount) || amount < 0) return;
+        try {
+          const res = await plugin.action('fx.convert', {
+            amount,
+            from_rate: rateMap.get(from),
+            to_rate: rateMap.get(to),
+          });
+          $('result').textContent = `${res.converted.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${to}`;
+          $('rate-note').textContent = `1 ${from} ≈ ${res.unit_rate} ${to}（欧央行 ${rateDate}）`;
+          lastSummary = `${amount} ${from} ≈ ${res.converted} ${to}（参考汇率 1 ${from} = ${res.unit_rate} ${to}，日期 ${rateDate}）`;
+        } catch (e) { setStatus(`换算失败：${e?.message || '未知错误'}`, true); }
+      }
+
+      function renderTiles() {
+        const box = $('tiles');
+        box.replaceChildren();
+        const cny = rateMap.get('CNY');
+        if (!cny) return;
+        for (const code of ['USD', 'EUR', 'HKD', 'GBP', 'JPY', 'SGD', 'AUD', 'CAD']) {
+          const r = rateMap.get(code);
+          if (!r) continue;
+          const unit = Math.round((cny / r) * 10000) / 10000;
+          const tile = document.createElement('div');
+          tile.className = 'tile';
+          const strong = document.createElement('strong');
+          strong.textContent = `1 ${code} = ${unit} CNY`;
+          const span = document.createElement('span');
+          span.textContent = ZH[code] || nameMap.get(code) || code;
+          tile.append(strong, span);
+          box.appendChild(tile);
+        }
+      }
+
+      async function load() {
+        if (typeof plugin?.action !== 'function') { setStatus('请在 Velai Desktop 中打开此插件。', true); return; }
+        setStatus('正在刷新欧央行参考汇率…');
+        try {
+          const [ratesRes, curRes] = await Promise.all([
+            plugin.action('fx.rates', {}),
+            plugin.action('fx.currencies', {}).catch(() => ({ ok: false })),
+          ]);
+          if (curRes?.ok && Array.isArray(curRes.currencies)) {
+            nameMap = new Map(curRes.currencies.map(c => [c.code, c.name]));
+          }
+          if (!ratesRes?.ok) {
+            setStatus(`汇率拉取失败（${ratesRes?.code || 'network_error'}），请检查网络或 Desktop 代理设置。`, true);
+            return;
+          }
+          rateDate = ratesRes.date;
+          rateMap = new Map(ratesRes.rates.map(r => [r.code, r.rate]));
+          $('rate-date').textContent = `牌价日期：${rateDate}`;
+          const prevFrom = $('from').value || 'USD';
+          const prevTo = $('to').value || 'CNY';
+          for (const sel of [$('from'), $('to')]) {
+            sel.replaceChildren();
+            for (const r of ratesRes.rates) {
+              const label = ZH[r.code] ? `${r.code} ${ZH[r.code]}` : r.code;
+              sel.add(new Option(label, r.code));
+            }
+          }
+          $('from').value = rateMap.has(prevFrom) ? prevFrom : 'EUR';
+          $('to').value = rateMap.has(prevTo) ? prevTo : 'CNY';
+          renderTiles();
+          await recalc();
+          setStatus(`已更新 ${ratesRes.rates.length} 种货币参考汇率（${rateDate}）`);
+        } catch (e) { setStatus(`加载失败：${e?.message || '未知错误'}`, true); }
+      }
+
+      $('amount').addEventListener('input', recalc);
+      $('from').addEventListener('change', recalc);
+      $('to').addEventListener('change', recalc);
+      $('btn-swap').addEventListener('click', () => {
+        const a = $('from').value;
+        $('from').value = $('to').value;
+        $('to').value = a;
+        void recalc();
+      });
+      $('btn-refresh').addEventListener('click', load);
+      $('btn-insert').addEventListener('click', async () => {
+        if (!lastSummary) return;
+        try {
+          const r = await plugin.action('host.draft.insert', { text: lastSummary });
+          setStatus(r?.inserted ? '已插入汇率换算结果到输入框。' : '插入未确认。', !r?.inserted);
+        } catch (e) { setStatus(`插入失败：${e?.message || '未知错误'}`, true); }
+      });
+
+      if (typeof plugin?.action === 'function') {
+        plugin.action('host.capabilities', {}).then(c => {
+          $('btn-insert').hidden = !(Array.isArray(c?.actions) && c.actions.includes('host.draft.insert'));
+        }).catch(() => {});
+      }
+      void load();
+    })();
+  </script>
+</body>
+</html>
