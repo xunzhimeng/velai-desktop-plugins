@@ -1,9 +1,9 @@
 {
   "name": "velai-desktop-plugins",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "Velai Desktop 原生插件合集（10 个开箱即用的 .nmas-plugin 插件与契约校验工具链）",
+  "description": "Velai Desktop 原生插件合集 V2（13 个 host_api=2 / IPC v8 满血版 .nmas-plugin 插件与契约校验工具链）",
   "scripts": {
     "build": "node scripts/pack-all.mjs",
     "verify": "node scripts/verify-all.mjs",

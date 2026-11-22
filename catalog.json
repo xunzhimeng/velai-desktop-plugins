@@ -1,32 +1,35 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "repository": "xunzhimeng/velai-desktop-plugins",
-  "total_plugins": 11,
-  "total_tools": 27,
+  "total_plugins": 13,
+  "total_tools": 29,
   "plugins": [
     {
       "dir": "01-novel-studio",
       "plugin_id": "novel-studio",
       "name": "AI 长篇小说开发系统",
-      "version": "1.0.0",
+      "version": "2.0.0",
+      "manifest_version": 2,
+      "host_api": 2,
       "file": "dist/novel-studio.nmas-plugin",
-      "bytes": 97227,
-      "file_sha256": "a2a459391cb2ab707a1e8625c421ec16c6c1861f48c42243cf2a42e61383410e",
-      "package_digest": "e2e12e66c820742386fe2a5ecd3afc5cbe8ea32b8fa0b8dbed424d16d732958d",
+      "bytes": 121429,
+      "file_sha256": "4a726af7fc061ef5eb5308ed085bb5638af2b18ea57528ae8d437aedc14ce922",
+      "package_digest": "2055e17dd890db063eb0770a3905b6981c14ec886bac46b988bbcb077dbd748e",
       "icon": "edit",
       "surfaces": [
         "workspace",
-        "chat",
-        "assistant"
+        "chat"
       ],
       "permissions": [
         "data.read",
         "data.write",
-        "tasks.start",
-        "tasks.read",
-        "tasks.cancel"
+        "workspace.fs.read",
+        "workspace.fs.write"
       ],
-      "data_scope": "account",
+      "data_scope": "project",
+      "settings_count": 0,
+      "secret_slots": [],
+      "ai": null,
       "actions": [
         "novel.bootstrap",
         "novel.book.save",
@@ -36,24 +39,36 @@
         "novel.world.save",
         "novel.plot.save",
         "novel.seed_demo",
-        "session.turn.request",
-        "session.turn.result",
+        "novel.fs_list",
+        "novel.fs_stat",
+        "novel.fs_import_chapter",
+        "novel.fs_export_chapter",
         "document.list",
         "document.export",
         "document.import"
       ],
       "tools": [
         {
-          "id": "novel.outline",
-          "title": "读取小说全书大纲与伏笔"
+          "id": "novel.get_story_context",
+          "title": "读取小说全书设定、章节大纲与未回收伏笔",
+          "permissions": [
+            "data.read"
+          ]
         },
         {
-          "id": "novel.chapter.read",
-          "title": "读取指定小说章节正文"
+          "id": "novel.read_manuscript_file",
+          "title": "只读读取工作区手稿文件",
+          "permissions": [
+            "workspace.fs.read"
+          ]
         },
         {
-          "id": "novel.bible.upsert",
-          "title": "写入人物或世界观设定"
+          "id": "novel.upsert_chapter_outline",
+          "title": "新增或更新章节大纲与节拍",
+          "permissions": [
+            "data.read",
+            "data.write"
+          ]
         }
       ],
       "http": []
@@ -62,11 +77,13 @@
       "dir": "02-stock-ai-terminal",
       "plugin_id": "stock-ai-terminal",
       "name": "股票 AI 投研与量化终端",
-      "version": "1.0.0",
+      "version": "2.0.0",
+      "manifest_version": 2,
+      "host_api": 2,
       "file": "dist/stock-ai-terminal.nmas-plugin",
-      "bytes": 88400,
-      "file_sha256": "57ab4cefb7d9a51a301f6a02904dffafe678f21faaf7e120e8e01b6a924d733e",
-      "package_digest": "b9c156ff15327aee6d82ebd7f45370694afd8508f07a20c1bd98a98406fd4382",
+      "bytes": 126765,
+      "file_sha256": "6fec0c7348a564996ab91db9d90206c3812c25202f7ef639e7d4253cf2d4cd71",
+      "package_digest": "94762693d05216fd041a0b81df1bd17daa916a02c60bc22727290557dac294e9",
       "icon": "table",
       "surfaces": [
         "workspace",
@@ -76,51 +93,74 @@
       "permissions": [
         "data.read",
         "data.write",
-        "tasks.start",
-        "tasks.read",
-        "tasks.cancel"
+        "http.request"
       ],
       "data_scope": "account",
+      "settings_count": 4,
+      "secret_slots": [
+        "market_api_key"
+      ],
+      "ai": null,
       "actions": [
         "stock.bootstrap",
+        "stock.fetch_live_quote",
+        "stock.fetch_fx_rate",
         "stock.kline.get",
         "stock.backtest",
         "stock.dcf",
         "stock.watchlist.upsert",
         "stock.portfolio.save",
         "stock.note.save",
+        "stock.snapshot.save",
+        "stock.snapshot.list",
+        "stock.record.delete",
         "stock.seed_demo",
-        "session.turn.request",
-        "session.turn.result",
         "document.list",
         "document.export",
         "document.import"
       ],
       "tools": [
         {
-          "id": "stock.portfolio",
-          "title": "读取股票持仓与风控总览"
+          "id": "stock.get_portfolio_summary",
+          "title": "读取股票持仓与风控总览",
+          "permissions": [
+            "data.read"
+          ]
         },
         {
-          "id": "stock.analyze",
-          "title": "分析单只股票技术与基本面因子"
+          "id": "stock.fetch_quote_live",
+          "title": "联网查询实时股票行情与技术信号",
+          "permissions": [
+            "http.request",
+            "data.read"
+          ]
         },
         {
-          "id": "stock.note.add",
-          "title": "记录股票 AI 投研评级与逻辑"
+          "id": "stock.record_research_note",
+          "title": "记录股票投研评级与多空逻辑",
+          "permissions": [
+            "data.read",
+            "data.write"
+          ]
         }
       ],
-      "http": []
+      "http": [
+        "GET https://query1.finance.yahoo.com/v8/finance/chart*",
+        "GET https://finnhub.io/api/v1/quote [secret:market_api_key]",
+        "GET https://api.frankfurter.app/v1*"
+      ]
     },
     {
       "dir": "03-product-studio",
       "plugin_id": "product-studio",
       "name": "产品需求与路线图设计台",
-      "version": "1.0.0",
+      "version": "2.0.0",
+      "manifest_version": 2,
+      "host_api": 2,
       "file": "dist/product-studio.nmas-plugin",
-      "bytes": 119593,
-      "file_sha256": "59162b523bee9362d12c2130fadc743b907baf1e884ab84c622b74492855c3af",
-      "package_digest": "708053b3380339e8f56ec853f0d2ce5af0cc30f6f08aeb534850f7813c7cb6bd",
+      "bytes": 132811,
+      "file_sha256": "3fa8a6c3c8cf95318e7c8c7e6c1ed5b4f5d231689308a498ae905d0abb83966d",
+      "package_digest": "b8946c936687763fd17d6938bc853b4ed08b3247b515e1239bd4c3ef0996d042",
       "icon": "table",
       "surfaces": [
         "workspace",
@@ -128,9 +168,14 @@
       ],
       "permissions": [
         "data.read",
-        "data.write"
+        "data.write",
+        "workspace.fs.read",
+        "workspace.fs.write"
       ],
       "data_scope": "project",
+      "settings_count": 0,
+      "secret_slots": [],
+      "ai": null,
       "actions": [
         "studio.load",
         "req.save",
@@ -141,16 +186,26 @@
         "studio.seed_demo",
         "document.list",
         "document.export",
-        "document.import"
+        "document.import",
+        "fs_list",
+        "fs_import_doc",
+        "fs_export_doc"
       ],
       "tools": [
         {
           "id": "prd.list",
-          "title": "查询项目产品需求与 RICE 评分"
+          "title": "查询项目产品需求与 RICE 评分",
+          "permissions": [
+            "data.read"
+          ]
         },
         {
           "id": "prd.create",
-          "title": "新增带 RICE 评分的产品需求"
+          "title": "新增带 RICE 评分的产品需求",
+          "permissions": [
+            "data.read",
+            "data.write"
+          ]
         }
       ],
       "http": []
@@ -159,11 +214,13 @@
       "dir": "04-research-lab",
       "plugin_id": "research-lab",
       "name": "AI 学术科研与文献综述工作台",
-      "version": "1.0.0",
+      "version": "2.0.0",
+      "manifest_version": 2,
+      "host_api": 2,
       "file": "dist/research-lab.nmas-plugin",
-      "bytes": 117330,
-      "file_sha256": "a4350a8b6a4ee236391603b951b2a8f19aba672707cd6b828e199105b543a97b",
-      "package_digest": "716b8a49b8e23e67225b15ede6e39e50eeb457fc75da38017d24c2fabf8e5d26",
+      "bytes": 127535,
+      "file_sha256": "1b720139c9624fd7c54e988531afcb659bd174ba7b515a633ee5a1cf6d5040a3",
+      "package_digest": "8af9282e4808c7eed10806d7c32dac81d64d6c1c8e432537df074116065c6ae7",
       "icon": "text",
       "surfaces": [
         "workspace",
@@ -173,11 +230,12 @@
       "permissions": [
         "data.read",
         "data.write",
-        "tasks.start",
-        "tasks.read",
-        "tasks.cancel"
+        "http.request"
       ],
       "data_scope": "account",
+      "settings_count": 2,
+      "secret_slots": [],
+      "ai": null,
       "actions": [
         "lab.load",
         "paper.save",
@@ -187,8 +245,7 @@
         "note.save",
         "note.delete",
         "lab.seed_demo",
-        "session.turn.request",
-        "session.turn.result",
+        "research.search_crossref",
         "document.list",
         "document.export",
         "document.import"
@@ -196,28 +253,49 @@
       "tools": [
         {
           "id": "paper.search",
-          "title": "检索学术文献库"
+          "title": "检索学术文献库",
+          "permissions": [
+            "data.read"
+          ]
         },
         {
           "id": "paper.read",
-          "title": "精读单篇论文详情与引用链"
+          "title": "精读单篇论文详情与引用链",
+          "permissions": [
+            "data.read"
+          ]
         },
         {
           "id": "paper.add",
-          "title": "收录新论文到文献库"
+          "title": "收录新论文到文献库",
+          "permissions": [
+            "data.read",
+            "data.write"
+          ]
+        },
+        {
+          "id": "research.search_literature",
+          "title": "联网检索 Crossref 学术论文文献",
+          "permissions": [
+            "http.request"
+          ]
         }
       ],
-      "http": []
+      "http": [
+        "GET https://api.crossref.org/works*"
+      ]
     },
     {
       "dir": "05-crm-sales-os",
       "plugin_id": "crm-sales-os",
       "name": "AI 智能客户与商机管理系统",
-      "version": "1.0.0",
+      "version": "2.0.0",
+      "manifest_version": 2,
+      "host_api": 2,
       "file": "dist/crm-sales-os.nmas-plugin",
-      "bytes": 120566,
-      "file_sha256": "a8936e807e072ae3e88413a135559d425defc5bbf49934cae8f1afa686bd6211",
-      "package_digest": "9e3115bd8545066be320e4684cd1274bc8bb22c837a3025074b69293814a0458",
+      "bytes": 121288,
+      "file_sha256": "fa765b0f571a73bfae6e9f2bf4d4145d82ffa23074062dee3fa46c37dd4b0419",
+      "package_digest": "fb892a7cab607e1194fe5a20a5f23860dc6fd565e8aadc34e0ebc7462e4fcfa4",
       "icon": "chat",
       "surfaces": [
         "workspace",
@@ -226,12 +304,12 @@
       ],
       "permissions": [
         "data.read",
-        "data.write",
-        "tasks.start",
-        "tasks.read",
-        "tasks.cancel"
+        "data.write"
       ],
       "data_scope": "account",
+      "settings_count": 2,
+      "secret_slots": [],
+      "ai": null,
       "actions": [
         "crm.snapshot",
         "crm.account.save",
@@ -244,22 +322,30 @@
         "crm.demo.seed",
         "document.list",
         "document.export",
-        "document.import",
-        "session.turn.request",
-        "session.turn.result"
+        "document.import"
       ],
       "tools": [
         {
           "id": "crm.pipeline",
-          "title": "查询销售漏斗与加权营收"
+          "title": "查询销售漏斗与加权营收",
+          "permissions": [
+            "data.read"
+          ]
         },
         {
           "id": "crm.account.get",
-          "title": "按名称查询客户 360° 档案"
+          "title": "按名称查询客户 360° 档案",
+          "permissions": [
+            "data.read"
+          ]
         },
         {
           "id": "crm.activity.log",
-          "title": "记录客户互动跟进"
+          "title": "记录客户互动跟进",
+          "permissions": [
+            "data.read",
+            "data.write"
+          ]
         }
       ],
       "http": []
@@ -268,11 +354,13 @@
       "dir": "06-finance-wealth-os",
       "plugin_id": "finance-wealth-os",
       "name": "智能财务与资产配置 CFO 系统",
-      "version": "1.0.0",
+      "version": "2.0.0",
+      "manifest_version": 2,
+      "host_api": 2,
       "file": "dist/finance-wealth-os.nmas-plugin",
-      "bytes": 123991,
-      "file_sha256": "0a21e7c6e38d63534a7c625be9c7213a052e5d4b47eed7ccccaf898f46058a7d",
-      "package_digest": "d7eb5a4fdb0cd8349e88bb961589164ba30c66afa9d540405e71fd58225daf46",
+      "bytes": 129376,
+      "file_sha256": "3b94bd6392ce1026b7f55059416c8231cd6e7d61a39e2acbfcd83995ea8e38ba",
+      "package_digest": "19dccdf020a9176127ec0b03e0cdf0f23b1c6c198d96e993a1e9a4011374b322",
       "icon": "table",
       "surfaces": [
         "workspace",
@@ -282,11 +370,12 @@
       "permissions": [
         "data.read",
         "data.write",
-        "tasks.start",
-        "tasks.read",
-        "tasks.cancel"
+        "http.request"
       ],
       "data_scope": "account",
+      "settings_count": 2,
+      "secret_slots": [],
+      "ai": null,
       "actions": [
         "finance.snapshot",
         "finance.account.save",
@@ -301,30 +390,40 @@
         "document.list",
         "document.export",
         "document.import",
-        "session.turn.request",
-        "session.turn.result"
+        "finance.fetch_fx_rates"
       ],
       "tools": [
         {
           "id": "finance.summary",
-          "title": "获取财务总览与超支预警"
+          "title": "获取财务总览与超支预警",
+          "permissions": [
+            "data.read"
+          ]
         },
         {
           "id": "finance.tx.add",
-          "title": "快速记一笔收入或支出流水"
+          "title": "快速记一笔收入或支出流水",
+          "permissions": [
+            "data.read",
+            "data.write"
+          ]
         }
       ],
-      "http": []
+      "http": [
+        "GET https://api.frankfurter.app/v1*"
+      ]
     },
     {
       "dir": "07-course-knowledge-os",
       "plugin_id": "course-knowledge-os",
       "name": "AI 知识图谱与间隔重复学习系统",
-      "version": "1.0.0",
+      "version": "2.0.0",
+      "manifest_version": 2,
+      "host_api": 2,
       "file": "dist/course-knowledge-os.nmas-plugin",
-      "bytes": 112159,
-      "file_sha256": "d779c0c38ca5fe2c4ee4aa81952e42fe61929200ab2a3562735bbbea89cdbea3",
-      "package_digest": "b22f5e2b57d5fd8943fcd2d1a8331339dfb6404238378dcda921d06a473aaac8",
+      "bytes": 113265,
+      "file_sha256": "7b955a6a9bc924e8d6c2e45a0c9a1a561cc66ce82cd3d47321a0fe22a815353b",
+      "package_digest": "862f53010a4032eca825a1ea23c41badab0452e128f0a5d8ce5fc8a78d6fb88b",
       "icon": "text",
       "surfaces": [
         "workspace",
@@ -333,12 +432,12 @@
       ],
       "permissions": [
         "data.read",
-        "data.write",
-        "tasks.start",
-        "tasks.read",
-        "tasks.cancel"
+        "data.write"
       ],
       "data_scope": "account",
+      "settings_count": 2,
+      "secret_slots": [],
+      "ai": null,
       "actions": [
         "study.state",
         "study.deck.save",
@@ -349,18 +448,23 @@
         "study.demo.load",
         "document.list",
         "document.export",
-        "document.import",
-        "session.turn.request",
-        "session.turn.result"
+        "document.import"
       ],
       "tools": [
         {
           "id": "study.due",
-          "title": "查询今日待复习卡片与掌握率"
+          "title": "查询今日待复习卡片与掌握率",
+          "permissions": [
+            "data.read"
+          ]
         },
         {
           "id": "study.card.add",
-          "title": "新增双链知识闪卡"
+          "title": "新增双链知识闪卡",
+          "permissions": [
+            "data.read",
+            "data.write"
+          ]
         }
       ],
       "http": []
@@ -369,11 +473,13 @@
       "dir": "08-api-arch-studio",
       "plugin_id": "api-arch-studio",
       "name": "系统架构与 API 契约设计台",
-      "version": "1.0.0",
+      "version": "2.0.0",
+      "manifest_version": 2,
+      "host_api": 2,
       "file": "dist/api-arch-studio.nmas-plugin",
-      "bytes": 131555,
-      "file_sha256": "f1e4051a02c17e8411c9560fe4153cf6e2c51c2fa565ee3e89b13649fe8e6a76",
-      "package_digest": "c980fb4b38afdd8358fdba2e0422fab442f85c4cb00b11cb6743b1cc93e25d47",
+      "bytes": 144261,
+      "file_sha256": "5a04e29f803da550de54051778944c956444cedc4a3bb02be2f37d79fcc0ca6c",
+      "package_digest": "e92acc4b8b527b2c340d54b6cce7a197032ee3e1916adfbb50810ba775c4a6ef",
       "icon": "app",
       "surfaces": [
         "workspace",
@@ -381,9 +487,14 @@
       ],
       "permissions": [
         "data.read",
-        "data.write"
+        "data.write",
+        "workspace.fs.read",
+        "workspace.fs.write"
       ],
       "data_scope": "project",
+      "settings_count": 0,
+      "secret_slots": [],
+      "ai": null,
       "actions": [
         "arch.state",
         "arch.service.save",
@@ -398,16 +509,26 @@
         "arch.demo.load",
         "document.list",
         "document.export",
-        "document.import"
+        "document.import",
+        "fs_list",
+        "fs_import_doc",
+        "fs_export_doc"
       ],
       "tools": [
         {
           "id": "arch.topology",
-          "title": "读取项目服务拓扑与接口清单"
+          "title": "读取项目服务拓扑与接口清单",
+          "permissions": [
+            "data.read"
+          ]
         },
         {
           "id": "arch.endpoint.upsert",
-          "title": "新增或更新 API 接口契约"
+          "title": "新增或更新 API 接口契约",
+          "permissions": [
+            "data.read",
+            "data.write"
+          ]
         }
       ],
       "http": []
@@ -416,11 +537,13 @@
       "dir": "09-content-growth-os",
       "plugin_id": "content-growth-os",
       "name": "全渠道内容工厂与增长运营台",
-      "version": "1.0.0",
+      "version": "2.0.0",
+      "manifest_version": 2,
+      "host_api": 2,
       "file": "dist/content-growth-os.nmas-plugin",
-      "bytes": 138955,
-      "file_sha256": "b2eb8cff0fcc6c1907af7bb0bb9ed80361e79288488c45dccac5b59393b00e7d",
-      "package_digest": "8a7d08b37d077e6f5557e7c0150c188cb92abd0767d599a0c752f27d5a36fadd",
+      "bytes": 140227,
+      "file_sha256": "d1c5e1ff0522493ca9c96d7992e3786d0852a4249aaa681bea189ae90d06c1d5",
+      "package_digest": "c27af3a020fe962622d2a54539a42c1b32f74c96e3293f9cb5148c09ee2c8808",
       "icon": "media",
       "surfaces": [
         "workspace",
@@ -429,12 +552,12 @@
       ],
       "permissions": [
         "data.read",
-        "data.write",
-        "tasks.start",
-        "tasks.read",
-        "tasks.cancel"
+        "data.write"
       ],
       "data_scope": "account",
+      "settings_count": 2,
+      "secret_slots": [],
+      "ai": null,
       "actions": [
         "growth.dashboard",
         "calendar.save",
@@ -449,18 +572,23 @@
         "demo.seed",
         "document.list",
         "document.export",
-        "document.import",
-        "session.turn.request",
-        "session.turn.result"
+        "document.import"
       ],
       "tools": [
         {
           "id": "content.pipeline",
-          "title": "查询内容排期队列与渠道数据汇总"
+          "title": "查询内容排期队列与渠道数据汇总",
+          "permissions": [
+            "data.read"
+          ]
         },
         {
           "id": "content.draft.save",
-          "title": "新建或更新选题与主稿"
+          "title": "新建或更新选题与主稿",
+          "permissions": [
+            "data.read",
+            "data.write"
+          ]
         }
       ],
       "http": []
@@ -469,11 +597,13 @@
       "dir": "10-code-audit-warroom",
       "plugin_id": "code-audit-warroom",
       "name": "安全审计与故障复盘作战室 (COE)",
-      "version": "1.0.0",
+      "version": "2.0.0",
+      "manifest_version": 2,
+      "host_api": 2,
       "file": "dist/code-audit-warroom.nmas-plugin",
-      "bytes": 121923,
-      "file_sha256": "9eed7decc22f137078873e701c234f20a82490bdf65b77a709c68de7c3f88c8e",
-      "package_digest": "5d34afe4e651c4b2a19a0a07350b7583f76f3973aed053ff7ed8532a8df46138",
+      "bytes": 144302,
+      "file_sha256": "55faa6b20ebbd3b9b573ae784abbb71d80061b52c50fdc010cbf8fc269f14029",
+      "package_digest": "0308eaaccb8331509b959d8bf125f98f261877113f0e605e6afb6af00af28c3b",
       "icon": "edit",
       "surfaces": [
         "workspace",
@@ -481,9 +611,13 @@
       ],
       "permissions": [
         "data.read",
-        "data.write"
+        "data.write",
+        "workspace.fs.read"
       ],
       "data_scope": "project",
+      "settings_count": 0,
+      "secret_slots": [],
+      "ai": null,
       "actions": [
         "warroom.state",
         "finding.save",
@@ -492,6 +626,8 @@
         "incident.delete",
         "action_item.save",
         "action_item.delete",
+        "audit.fs_list",
+        "audit.fs_scan_file",
         "report.generate",
         "demo.seed",
         "document.list",
@@ -500,12 +636,26 @@
       ],
       "tools": [
         {
-          "id": "audit.summary",
-          "title": "读取项目安全健康分与高危风险摘要"
+          "id": "audit.get_warroom_summary",
+          "title": "读取项目安全健康分与高危风险摘要",
+          "permissions": [
+            "data.read"
+          ]
         },
         {
-          "id": "audit.finding.add",
-          "title": "登记新的安全审计发现"
+          "id": "audit.read_project_file",
+          "title": "只读读取项目源码并运行静态安全预扫描",
+          "permissions": [
+            "workspace.fs.read"
+          ]
+        },
+        {
+          "id": "audit.log_finding",
+          "title": "登记新的安全审计发现",
+          "permissions": [
+            "data.read",
+            "data.write"
+          ]
         }
       ],
       "http": []
@@ -514,11 +664,13 @@
       "dir": "11-usage-analytics-hub",
       "plugin_id": "usage-analytics-hub",
       "name": "个人会话与用量统计大屏",
-      "version": "1.0.0",
+      "version": "2.0.0",
+      "manifest_version": 2,
+      "host_api": 2,
       "file": "dist/usage-analytics-hub.nmas-plugin",
-      "bytes": 91476,
-      "file_sha256": "2714810a64d5021a957228b8b218c09218f72f3df64ba4854f94ce4cac7f1328",
-      "package_digest": "ca48e9f252d01d8a6eace298a66ac46abb45d3e325a476c8b6b792f753ca5b2e",
+      "bytes": 85860,
+      "file_sha256": "4a47a5119e18838080129c3259199972a489ae1b7522642349ac5e07aaaab3da",
+      "package_digest": "99756ecc41ae256391e133b8244d19077e36847630065917b6e07d127a713f09",
       "icon": "table",
       "surfaces": [
         "workspace",
@@ -526,40 +678,122 @@
         "assistant"
       ],
       "permissions": [
+        "host.usage.read",
+        "host.sessions.read",
+        "host.projects.read",
         "data.read",
-        "data.write",
-        "tasks.start",
-        "tasks.read",
-        "tasks.cancel"
+        "data.write"
       ],
       "data_scope": "account",
+      "settings_count": 0,
+      "secret_slots": [],
+      "ai": null,
       "actions": [
         "usage.dashboard",
-        "usage.session.save",
-        "usage.session.batch_ingest",
-        "usage.session.delete",
-        "usage.config.save",
-        "usage.seed_demo",
-        "session.turn.request",
-        "session.turn.result",
-        "document.list",
-        "document.export",
-        "document.import"
+        "usage.host.sessions",
+        "usage.host.session_detail",
+        "usage.host.projects",
+        "usage.budget.save",
+        "usage.note.save",
+        "usage.note.list",
+        "usage.note.delete"
       ],
       "tools": [
         {
-          "id": "usage.dashboard.summary",
-          "title": "读取个人 AI 使用量与效率统计"
+          "id": "usage.get_host_summary",
+          "title": "读取宿主真实 Token 用量与预算健康状态",
+          "permissions": [
+            "host.usage.read",
+            "data.read"
+          ]
         },
         {
-          "id": "usage.session.record",
-          "title": "归档一条近期会话与用量记录"
+          "id": "usage.list_host_sessions",
+          "title": "列举宿主近期会话与关联项目元数据",
+          "permissions": [
+            "host.sessions.read",
+            "host.projects.read"
+          ]
         },
         {
-          "id": "usage.budget.status",
-          "title": "检查个人月度 AI 预算与限额状态"
+          "id": "usage.update_budget_alert",
+          "title": "更新个人月度 Token 预算告警规则",
+          "permissions": [
+            "data.read",
+            "data.write"
+          ]
         }
       ],
+      "http": []
+    },
+    {
+      "dir": "12-novel-ai-writer",
+      "plugin_id": "novel-ai-writer",
+      "name": "小说 AI 流式写作助手",
+      "version": "2.0.0",
+      "manifest_version": 2,
+      "host_api": 2,
+      "file": "dist/novel-ai-writer.nmas-plugin",
+      "bytes": 40025,
+      "file_sha256": "68df10533c3afebb02e57a64df09936253f6bb43e2e68a9c89b7d84906777fa4",
+      "package_digest": "065d92b1d2141eee8677e88adedd6083fa7b183345f0fe9a4446c613a47fc624",
+      "icon": "edit",
+      "surfaces": [
+        "workspace"
+      ],
+      "permissions": [
+        "ai.complete"
+      ],
+      "data_scope": "none",
+      "settings_count": 0,
+      "secret_slots": [],
+      "ai": {
+        "model": "gpt/gpt-6.2-astra",
+        "max_output_tokens": 1024,
+        "max_call_microcredits": 50000,
+        "max_day_microcredits": 500000
+      },
+      "actions": [
+        "writer.stream_chapter",
+        "writer.outline_json",
+        "writer.cancel"
+      ],
+      "tools": [],
+      "http": []
+    },
+    {
+      "dir": "13-stock-ai-copilot",
+      "plugin_id": "stock-ai-copilot",
+      "name": "股票 AI 流式投研副驾驶",
+      "version": "2.0.0",
+      "manifest_version": 2,
+      "host_api": 2,
+      "file": "dist/stock-ai-copilot.nmas-plugin",
+      "bytes": 40824,
+      "file_sha256": "2ecfebb255cc5613b5b1d67d1e8de90e5a35d5a49674961ad38f62ee121f20d6",
+      "package_digest": "13bfb248a9334e93fb7120924163d3ff09d4e528b777edd6174a13febbcb5d83",
+      "icon": "table",
+      "surfaces": [
+        "workspace"
+      ],
+      "permissions": [
+        "ai.complete"
+      ],
+      "data_scope": "none",
+      "settings_count": 0,
+      "secret_slots": [],
+      "ai": {
+        "model": "gpt/gpt-6.2-astra",
+        "max_output_tokens": 1024,
+        "max_call_microcredits": 50000,
+        "max_day_microcredits": 500000
+      },
+      "actions": [
+        "copilot.stream_memo",
+        "copilot.rating_json",
+        "copilot.cancel"
+      ],
+      "tools": [],
       "http": []
     }
   ]
