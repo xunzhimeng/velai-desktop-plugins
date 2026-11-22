@@ -234,22 +234,22 @@ textarea{resize:vertical;min-height:82px}
    <section id="view-feynman" class="view" hidden>
     <div class="ai-grid">
      <div class="panel">
-      <div class="panel-head"><h2 class="panel-title">AI 费曼导师与自动制卡</h2><span class="pill">session.turn.*</span></div>
+      <div class="panel-head"><h2 class="panel-title">费曼自测与闪卡提炼工作台</h2><span class="pill">本地模板 · 可协同工作台聊天</span></div>
       <div class="mode-tabs" id="ai-mode-tabs">
        <button class="mode-card active" data-mode="feynman" type="button"><b>费曼深度追问</b><span>3 个苏格拉底式盲区拷问</span></button>
        <button class="mode-card" data-mode="extract" type="button"><b>提炼 3 张闪卡</b><span>自动生成并一键采纳入库</span></button>
        <button class="mode-card" data-mode="analogy" type="button"><b>生成类比解释</b><span>直觉模型并追加到背面</span></button>
       </div>
       <div class="field" style="margin-bottom:10px"><span>关联已有知识卡（可选）</span><select id="ai-card-select"></select></div>
-      <div class="field" style="margin-bottom:12px"><span>粘贴学习笔记或核心知识点</span><textarea id="ai-notes" rows="6" maxlength="1600" placeholder="粘贴论文摘要、课程笔记或概念理解，交由 Velai 当前会话深度解析…"></textarea></div>
+      <div class="field" style="margin-bottom:12px"><span>粘贴学习笔记或核心知识点</span><textarea id="ai-notes" rows="6" maxlength="1600" placeholder="粘贴论文摘要、课程笔记或概念理解，生成本地结构化草稿或复制提示词至 Velai 工作台聊天/AI 伴生插件…"></textarea></div>
       <div class="row">
-       <button id="btn-ai-send" class="btn primary" type="button">发送给当前会话执行</button>
-       <button id="btn-ai-check" class="btn" type="button" hidden>核对 AI 返回结果</button>
+       <button id="btn-ai-draft" class="btn primary" type="button">生成本地结构化草稿</button>
+       <button id="btn-ai-prompt" class="btn" type="button">复制 AI 导师提示词</button>
       </div>
      </div>
      <div class="panel" style="display:flex;flex-direction:column;gap:10px">
-      <div class="panel-head" style="margin-bottom:0"><h2 class="panel-title">审阅与采纳工作区</h2><span class="muted" id="ai-state-badge">等待派发</span></div>
-      <div id="ai-raw-preview" class="ai-out">选择左侧模式并点击「发送给当前会话执行」，等待 Velai 会话完成后点击核对，即可审阅并一键采纳入库。</div>
+      <div class="panel-head" style="margin-bottom:0"><h2 class="panel-title">审阅与采纳工作区</h2><span class="muted" id="ai-state-badge">就绪</span></div>
+      <div id="ai-raw-preview" class="ai-out">选择左侧模式并点击「生成本地结构化草稿」即可审阅并采纳入库；如需深度追问可复制提示词至 Velai 工作台聊天或独立 AI 伴生插件。</div>
       <div id="ai-adopt-area" hidden style="display:flex;flex-direction:column;gap:10px">
        <div id="ai-draft-list" style="display:flex;flex-direction:column;gap:8px"></div>
        <div class="row">
@@ -758,9 +758,10 @@ textarea{resize:vertical;min-height:82px}
   if (typeof plugin?.action !== 'function') { setStatus('请在 Velai Desktop 中打开此插件。', 'error'); return; }
   try {
    const r = await plugin.action('study.state', {});
-   Object.assign(S, { revision: r.revision, today: r.today, decks: r.decks, cards: r.cards, review_log: r.review_log, stats: r.stats });
+   Object.assign(S, { revision: r.revision, today: r.today, decks: r.decks, cards: r.cards, review_log: r.review_log, stats: r.stats, settings: r.settings });
    render();
-   setStatus(msg || `已同步 ${S.decks.length} 卡组 · ${S.cards.length} 卡片（待复习 ${S.stats.due_count}）`);
+   const goal = r.settings?.daily_review_goal ?? 20;
+   setStatus(msg || `已同步 ${S.decks.length} 卡组 · ${S.cards.length} 卡片（待复习 ${S.stats.due_count} · 今日目标 ${S.stats.reviewed_today}/${goal}）`);
   } catch (e) { setStatus(`读取失败：${e?.message || '未知错误'}`, 'error'); }
  }
  const submitReview = (cardId, rating) => busyRun('评分失败', async () => {
@@ -858,36 +859,43 @@ textarea{resize:vertical;min-height:82px}
   if (c) $('ai-notes').value = `概念/问题：${c.front}\n\n当前笔记：${c.back}`;
   renderAiAdopt();
  });
- $('btn-ai-send').addEventListener('click', async () => {
-  const notes = $('ai-notes').value.trim();
-  if (!notes) { setStatus('请先选择卡片或粘贴学习笔记。', 'error'); return; }
-  const prompt = S.aiMode === 'feynman' ? `请作为费曼导师，针对以下知识点提出 3 个直击本质的深度追问及判断要点（简洁纯文本）：\n\n${notes}`
+ function buildStudyPrompt(notes) {
+  return S.aiMode === 'feynman' ? `请作为费曼导师，针对以下知识点提出 3 个直击本质的深度追问及判断要点（简洁纯文本）：\n\n${notes}`
    : S.aiMode === 'extract' ? `请从以下学习笔记提炼 3 张高价值间隔重复闪卡，严格只输出 JSON 数组 [{"front":"问题","back":"解答","kind":"concept|qa|code"}]：\n\n${notes}`
    : `请用生动直观的工程类比与心智模型解释以下概念（250字内，纯文本）：\n\n${notes}`;
-  if (Array.from(prompt).length > 2048) { setStatus('输入过长，请精简至 1500 字以内。', 'error'); return; }
-  S.aiWorkId = uuid(); S.aiText = '';
-  $('btn-ai-check').hidden = false; $('ai-adopt-area').hidden = true;
-  $('ai-state-badge').textContent = '派发中…'; $('ai-raw-preview').textContent = '正在向 Velai 当前会话派发请求…';
-  try {
-   await plugin.action('session.turn.request', { prompt, work_id: S.aiWorkId });
-   $('ai-state-badge').textContent = '已派发'; $('ai-raw-preview').textContent = '已发送至当前会话，回复完毕后点击「核对 AI 返回结果」。';
-  } catch (e) {
-   $('ai-state-badge').textContent = '派发未确认';
-   $('ai-raw-preview').textContent = e?.message === 'cancelled' ? '已取消派发，请先选择一个会话。' : `派发失败：${e?.message || '请回到原会话核对'}`;
+ }
+ $('btn-ai-draft').addEventListener('click', () => {
+  const notes = $('ai-notes').value.trim();
+  if (!notes) { setStatus('请先选择卡片或粘贴学习笔记。', 'error'); return; }
+  const firstLine = notes.split(/\r?\n/)[0].replace(/^概念\/问题[:：]\s*/, '').slice(0, 80) || '核心知识点';
+  const defKind = S.settings?.default_card_kind || 'concept';
+  if (S.aiMode === 'extract') {
+   const drafts = [
+    { front: `核心原理：${firstLine}`, back: notes.slice(0, 260), kind: defKind },
+    { front: `工程边界：${firstLine} 在什么场景下会失效或出现瓶颈？`, back: '请结合输入笔记梳理前置假设、复杂度/资源约束与典型反例。', kind: 'qa' },
+    { front: `实践应用：如何用一句话向非专业同事复述 ${firstLine}？`, back: '提炼输入 -> 核心机制 -> 可量化收益三段式心智模型。', kind: 'concept' },
+   ];
+   S.aiText = JSON.stringify(drafts, null, 2);
+  } else if (S.aiMode === 'feynman') {
+   S.aiText = [
+    `【费曼自测 3 问 · ${firstLine}】`,
+    '1. 核心机制：如果去掉其中最关键的一个假设或组件，系统行为会发生什么变化？',
+    '2. 边界与权衡：它在时间、空间或一致性上牺牲了什么来换取当前收益？',
+    '3. 反例验证：请举出一个不适用该方法的反例，并说明替代方案。',
+   ].join('\n');
+  } else {
+   S.aiText = `【直觉类比模板 · ${firstLine}】\n可以将该机制类比为「按需缓存与分级索引」：把高频核心信息放在最近的工作台，减少重复开销；如需更丰富类比，可点击「复制 AI 导师提示词」在工作台聊天或 AI 伴生插件中生成。`;
   }
+  $('ai-state-badge').textContent = '已生成本地草稿';
+  $('ai-raw-preview').textContent = S.aiText;
+  renderAiAdopt();
  });
- $('btn-ai-check').addEventListener('click', async () => {
-  if (!S.aiWorkId) return;
-  $('ai-state-badge').textContent = '核对中…';
-  try {
-   const r = await plugin.action('session.turn.result', { work_id: S.aiWorkId });
-   if (r.state === 'completed' && !r.truncated && typeof r.text === 'string' && r.text.trim()) {
-    S.aiText = r.text.trim(); $('ai-state-badge').textContent = '已获取结果'; $('ai-raw-preview').textContent = S.aiText; renderAiAdopt();
-   } else {
-    $('ai-state-badge').textContent = `状态：${r.state}`;
-    $('ai-raw-preview').textContent = `当前状态：${r.state}${r.truncated ? '（内容被截断，请回会话查看）' : '，稍后可再次核对。'}`;
-   }
-  } catch (e) { $('ai-state-badge').textContent = '核对失败'; $('ai-raw-preview').textContent = `核对失败：${e?.message || '请回到原会话查看'}`; }
+ $('btn-ai-prompt').addEventListener('click', async () => {
+  const notes = $('ai-notes').value.trim();
+  if (!notes) { setStatus('请先选择卡片或粘贴学习笔记。', 'error'); return; }
+  const prompt = buildStudyPrompt(notes);
+  try { await navigator.clipboard.writeText(prompt); $('ai-state-badge').textContent = '提示词已复制'; setStatus('已复制导师提示词，请粘贴至工作台聊天或独立 AI 伴生插件。'); }
+  catch { $('ai-raw-preview').textContent = prompt; $('ai-state-badge').textContent = '已展示提示词'; setStatus('请从右侧预览区复制提示词。'); }
  });
  $('btn-ai-adopt-cards').addEventListener('click', () => {
   const deckId = $('ai-target-deck').value, chosen = S.aiDrafts.filter(d => d.checked);

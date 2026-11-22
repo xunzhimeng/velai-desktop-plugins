@@ -4,10 +4,10 @@ const COL_LOG = 'review_log';
 const KEY_INDEX = 'index';
 const DOC_FORMAT = 'velai-course-knowledge-os';
 
-const MAX_RECORD_BYTES = 13800;
-const MAX_DECKS = 16;
-const MAX_CARDS = 48;
-const MAX_LOG_ITEMS = 120;
+const MAX_RECORD_BYTES = 240 * 1024;
+const MAX_DECKS = 64;
+const MAX_CARDS = 400;
+const MAX_LOG_ITEMS = 500;
 const ID_RE = /^[a-zA-Z0-9._-]+$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const COLOR_RE = /^#[0-9a-fA-F]{3,8}$/;
@@ -198,6 +198,21 @@ async function readAll() {
 }
 
 async function writeCollection(collection, fieldName, expectedRevision, items) {
+  if (items.length === 0) {
+    try {
+      const receipt = await globalThis.nmas.data.delete({
+        collection,
+        key: KEY_INDEX,
+        expected_revision: expectedRevision,
+      });
+      return { status: 'saved', revision: receipt.revision };
+    } catch (err) {
+      if (err?.code === 'conflict' && err.outcome_unknown === false) {
+        return { status: 'conflict', revision: expectedRevision };
+      }
+      throw err;
+    }
+  }
   const value = { schema_version: 1, [fieldName]: items };
   if (jsonBytes(value) > MAX_RECORD_BYTES) {
     return { status: 'limit', revision: expectedRevision };
@@ -216,6 +231,13 @@ async function writeCollection(collection, fieldName, expectedRevision, items) {
     }
     throw err;
   }
+}
+
+async function readPluginSettings() {
+  const raw = await globalThis.nmas.settings.get();
+  const goal = Number.isInteger(raw?.daily_review_goal) ? clamp(raw.daily_review_goal, 1, 500) : 20;
+  const kind = KINDS.includes(raw?.default_card_kind) ? raw.default_card_kind : 'concept';
+  return { daily_review_goal: goal, default_card_kind: kind };
 }
 
 function buildDemoData(today) {
@@ -390,6 +412,7 @@ export default async function (request) {
     if (contribution === 'study.state') {
       const today = resolveToday(input?.today);
       const all = await readAll();
+      const settings = await readPluginSettings();
       return {
         revision: all.revision,
         today,
@@ -397,6 +420,7 @@ export default async function (request) {
         cards: all.cards,
         review_log: all.review_log,
         stats: computeStats(all.cards, all.review_log, today),
+        settings,
       };
     }
 
@@ -562,7 +586,8 @@ export default async function (request) {
     }
 
     if (contribution === 'document.list') {
-      const all = await readAll();
+      const listed = await globalThis.nmas.data.list({ collection: COL_DECKS, limit: 20 });
+      const all = listed.keys.length ? await readAll() : { decks: [], cards: [] };
       const items = [];
       if (all.decks.length > 0 || all.cards.length > 0) {
         items.push({ id: 'all', label: `全部知识库 (${all.decks.length} 卡组 · ${all.cards.length} 卡片)` });
@@ -602,7 +627,7 @@ export default async function (request) {
         })),
       };
       const text = JSON.stringify(payload, null, 2);
-      if (jsonBytes(text) > 12000) return { error: 'too_large' };
+      if (jsonBytes(text) > MAX_RECORD_BYTES) return { error: 'too_large' };
       return { filename, text };
     }
 

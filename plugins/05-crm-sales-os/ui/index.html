@@ -195,7 +195,7 @@ button.danger{color:var(--danger);border-color:rgba(220,38,38,.35);background:va
 </section>
 <section id="view-advisor" class="view" hidden>
 <div class="card" style="display:flex;flex-direction:column;gap:14px">
-<div class="card-head" style="margin-bottom:0"><h2 class="card-title">AI 销售军师工作台</h2><span class="tag accent">联动 Velai 当前会话 · session.turn.*</span></div>
+<div class="card-head" style="margin-bottom:0"><h2 class="card-title">销售军师模板与提示词工作台</h2><span class="tag accent">本地结构化模板 · 可协同工作台聊天 / AI 伴生插件</span></div>
 <div class="form-grid">
 <label class="field">选择目标企业客户<select id="ai-acc"></select></label>
 <label class="field">选择聚焦商机（可选）<select id="ai-deal"></select></label>
@@ -212,8 +212,8 @@ button.danger{color:var(--danger);border-color:rgba(220,38,38,.35);background:va
 </div>
 <label class="field">补充背景或特别要求（可选）<input id="ai-extra" maxlength="200" placeholder="例如：重点回应竞品 8 折低价策略，语气专业克制"></label>
 <div class="row">
-<button type="button" class="primary" id="btn-ai-send">发送给 Velai 当前会话生成方案</button>
-<button type="button" class="ghost" id="btn-ai-check" hidden>核对 AI 军师回复</button>
+<button type="button" class="primary" id="btn-ai-draft">生成本地结构化销售方案</button>
+<button type="button" class="ghost" id="btn-ai-prompt">复制 AI 军师提示词</button>
 <span id="ai-state" style="font-size:12.5px;color:var(--muted)"></span>
 </div>
 <div id="ai-result-box" hidden style="display:flex;flex-direction:column;gap:10px;padding-top:10px;border-top:1px dashed var(--border)">
@@ -305,7 +305,9 @@ canInsert = Array.isArray(caps?.actions) && caps.actions.includes('host.draft.in
 state = await plugin.action('crm.snapshot', {});
 if (!selectedAccId || !state.accounts.some(a => a.id === selectedAccId)) selectedAccId = state.accounts[0]?.id ?? null;
 renderAll();
-setStatus(`已同步 · ${state.accounts.length} 客户 · ${state.deals.length} 商机 · Rev #${state.revision}`);
+const cur = state.settings?.default_currency || 'CNY';
+const days = state.settings?.follow_up_days ?? 3;
+setStatus(`已同步 · ${state.accounts.length} 客户 · ${state.deals.length} 商机 · ${cur} (${days}日预警) · Rev #${state.revision}`);
 } catch (e) { setStatus(`加载失败：${e?.message || '未知错误'}`, true); }
 }
 function renderAll() {
@@ -639,8 +641,7 @@ document.querySelectorAll('.scenario-card').forEach(btn => btn.addEventListener(
 activeScenario = btn.dataset.sc;
 document.querySelectorAll('.scenario-card').forEach(c => c.classList.toggle('active', c === btn));
 }));
-on('btn-ai-send', 'click', async () => {
-const ctx = buildAdvisorCtx(); if (!ctx) { setStatus('请先选择企业客户', true); return; }
+function buildAdvisorPrompt(ctx) {
 const scText = {
 email: '请作为顶级 B2B 软件销售顾问，起草一封高转化跟进邮件，含吸引高管打开的主题行、切中痛点的正文与明确 CTA。',
 objection: '请针对价格、竞品、法务合规或审批异议，生成 LAER 异议应对脚本与建议附带的证明材料。',
@@ -648,27 +649,33 @@ strategy: '请基于 MEDDPICC 诊断商机缺口，输出未来 14 天 3 个必�
 review: '请深度复盘上述客户/商机的赢单要素或丢单根因，提炼 3 条可复制的同行业打法。',
 }[activeScenario];
 const extra = $('ai-extra').value.trim();
-let prompt = `${scText}\n${extra ? `补充要求：${extra}\n` : ''}\n--- CRM 客户与商机上下文 ---\n${ctx.text}`;
-if (Array.from(prompt).length > 2000) prompt = Array.from(prompt).slice(0, 2000).join('');
-pendingWorkId = uuid(); latestAiText = '';
-$('btn-ai-check').hidden = false; $('ai-result-box').hidden = true;
-$('ai-state').textContent = '正在向 Velai 当前会话派发 AI 销售军师请求…';
-try {
-await plugin.action('session.turn.request', { prompt, work_id: pendingWorkId });
-$('ai-state').textContent = '已派发给当前会话，待回复完成后点击「核对 AI 军师回复」。';
-} catch (e) { $('ai-state').textContent = e?.message === 'cancelled' ? '已取消派发，请先选择一个会话。' : `派发未确认（${e?.message || 'unknown'}），请到原会话查看。`; }
+return `${scText}\n${extra ? `补充要求：${extra}\n` : ''}\n--- CRM 客户与商机上下文 ---\n${ctx.text}`;
+}
+on('btn-ai-draft', 'click', () => {
+const ctx = buildAdvisorCtx(); if (!ctx) { setStatus('请先选择企业客户', true); return; }
+const titleMap = { email: '高转化跟进邮件模板', objection: 'LAER 异议应对脚本', strategy: 'MEDDPICC 14 天赢单推进策略', review: '客户商机复盘报告' };
+const extra = $('ai-extra').value.trim();
+latestAiText = [
+`# ${titleMap[activeScenario] || '销售策略模板'}（本地结构化草稿）`,
+extra ? `> 特别要求：${extra}` : '',
+'',
+'## 客户与商机快照',
+ctx.text,
+'',
+'## 建议推进步骤',
+'1. 对齐关键决策人与核心业务指标（ROI / 合规 / 交付周期）。',
+'2. 明确下一次沟通节点、责任人及可量化交付物。',
+'3. 可直接存入客户互动记录，或点击「复制 AI 军师提示词」/「一键插入会话输入框」在 Velai 工作台聊天或独立 AI 伴生插件中深化话术。',
+].filter(Boolean).join('\n');
+$('ai-output').textContent = latestAiText;
+$('ai-result-box').hidden = false;
+$('btn-ai-insert').hidden = !canInsert;
+$('ai-state').textContent = '已生成本地结构化销售方案，可直接存入互动记录或发送到工作台聊天深化。';
 });
-on('btn-ai-check', 'click', async () => {
-if (!pendingWorkId) return;
-$('ai-state').textContent = '正在核对会话结果…';
-try {
-const r = await plugin.action('session.turn.result', { work_id: pendingWorkId });
-if (r.state === 'completed' && !r.truncated && typeof r.text === 'string' && r.text.trim()) {
-latestAiText = r.text.trim(); $('ai-output').textContent = latestAiText;
-$('ai-result-box').hidden = false; $('btn-ai-insert').hidden = !canInsert;
-$('ai-state').textContent = '已获取完整 AI 销售建议，可一键插入输入框或存入互动记录。';
-} else $('ai-state').textContent = `当前状态：${r.state}${r.truncated ? '（内容过长被截断，请回原会话查看）' : ''}`;
-} catch (e) { $('ai-state').textContent = `核对失败：${e?.message || '请回到原会话查看'}`; }
+on('btn-ai-prompt', 'click', async () => {
+const ctx = buildAdvisorCtx(); if (!ctx) { setStatus('请先选择企业客户', true); return; }
+try { await navigator.clipboard.writeText(buildAdvisorPrompt(ctx)); $('ai-state').textContent = '已复制销售军师提示词，可粘贴至工作台聊天或 AI 伴生插件。'; }
+catch { $('ai-state').textContent = '剪贴板不可用，请点击「生成本地结构化销售方案」后使用插入按钮。'; }
 });
 on('btn-ai-insert', 'click', async () => {
 if (!latestAiText) return;

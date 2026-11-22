@@ -1,16 +1,20 @@
 {
-  "manifest_version": 1,
+  "manifest_version": 2,
   "plugin_id": "content-growth-os",
   "name": "全渠道内容工厂与增长运营台",
-  "version": "1.0.0",
-  "host_api": 1,
+  "version": "2.0.0",
+  "host_api": 2,
   "backend": "backend/index.js",
   "page": "ui/index.html",
   "ui": {
     "icon": "media",
     "surfaces": ["workspace", "chat", "assistant"]
   },
-  "permissions": ["data.read", "data.write", "tasks.start", "tasks.read", "tasks.cancel"],
+  "permissions": ["data.read", "data.write"],
+  "settings": [
+    { "key": "brand_voice", "type": "string", "secret": false, "required": false, "default": "专业务实" },
+    { "key": "weekly_publish_goal", "type": "integer", "secret": false, "required": false, "default": 3 }
+  ],
   "actions": [
     {
       "id": "growth.dashboard",
@@ -25,9 +29,18 @@
       "output_schema": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["revision", "kpis", "calendar", "drafts", "periods", "channel_totals"],
+        "required": ["revision", "kpis", "calendar", "drafts", "periods", "channel_totals", "settings"],
         "properties": {
           "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "settings": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["brand_voice", "weekly_publish_goal"],
+            "properties": {
+              "brand_voice": { "type": "string", "minLength": 1, "maxLength": 48 },
+              "weekly_publish_goal": { "type": "integer", "minimum": 1, "maximum": 100 }
+            }
+          },
           "kpis": {
             "type": "object",
             "additionalProperties": false,
@@ -511,7 +524,7 @@
         "required": [],
         "properties": {
           "filename": { "type": "string", "maxLength": 80 },
-          "text": { "type": "string", "maxLength": 12288 },
+          "text": { "type": "string", "maxLength": 245760 },
           "error": { "type": "string", "maxLength": 64 }
         }
       }
@@ -525,7 +538,7 @@
         "additionalProperties": false,
         "required": ["text"],
         "properties": {
-          "text": { "type": "string", "minLength": 2, "maxLength": 12288 }
+          "text": { "type": "string", "minLength": 2, "maxLength": 245760 }
         }
       },
       "output_schema": {
@@ -536,52 +549,6 @@
           "imported": { "type": "boolean" },
           "reason": { "type": "string", "maxLength": 64 },
           "id": { "type": "string", "maxLength": 48 }
-        }
-      }
-    },
-    {
-      "id": "session.turn.request",
-      "title": "派发一稿多改任务给当前会话",
-      "permissions": ["tasks.start"],
-      "input_schema": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["prompt", "work_id"],
-        "properties": {
-          "prompt": { "type": "string", "minLength": 1, "maxLength": 2048 },
-          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 }
-        }
-      },
-      "output_schema": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["task_id", "state"],
-        "properties": {
-          "task_id": { "type": "string", "minLength": 36, "maxLength": 36 },
-          "state": { "type": "string", "enum": ["dispatching"] }
-        }
-      }
-    },
-    {
-      "id": "session.turn.result",
-      "title": "核对一稿多改会话结果",
-      "permissions": ["tasks.read"],
-      "input_schema": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["work_id"],
-        "properties": {
-          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 }
-        }
-      },
-      "output_schema": {
-        "type": "object",
-        "additionalProperties": true,
-        "required": ["work_id", "state", "truncated"],
-        "properties": {
-          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 },
-          "state": { "type": "string", "enum": ["dispatching", "running", "waiting", "completed", "cancelled", "failed", "unknown", "unavailable"] },
-          "truncated": { "type": "boolean" }
         }
       }
     }

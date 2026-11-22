@@ -6,10 +6,10 @@ const KEY_BOARD = 'board';
 const KEY_DRAFTS_INDEX = 'index';
 const KEY_METRICS = 'series';
 
-const MAX_RECORD_BYTES = 13 * 1024;
-const MAX_CALENDAR_ITEMS = 48;
-const MAX_DRAFTS = 36;
-const MAX_PERIODS = 16;
+const MAX_RECORD_BYTES = 240 * 1024;
+const MAX_CALENDAR_ITEMS = 128;
+const MAX_DRAFTS = 120;
+const MAX_PERIODS = 52;
 
 const STAGES = ['idea', 'drafting', 'scheduled', 'published'];
 const CHANNELS = ['wechat', 'xiaohongshu', 'zhihu', 'x', 'youtube', 'bilibili'];
@@ -293,6 +293,31 @@ async function writeRecord(collection, key, expectedRevision, value) {
     }
     throw err;
   }
+}
+
+async function deleteRecord(collection, key, expectedRevision) {
+  try {
+    const receipt = await globalThis.nmas.data.delete({
+      collection,
+      key,
+      expected_revision: expectedRevision,
+    });
+    return { status: 'deleted', revision: receipt.revision };
+  } catch (err) {
+    if (err?.code === 'conflict' && err.outcome_unknown === false) {
+      return { status: 'conflict', revision: expectedRevision };
+    }
+    throw err;
+  }
+}
+
+async function readPluginSettings() {
+  const raw = await globalThis.nmas.settings.get();
+  const brand_voice = typeof raw?.brand_voice === 'string' && raw.brand_voice.trim()
+    ? raw.brand_voice.trim().slice(0, 48)
+    : '专业务实';
+  const goal = Number.isInteger(raw?.weekly_publish_goal) ? Math.max(1, Math.min(100, raw.weekly_publish_goal)) : 3;
+  return { brand_voice, weekly_publish_goal: goal };
 }
 
 function computeChannelTotals(periods) {
@@ -593,6 +618,7 @@ export default async function (request) {
       const cal = await readCalendar();
       const idx = await readDraftsIndex();
       const met = await readMetrics();
+      const settings = await readPluginSettings();
       const channelTotals = computeChannelTotals(met.periods);
       const kpis = computeKpis(cal.items, idx.items, met.periods);
       return {
@@ -602,6 +628,7 @@ export default async function (request) {
         drafts: idx.items,
         periods: met.periods,
         channel_totals: channelTotals,
+        settings,
       };
     }
 
@@ -733,8 +760,8 @@ export default async function (request) {
       const nextIdx = idx.items.filter(d => d.id !== input.id);
       const w1 = await writeRecord(COL_DRAFTS, KEY_DRAFTS_INDEX, input.expected_revision, { schema_version: 1, items: nextIdx });
       if (w1.status !== 'saved') return { status: 'conflict', revision: w1.revision };
-      const w2 = await writeRecord(COL_DRAFTS, `doc:${input.id}`, w1.revision, null);
-      return w2.status === 'saved' ? { status: 'deleted', revision: w2.revision } : { status: 'conflict', revision: w2.revision };
+      const w2 = await deleteRecord(COL_DRAFTS, `doc:${input.id}`, w1.revision);
+      return w2.status === 'deleted' ? { status: 'deleted', revision: w2.revision } : { status: 'conflict', revision: w2.revision };
     }
 
     if (contribution === 'draft.variant.save') {
@@ -834,10 +861,14 @@ export default async function (request) {
     }
 
     if (contribution === 'document.list') {
+      const storedKeys = await globalThis.nmas.data.list({ collection: COL_DRAFTS, prefix: 'doc:', limit: 50 });
+      const existingDocIds = new Set(storedKeys.keys.map(k => k.slice(4)));
       const idx = await readDraftsIndex();
       const items = [
         { id: 'CALENDAR', label: '全渠道排期看板与复盘指标包' },
-        ...idx.items.map(d => ({ id: d.id, label: `主稿 ${d.id} · ${d.title}` })),
+        ...idx.items
+          .filter(d => existingDocIds.size === 0 || existingDocIds.has(d.id))
+          .map(d => ({ id: d.id, label: `主稿 ${d.id} · ${d.title}` })),
       ];
       return { items };
     }
@@ -845,19 +876,19 @@ export default async function (request) {
     if (contribution === 'document.export') {
       const serializeDoc = payload => {
         const pretty = JSON.stringify(payload, null, 2);
-        return jsonBytes(pretty) <= 11800 ? pretty : JSON.stringify(payload);
+        return jsonBytes(pretty) <= 235 * 1024 ? pretty : JSON.stringify(payload);
       };
       if (input.id === 'CALENDAR') {
         const cal = await readCalendar();
         const met = await readMetrics();
         const text = serializeDoc({ format: DOC_FORMAT, version: 1, kind: 'calendar_metrics', calendar: cal.items, periods: met.periods });
-        if (jsonBytes(text) > 12000) return { error: 'too_large' };
+        if (jsonBytes(text) > MAX_RECORD_BYTES) return { error: 'too_large' };
         return { filename: 'content-growth-calendar.json', text };
       }
       const { draft } = await readDraftDoc(input.id);
       if (!draft) return { error: 'not_found' };
       const text = serializeDoc({ format: DOC_FORMAT, version: 1, kind: 'draft', draft });
-      if (jsonBytes(text) > 12000) return { error: 'too_large' };
+      if (jsonBytes(text) > MAX_RECORD_BYTES) return { error: 'too_large' };
       return { filename: `${draft.id.toLowerCase()}.json`, text };
     }
 

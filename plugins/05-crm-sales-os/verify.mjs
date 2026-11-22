@@ -1,13 +1,17 @@
 import assert from 'node:assert/strict';
 
 export async function verify({ createHarness }) {
-  const h = await createHarness();
+  const h = await createHarness({
+    settingsMock: { default_currency: 'USD', follow_up_days: 5 },
+  });
 
-  // 1. 初始空快照
+  // 1. 初始空快照 + V2 settings 读取
   const empty = await h.action('crm.snapshot', {});
   assert.equal(empty.revision, 0);
   assert.equal(empty.accounts.length, 0);
   assert.equal(empty.metrics.active_pipeline, 0);
+  assert.equal(empty.settings.default_currency, 'USD');
+  assert.equal(empty.settings.follow_up_days, 5);
 
   // 2. 加载完整 B2B SaaS 演示数据集 + 校验 CAS 冲突
   const badSeed = await h.action('crm.demo.seed', { expected_revision: 99 });
@@ -120,4 +124,26 @@ export async function verify({ createHarness }) {
   const afterDel = await h.tool('crm.account.get', { name: '量子智算' });
   assert.equal(afterDel.success, false);
   assert.equal(afterDel.status, 'not_found');
+
+  // 8. V2 nmas.data.delete & nmas.data.list 清理与列举验证
+  const h3 = await createHarness();
+  const s1 = await h3.action('crm.account.save', {
+    expected_revision: 0,
+    id: 'acc-only',
+    name: '独苗测试客户',
+    industry: '软件',
+    size: 'smb',
+    health: 80,
+    contact_name: '林测试',
+    contact_role: 'VP',
+    annual_potential: 100000,
+    tags: [],
+    risk_note: '',
+  });
+  assert.equal(s1.status, 'saved');
+  const d1 = await h3.action('crm.account.delete', { expected_revision: s1.revision, id: 'acc-only' });
+  assert.equal(d1.status, 'deleted');
+  const listEmpty = await h3.action('document.list', {});
+  assert.equal(listEmpty.items.length, 1);
+  assert.equal(listEmpty.items[0].id, 'all');
 }

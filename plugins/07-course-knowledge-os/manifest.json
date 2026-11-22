@@ -1,16 +1,20 @@
 {
-  "manifest_version": 1,
+  "manifest_version": 2,
   "plugin_id": "course-knowledge-os",
   "name": "AI 知识图谱与间隔重复学习系统",
-  "version": "1.0.0",
-  "host_api": 1,
+  "version": "2.0.0",
+  "host_api": 2,
   "backend": "backend/index.js",
   "page": "ui/index.html",
   "ui": {
     "icon": "text",
     "surfaces": ["workspace", "chat", "assistant"]
   },
-  "permissions": ["data.read", "data.write", "tasks.start", "tasks.read", "tasks.cancel"],
+  "permissions": ["data.read", "data.write"],
+  "settings": [
+    { "key": "daily_review_goal", "type": "integer", "secret": false, "required": false, "default": 20 },
+    { "key": "default_card_kind", "type": "string", "secret": false, "required": false, "default": "concept" }
+  ],
   "actions": [
     {
       "id": "study.state",
@@ -27,10 +31,19 @@
       "output_schema": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["revision", "today", "decks", "cards", "review_log", "stats"],
+        "required": ["revision", "today", "decks", "cards", "review_log", "stats", "settings"],
         "properties": {
           "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
           "today": { "type": "string", "minLength": 10, "maxLength": 10 },
+          "settings": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["daily_review_goal", "default_card_kind"],
+            "properties": {
+              "daily_review_goal": { "type": "integer", "minimum": 1, "maximum": 500 },
+              "default_card_kind": { "type": "string", "enum": ["concept", "qa", "code"] }
+            }
+          },
           "decks": {
             "type": "array",
             "items": {
@@ -333,7 +346,7 @@
         "required": [],
         "properties": {
           "filename": { "type": "string", "maxLength": 80 },
-          "text": { "type": "string", "maxLength": 12288 },
+          "text": { "type": "string", "maxLength": 245760 },
           "error": { "type": "string", "maxLength": 64 }
         }
       }
@@ -347,7 +360,7 @@
         "additionalProperties": false,
         "required": ["text"],
         "properties": {
-          "text": { "type": "string", "minLength": 2, "maxLength": 12288 }
+          "text": { "type": "string", "minLength": 2, "maxLength": 245760 }
         }
       },
       "output_schema": {
@@ -359,55 +372,6 @@
           "reason": { "type": "string", "maxLength": 64 },
           "added_decks": { "type": "integer", "minimum": 0, "maximum": 99 },
           "added_cards": { "type": "integer", "minimum": 0, "maximum": 999 }
-        }
-      }
-    },
-    {
-      "id": "session.turn.request",
-      "title": "向当前会话发起费曼导师或制卡请求",
-      "permissions": ["tasks.start"],
-      "input_schema": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["prompt", "work_id"],
-        "properties": {
-          "prompt": { "type": "string", "minLength": 1, "maxLength": 2048 },
-          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 }
-        }
-      },
-      "output_schema": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["task_id", "state"],
-        "properties": {
-          "task_id": { "type": "string", "minLength": 36, "maxLength": 36 },
-          "state": { "type": "string", "enum": ["dispatching"] }
-        }
-      }
-    },
-    {
-      "id": "session.turn.result",
-      "title": "核对 AI 费曼导师返回结果",
-      "permissions": ["tasks.read"],
-      "input_schema": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["work_id"],
-        "properties": {
-          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 }
-        }
-      },
-      "output_schema": {
-        "type": "object",
-        "additionalProperties": true,
-        "required": ["work_id", "state", "truncated"],
-        "properties": {
-          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 },
-          "state": {
-            "type": "string",
-            "enum": ["dispatching", "running", "waiting", "completed", "cancelled", "failed", "unknown", "unavailable"]
-          },
-          "truncated": { "type": "boolean" }
         }
       }
     }

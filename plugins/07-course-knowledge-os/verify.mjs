@@ -1,15 +1,19 @@
 import assert from 'node:assert/strict';
 
 export async function verify({ createHarness }) {
-  const h = await createHarness();
+  const h = await createHarness({
+    settingsMock: { daily_review_goal: 30, default_card_kind: 'qa' },
+  });
   const TODAY = '2026-11-21';
 
-  // 1. 初始空状态
+  // 1. 初始空状态 + V2 settings 读取
   const init = await h.action('study.state', { today: TODAY });
   assert.equal(init.revision, 0);
   assert.equal(init.decks.length, 0);
   assert.equal(init.cards.length, 0);
   assert.equal(init.stats.due_count, 0);
+  assert.equal(init.settings.daily_review_goal, 30);
+  assert.equal(init.settings.default_card_kind, 'qa');
 
   // 2. 载入演示卡组
   const demo = await h.action('study.demo.load', { expected_revision: 0, today: TODAY });
@@ -132,4 +136,19 @@ export async function verify({ createHarness }) {
   const imp = await h.action('document.import', { text: exp.text });
   assert.equal(imp.imported, true);
   assert.equal(imp.added_cards, 2);
+
+  // 9. V2 nmas.data.delete & nmas.data.list 清理与列举验证
+  const h2 = await createHarness();
+  const dSaved = await h2.action('study.deck.save', {
+    expected_revision: 0,
+    id: 'solo-deck',
+    name: '独立测试卡组',
+    color: '#6366f1',
+    description: '测试删除后触发 data.delete',
+  });
+  assert.equal(dSaved.status, 'saved');
+  const dDel = await h2.action('study.deck.delete', { expected_revision: dSaved.revision, id: 'solo-deck' });
+  assert.equal(dDel.status, 'deleted');
+  const emptyList = await h2.action('document.list', {});
+  assert.equal(emptyList.items.length, 0);
 }

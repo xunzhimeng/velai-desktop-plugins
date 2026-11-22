@@ -4,10 +4,10 @@ const COL_ACTIVITIES = 'activities';
 const KEY_LIST = 'list';
 const DOC_FORMAT = 'velai-crm-sales-os';
 
-const MAX_RECORD_BYTES = 12 * 1024;
-const MAX_ACCOUNTS = 24;
-const MAX_DEALS = 36;
-const MAX_ACTIVITIES = 48;
+const MAX_RECORD_BYTES = 240 * 1024;
+const MAX_ACCOUNTS = 120;
+const MAX_DEALS = 240;
+const MAX_ACTIVITIES = 360;
 
 const STAGES = ['lead', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];
 const SIZES = ['startup', 'smb', 'midmarket', 'enterprise'];
@@ -78,6 +78,21 @@ async function readAll() {
 }
 
 async function writeCollection(collection, expectedRevision, items, maxCount) {
+  if (items.length === 0) {
+    try {
+      const receipt = await globalThis.nmas.data.delete({
+        collection,
+        key: KEY_LIST,
+        expected_revision: expectedRevision,
+      });
+      return { status: 'saved', revision: receipt.revision };
+    } catch (err) {
+      if (err?.code === 'conflict' && err.outcome_unknown === false) {
+        return { status: 'conflict', revision: expectedRevision };
+      }
+      throw err;
+    }
+  }
   const value = { schema_version: 1, items };
   if (items.length > maxCount || jsonBytes(value) > MAX_RECORD_BYTES) {
     return { status: 'limit', revision: expectedRevision };
@@ -98,9 +113,19 @@ async function writeCollection(collection, expectedRevision, items, maxCount) {
   }
 }
 
-function computeMetrics(accounts, deals, activities) {
+async function readPluginSettings() {
+  const raw = await globalThis.nmas.settings.get();
+  const default_currency = typeof raw?.default_currency === 'string' && /^[A-Z]{3,8}$/.test(raw.default_currency.trim().toUpperCase())
+    ? raw.default_currency.trim().toUpperCase()
+    : 'CNY';
+  const days = Number.isInteger(raw?.follow_up_days) ? raw.follow_up_days : 3;
+  const follow_up_days = Math.max(1, Math.min(30, days));
+  return { default_currency, follow_up_days };
+}
+
+function computeMetrics(accounts, deals, activities, followUpDays = 3) {
   const today = todayStr();
-  const soonLimit = addDays(3);
+  const soonLimit = addDays(followUpDays);
   const funnelMap = {};
   for (const s of STAGES) funnelMap[s] = { stage: s, count: 0, amount: 0, weighted: 0 };
 
@@ -590,13 +615,15 @@ export default async function (request) {
   if (kind === 'action') {
     if (contribution === 'crm.snapshot') {
       const state = await readAll();
-      const metrics = computeMetrics(state.accounts, state.deals, state.activities);
+      const settings = await readPluginSettings();
+      const metrics = computeMetrics(state.accounts, state.deals, state.activities, settings.follow_up_days);
       return {
         revision: state.revision,
         accounts: state.accounts,
         deals: state.deals,
         activities: state.activities,
         metrics,
+        settings,
       };
     }
 
@@ -727,7 +754,8 @@ export default async function (request) {
     }
 
     if (contribution === 'document.list') {
-      const state = await readAll();
+      const listed = await globalThis.nmas.data.list({ collection: COL_ACCOUNTS, limit: 20 });
+      const state = listed.keys.length ? await readAll() : { accounts: [], deals: [], activities: [] };
       const items = [
         {
           id: 'all',
@@ -750,7 +778,7 @@ export default async function (request) {
           activities: state.activities,
         };
         const text = JSON.stringify(payload);
-        if (jsonBytes(text) > 12000) return { error: 'payload_too_large' };
+        if (jsonBytes(text) > MAX_RECORD_BYTES) return { error: 'payload_too_large' };
         return { filename: `crm-sales-os-${todayStr()}.json`, text };
       }
       const acc = state.accounts.find(a => a.id === input.id);
@@ -764,7 +792,7 @@ export default async function (request) {
         activities: state.activities.filter(a => a.account_id === acc.id),
       };
       const text = JSON.stringify(payload);
-      if (jsonBytes(text) > 12000) return { error: 'payload_too_large' };
+      if (jsonBytes(text) > MAX_RECORD_BYTES) return { error: 'payload_too_large' };
       return { filename: `crm-${acc.id}.json`, text };
     }
 

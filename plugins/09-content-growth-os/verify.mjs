@@ -1,14 +1,18 @@
 import assert from 'node:assert/strict';
 
 export async function verify({ createHarness }) {
-  const h = await createHarness();
+  const h = await createHarness({
+    settingsMock: { brand_voice: '犀利硬核', weekly_publish_goal: 5 },
+  });
 
-  // 1. 初始空态驾驶舱
+  // 1. 初始空态驾驶舱 + V2 settings 读取
   const emptyDash = await h.action('growth.dashboard', {});
   assert.equal(emptyDash.revision, 0);
   assert.equal(emptyDash.calendar.length, 0);
   assert.equal(emptyDash.drafts.length, 0);
   assert.equal(emptyDash.periods.length, 0);
+  assert.equal(emptyDash.settings.brand_voice, '犀利硬核');
+  assert.equal(emptyDash.settings.weekly_publish_goal, 5);
 
   // 2. 一键加载 AI 开发者 IP 内容矩阵演示数据
   const seeded = await h.action('demo.seed', { expected_revision: 0 });
@@ -131,4 +135,13 @@ export async function verify({ createHarness }) {
   const impDraft = await h.action('document.import', { text: expDraft.text });
   assert.equal(impDraft.imported, true);
   assert.ok(impDraft.id && impDraft.id !== 'drf-001');
+
+  // 9. V2 nmas.data.delete（draft.delete）& nmas.data.list（document.list）验证
+  const beforeDel = await h.action('growth.dashboard', {});
+  const delDraft = await h.action('draft.delete', { expected_revision: beforeDel.revision, id: impDraft.id });
+  assert.equal(delDraft.status, 'deleted');
+  const readGone = await h.action('draft.read', { id: impDraft.id });
+  assert.equal(readGone.found, false);
+  const docListAfter = await h.action('document.list', {});
+  assert.equal(docListAfter.items.some(i => i.id === impDraft.id), false);
 }
