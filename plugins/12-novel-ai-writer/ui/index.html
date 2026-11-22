@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>小说 AI 流式写作助手</title>
+  <style>
+    :root {
+      --bg: #08090f;
+      --bg-elev: #0f111c;
+      --bg-card: #151828;
+      --bg-input: #0b0d16;
+      --fg: #f2f4fb;
+      --fg-muted: #8b93ad;
+      --border: rgba(165, 180, 252, 0.16);
+      --border-strong: rgba(129, 140, 248, 0.45);
+      --accent: #818cf8;
+      --accent-soft: rgba(129, 140, 248, 0.14);
+      --gold: #f59e0b;
+      --gold-soft: rgba(245, 158, 11, 0.14);
+      --emerald: #34d399;
+      --emerald-soft: rgba(52, 211, 153, 0.14);
+      --rose: #fb7185;
+      --rose-soft: rgba(251, 113, 133, 0.14);
+      --shadow: 0 14px 36px rgba(0, 0, 0, 0.42);
+      font: 13.5px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", system-ui, sans-serif;
+    }
+    html[data-theme="light"] {
+      --bg: #f6f7fb;
+      --bg-elev: #ffffff;
+      --bg-card: #ffffff;
+      --bg-input: #f8fafc;
+      --fg: #111827;
+      --fg-muted: #64748b;
+      --border: rgba(15, 23, 42, 0.12);
+      --border-strong: rgba(79, 70, 229, 0.42);
+      --accent: #4f46e5;
+      --accent-soft: rgba(79, 70, 229, 0.1);
+      --gold: #d97706;
+      --gold-soft: rgba(217, 119, 6, 0.1);
+      --emerald: #059669;
+      --emerald-soft: rgba(5, 150, 105, 0.1);
+      --rose: #e11d48;
+      --rose-soft: rgba(225, 29, 72, 0.1);
+      --shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); min-height: 100vh; }
+    .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+    .shell { max-width: 1280px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+
+    .topbar { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; box-shadow: var(--shadow); }
+    .brand-tag { font-size: 10.5px; letter-spacing: 0.14em; color: var(--accent); font-weight: 700; text-transform: uppercase; }
+    .topbar h1 { margin: 2px 0 0; font-size: 17px; font-weight: 700; }
+    .subline { font-size: 12px; color: var(--fg-muted); }
+
+    .tabs { display: flex; gap: 6px; background: var(--bg-input); padding: 4px; border-radius: 10px; border: 1px solid var(--border); }
+    .tabs button { border: 0; background: transparent; color: var(--fg-muted); padding: 6px 14px; border-radius: 7px; font-weight: 600; cursor: pointer; }
+    .tabs button.active { background: var(--accent); color: #ffffff; }
+
+    .status-strip { padding: 8px 14px; border-radius: 10px; background: var(--bg-card); border: 1px solid var(--border); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; font-size: 12px; color: var(--fg-muted); }
+    .status-strip[data-kind="streaming"] { border-color: var(--border-strong); color: var(--accent); }
+    .status-strip[data-kind="ok"] { border-color: rgba(52, 211, 153, 0.45); color: var(--emerald); }
+    .status-strip[data-kind="error"] { border-color: rgba(251, 113, 133, 0.45); color: var(--rose); }
+
+    .workspace { display: grid; grid-template-columns: minmax(320px, 430px) minmax(0, 1fr); gap: 14px; align-items: start; }
+    @media (max-width: 920px) { .workspace { grid-template-columns: 1fr; } }
+
+    .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 15px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 11px; min-width: 0; }
+    .card h2 { margin: 0; font-size: 14px; font-weight: 700; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .between { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+
+    label.field { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--fg-muted); font-weight: 600; }
+    input, select, textarea, button { font: inherit; color: var(--fg); background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; }
+    textarea { width: 100%; resize: vertical; line-height: 1.65; }
+    button { cursor: pointer; background: var(--bg-elev); font-weight: 500; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+    button.danger { color: var(--rose); border-color: rgba(251, 113, 133, 0.45); background: var(--rose-soft); font-weight: 600; }
+    button.chip { font-size: 11.5px; padding: 4px 9px; border-radius: 99px; color: var(--fg-muted); }
+    button.chip:hover { color: var(--fg); border-color: var(--border-strong); }
+
+    .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 2px 9px; border-radius: 99px; border: 1px solid var(--border); font-weight: 600; }
+    .b-accent { color: var(--accent); border-color: var(--border-strong); background: var(--accent-soft); }
+    .b-emerald { color: var(--emerald); border-color: rgba(52, 211, 153, 0.45); background: var(--emerald-soft); }
+    .b-gold { color: var(--gold); border-color: rgba(245, 158, 11, 0.45); background: var(--gold-soft); }
+    .b-rose { color: var(--rose); border-color: rgba(251, 113, 133, 0.45); background: var(--rose-soft); }
+
+    .prose-canvas {
+      min-height: 430px;
+      max-height: 620px;
+      overflow: auto;
+      padding: 18px 20px;
+      border-radius: 11px;
+      border: 1px solid var(--border);
+      background: var(--bg-input);
+      white-space: pre-wrap;
+      word-break: break-word;
+      font: 15px/1.85 "Songti SC", "Noto Serif SC", "PingFang SC", Georgia, serif;
+      letter-spacing: 0.015em;
+    }
+    .prose-canvas.streaming::after {
+      content: "▍";
+      display: inline-block;
+      margin-left: 2px;
+      color: var(--accent);
+      animation: blink 1s steps(1) infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .scene-card { border: 1px solid var(--border); border-radius: 10px; padding: 11px 13px; background: var(--bg-input); display: flex; flex-direction: column; gap: 5px; }
+    pre.json-view { margin: 0; padding: 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-input); max-height: 280px; overflow: auto; font-size: 12px; line-height: 1.55; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div>
+        <div class="brand-tag">SLICE 5B · ISOLATED AI + SSE COMPANION</div>
+        <h1>小说 AI 流式写作助手</h1>
+        <div class="subline">配合《AI 长篇小说开发系统》使用 · 严格隔离沙箱（仅 <code>ai.complete</code> + 实时 SSE 推送）</div>
+      </div>
+      <div class="row">
+        <div class="tabs">
+          <button class="active" data-tab="stream" type="button">✍️ 流式续写章节</button>
+          <button data-tab="outline" type="button">🧩 结构化细纲 JSON</button>
+        </div>
+        <button id="btn-theme" type="button">☀️ 外观</button>
+      </div>
+    </header>
+
+    <div id="status-strip" class="status-strip">
+      <span id="status-text">正在挂载宿主 AI SSE 事件通道…</span>
+      <div class="row mono" style="font-size:11.5px">
+        <span id="sse-pill" class="badge b-accent">SSE 未连接</span>
+        <span id="meta-req">req: —</span>
+        <span id="meta-cost">cost: —</span>
+      </div>
+    </div>
+
+    <!-- TAB 1: 流式续写章节 -->
+    <section id="tab-stream" class="workspace">
+      <div class="card">
+        <div class="between">
+          <h2>续写参数与前文上下文</h2>
+          <button id="btn-preset-novel" class="chip" type="button">✨ 载入《星渊回响》示例</button>
+        </div>
+        <div class="row">
+          <label class="field" style="flex:1">作品名
+            <input id="w-book" maxlength="100" value="星渊回响" placeholder="输入作品标题">
+          </label>
+          <label class="field" style="width:110px">题材
+            <input id="w-genre" maxlength="48" value="硬核科幻悬疑">
+          </label>
+        </div>
+        <label class="field">当前章节标题
+          <input id="w-chapter" maxlength="120" value="第 14 章 · 静默轨道上的第七声回响">
+        </label>
+        <div class="row">
+          <label class="field" style="flex:1">叙事视角
+            <input id="w-pov" maxlength="64" value="第三人称限知（林深视角）">
+          </label>
+          <label class="field" style="width:120px">文风基调
+            <select id="w-tone">
+              <option value="suspense" selected>强悬疑高张力</option>
+              <option value="literary">细腻文学感</option>
+              <option value="fast_paced">明快爽文节奏</option>
+              <option value="poetic">冷峻诗意白描</option>
+              <option value="dramatic">强戏剧冲突</option>
+            </select>
+          </label>
+          <label class="field" style="width:92px">目标字数
+            <input id="w-words" type="number" min="100" max="3000" step="100" value="900">
+          </label>
+        </div>
+        <label class="field">前文上下文（限 3600 字）
+          <textarea id="w-context" rows="6" maxlength="3600" placeholder="粘贴当前章节末尾段落，AI 将严格承接语境流式续写…"></textarea>
+        </label>
+        <label class="field">本段剧情指令
+          <textarea id="w-inst" rows="3" maxlength="1200" placeholder="例如：沈清秋突然截断通讯，揭示信号并非来自站外，而是舱内黑匣子三年前的录音…"></textarea>
+        </label>
+        <div class="row">
+          <button id="btn-stream-start" class="primary" style="flex:1" type="button">⚡ 开始流式续写</button>
+          <button id="btn-stream-stop" class="danger" type="button" disabled>■ 停止生成</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="between">
+          <div class="row">
+            <h2>流式成稿画布</h2>
+            <span id="stream-metrics" class="badge b-gold mono">0 字 · 0 chunks · seq 0</span>
+          </div>
+          <div class="row">
+            <button id="btn-append-ctx" type="button" disabled>↶ 追加为下段前文</button>
+            <button id="btn-copy-md" type="button" disabled>📋 复制 Markdown</button>
+            <button id="btn-clear-out" type="button">清空</button>
+          </div>
+        </div>
+        <div id="stream-canvas" class="prose-canvas">在左侧填写章节上下文后点击「开始流式续写」，实时接收宿主 <code>ai.delta</code> / <code>ai.done</code> SSE 流。</div>
+      </div>
+    </section>
+
+    <!-- TAB 2: 结构化细纲 JSON -->
+    <section id="tab-outline" class="workspace" hidden>
+      <div class="card">
+        <div class="between">
+          <h2>章节细纲规划参数</h2>
+          <button id="btn-preset-outline" class="chip" type="button">✨ 载入细纲示例</button>
+        </div>
+        <div class="row">
+          <label class="field" style="flex:1">作品名
+            <input id="o-book" maxlength="100" value="星渊回响">
+          </label>
+          <label class="field" style="width:92px">章节序号
+            <input id="o-no" type="number" min="1" max="5000" value="15">
+          </label>
+          <label class="field" style="width:86px">场景数
+            <input id="o-scenes" type="number" min="2" max="8" value="4">
+          </label>
+        </div>
+        <label class="field">本章核心剧情构想
+          <textarea id="o-premise" rows="5" maxlength="3000" placeholder="描述本章核心目标、矛盾转折与希望达到的情感高潮…"></textarea>
+        </label>
+        <label class="field">核心出场人物
+          <input id="o-chars" maxlength="1200" value="林深（航电工程师）、沈清秋（任务指挥官）、陆沉舟（失联观测员）">
+        </label>
+        <label class="field">需埋设或回收的伏笔
+          <input id="o-hooks" maxlength="1000" value="回收第 3 章的腕表停摆时间 03:17；埋下气闸舱备用日志缺失伏笔">
+        </label>
+        <button id="btn-outline-run" class="primary" type="button">🧩 生成结构化 JSON 细纲</button>
+      </div>
+
+      <div class="card">
+        <div class="between">
+          <div class="row">
+            <h2>结构化细纲视图</h2>
+            <span id="outline-receipt" class="badge b-emerald mono">待生成</span>
+          </div>
+          <div class="row">
+            <button id="btn-copy-outline-md" type="button" disabled>📋 复制 Markdown 细纲</button>
+            <button id="btn-copy-outline-json" type="button" disabled>复制 JSON</button>
+          </div>
+        </div>
+        <div id="outline-cards" style="display:flex;flex-direction:column;gap:8px">
+          <div style="color:var(--fg-muted);font-size:12.5px">点击左侧生成按钮，将通过 <code>nmas.ai.complete({ format: "json" })</code> 返回结构化章节细纲。</div>
+        </div>
+        <pre id="outline-raw" class="json-view mono" hidden></pre>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (() => {
+      const plugin = window.nmasPlugin;
+      const $ = id => document.getElementById(id);
+
+      let activeRequestId = null;
+      let streaming = false;
+      let streamText = '';
+      let chunkCount = 0;
+      let lastSeq = 0;
+      let lastOutline = null;
+
+      function uuidv4Lower() {
+        const b = crypto.getRandomValues(new Uint8Array(16));
+        b[6] = (b[6] & 0x0f) | 0x40;
+        b[8] = (b[8] & 0x3f) | 0x80;
+        const h = Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+        return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+      }
+
+      function setStatus(text, kind = '') {
+        $('status-text').textContent = text;
+        $('status-strip').dataset.kind = kind;
+      }
+
+      function updateStreamMetrics() {
+        $('stream-metrics').textContent = `${streamText.length} 字 · ${chunkCount} chunks · seq ${lastSeq}`;
+        $('btn-copy-md').disabled = !streamText.length;
+        $('btn-append-ctx').disabled = streaming || !streamText.length;
+        $('btn-stream-start').disabled = streaming;
+        $('btn-stream-stop').disabled = !streaming || !activeRequestId;
+        $('stream-canvas').classList.toggle('streaming', streaming);
+      }
+
+      function handleAiEvent(evt) {
+        if (!evt || typeof evt !== 'object') return;
+        if (!activeRequestId || evt.request_id !== activeRequestId) return;
+        if (typeof evt.seq === 'number' && evt.seq <= lastSeq) return;
+        if (typeof evt.seq === 'number') lastSeq = evt.seq;
+
+        if (evt.type === 'ai.delta') {
+          if (typeof evt.text === 'string' && evt.text.length > 0) {
+            if (chunkCount === 0) streamText = '';
+            streamText += evt.text;
+            chunkCount += 1;
+            const canvas = $('stream-canvas');
+            canvas.textContent = streamText;
+            canvas.scrollTop = canvas.scrollHeight;
+            setStatus(`流式接收中（seq #${lastSeq}）…`, 'streaming');
+            updateStreamMetrics();
+          }
+          return;
+        }
+
+        if (evt.type === 'ai.done') {
+          streaming = false;
+          const cost = Number.isInteger(evt.cost_microcredits) ? evt.cost_microcredits : 0;
+          $('meta-cost').textContent = `cost: ${cost} µcr`;
+          setStatus(`流式续写完成 · 共 ${streamText.length} 字 · 消耗 ${cost} microcredits`, 'ok');
+          updateStreamMetrics();
+          return;
+        }
+
+        if (evt.type === 'ai.error') {
+          streaming = false;
+          const code = evt.code || 'unknown_error';
+          setStatus(`AI 流式任务中止：error_code=${code}`, 'error');
+          updateStreamMetrics();
+        }
+      }
+
+      async function subscribeAiEvents() {
+        if (typeof plugin?.onAiEvent !== 'function') {
+          $('sse-pill').className = 'badge b-rose';
+          $('sse-pill').textContent = '未检测到宿主 onAiEvent';
+          setStatus('请在 Velai Desktop V2 工作区中打开本伴生插件以启用真实 SSE 流。', 'error');
+          return;
+        }
+        try {
+          await plugin.onAiEvent(handleAiEvent);
+          $('sse-pill').className = 'badge b-emerald';
+          $('sse-pill').textContent = 'SSE 已订阅';
+          setStatus('宿主 AI SSE 通道就绪，可直接开始流式续写或细纲规划。', 'ok');
+        } catch (e) {
+          $('sse-pill').className = 'badge b-rose';
+          $('sse-pill').textContent = 'SSE 订阅失败';
+          setStatus(`订阅 onAiEvent 失败：${e?.message || e}`, 'error');
+        }
+      }
+
+      async function copyText(text, label) {
+        try {
+          await navigator.clipboard.writeText(text);
+          setStatus(`已复制${label}到剪贴板。`, 'ok');
+        } catch (e) {
+          setStatus(`剪贴板复制失败：${e?.message || e}`, 'error');
+        }
+      }
+
+      function outlineToMarkdown(outline) {
+        if (!outline || typeof outline !== 'object') return '';
+        const lines = [];
+        lines.push(`# ${outline.chapter_title || '章节细纲'}`);
+        if (outline.core_conflict) lines.push(`\n**核心矛盾**：${outline.core_conflict}`);
+        if (outline.pacing_curve) lines.push(`**节奏曲线**：${outline.pacing_curve}`);
+        if (Array.isArray(outline.scenes) && outline.scenes.length) {
+          lines.push('\n## 分场细纲');
+          outline.scenes.forEach((s, i) => {
+            lines.push(`\n### 第 ${s.index ?? i + 1} 场 · ${s.location || '未指定地点'}`);
+            if (Array.isArray(s.characters) && s.characters.length) lines.push(`- **人物**：${s.characters.join('、')}`);
+            if (s.beat) lines.push(`- **情节推进**：${s.beat}`);
+            if (s.subtext) lines.push(`- **潜台词/转折**：${s.subtext}`);
+            if (s.target_words) lines.push(`- **建议字数**：${s.target_words} 字`);
+          });
+        }
+        if (Array.isArray(outline.foreshadowing_hooks) && outline.foreshadowing_hooks.length) {
+          lines.push('\n## 伏笔与钩子');
+          for (const h of outline.foreshadowing_hooks) lines.push(`- ${h}`);
+        }
+        if (outline.ending_hook) lines.push(`\n> **章末悬念**：${outline.ending_hook}`);
+        return lines.join('\n');
+      }
+
+      function renderOutline(outline) {
+        const box = $('outline-cards');
+        box.replaceChildren();
+        if (!outline || typeof outline !== 'object') {
+          box.textContent = '模型未返回可解析的 JSON 对象。';
+          return;
+        }
+        const head = document.createElement('div');
+        head.className = 'scene-card';
+        const t = document.createElement('strong');
+        t.style.fontSize = '15px';
+        t.textContent = outline.chapter_title || '结构化章节细纲';
+        head.appendChild(t);
+        if (outline.core_conflict) {
+          const p = document.createElement('div');
+          p.textContent = `核心矛盾：${outline.core_conflict}`;
+          head.appendChild(p);
+        }
+        if (outline.pacing_curve) {
+          const p = document.createElement('div');
+          p.style.color = 'var(--fg-muted)';
+          p.textContent = `节奏曲线：${outline.pacing_curve}`;
+          head.appendChild(p);
+        }
+        box.appendChild(head);
+
+        if (Array.isArray(outline.scenes)) {
+          outline.scenes.forEach((s, idx) => {
+            const c = document.createElement('article');
+            c.className = 'scene-card';
+            const top = document.createElement('div');
+            top.className = 'between';
+            const st = document.createElement('strong');
+            st.textContent = `场次 ${s.index ?? idx + 1} · ${s.location || '场景'}`;
+            const b = document.createElement('span');
+            b.className = 'badge b-accent mono';
+            b.textContent = s.target_words ? `约 ${s.target_words} 字` : 'scene';
+            top.append(st, b);
+            const beat = document.createElement('div');
+            beat.textContent = s.beat || '';
+            c.append(top, beat);
+            if (s.subtext) {
+              const sub = document.createElement('div');
+              sub.style.cssText = 'font-size:12px;color:var(--fg-muted)';
+              sub.textContent = `潜台词：${s.subtext}`;
+              c.appendChild(sub);
+            }
+            box.appendChild(c);
+          });
+        }
+        if (outline.ending_hook) {
+          const hook = document.createElement('div');
+          hook.className = 'scene-card';
+          hook.style.borderColor = 'var(--border-strong)';
+          hook.textContent = `章末钩子：${outline.ending_hook}`;
+          box.appendChild(hook);
+        }
+        $('outline-raw').hidden = false;
+        $('outline-raw').textContent = JSON.stringify(outline, null, 2);
+      }
+
+      document.querySelectorAll('.tabs button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tab = btn.dataset.tab;
+          document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b === btn));
+          $('tab-stream').hidden = tab !== 'stream';
+          $('tab-outline').hidden = tab !== 'outline';
+        });
+      });
+
+      $('btn-theme').addEventListener('click', () => {
+        document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      });
+
+      $('btn-preset-novel').addEventListener('click', () => {
+        $('w-book').value = '星渊回响';
+        $('w-genre').value = '硬核科幻悬疑';
+        $('w-chapter').value = '第 14 章 · 静默轨道上的第七声回响';
+        $('w-pov').value = '第三人称限知（林深视角）';
+        $('w-tone').value = 'suspense';
+        $('w-words').value = '900';
+        $('w-context').value = '冷却阀合拢的瞬间，环形走廊的应急灯全部转成暗红。林深按住耳麦，频谱仪上那段间隔精确到 1.7 秒的脉冲仍在跳动——和三年前失联的「启明七号」求救信标完全重合。就在他准备把波形转发给主控台时，舷窗外掠过一束没有来源的银白色反光。';
+        $('w-inst').value = '沈清秋突然推开气密门冲进观测舱，警告林深绝对不能向地面回传这段频谱，并亮出一枚本该留在三年前残骸里的机械腕表。';
+      });
+
+      $('btn-preset-outline').addEventListener('click', () => {
+        $('o-book').value = '星渊回响';
+        $('o-no').value = '15';
+        $('o-scenes').value = '4';
+        $('o-premise').value = '林深与沈清秋围绕三年前「启明七号」黑匣子录音展开对峙，二人决定在空间站例行静默窗的 12 分钟内潜入主控底层核对原始遥测日志，却发现站内 AI 早已篡改了气闸舱记录。';
+        $('o-chars').value = '林深、沈清秋、站控 AI「明镜」';
+        $('o-hooks').value = '腕表停在 03:17 的真相；明镜为何隐瞒第七声回响';
+      });
+
+      $('btn-stream-start').addEventListener('click', async () => {
+        if (streaming || typeof plugin?.action !== 'function') return;
+        const book_title = $('w-book').value.trim();
+        const chapter_title = $('w-chapter').value.trim();
+        const context = $('w-context').value.trim();
+        if (!book_title || !chapter_title || !context) {
+          setStatus('请完整填写作品名、章节标题与前文上下文。', 'error');
+          return;
+        }
+        const requestId = uuidv4Lower();
+        activeRequestId = requestId;
+        streaming = true;
+        streamText = '';
+        chunkCount = 0;
+        lastSeq = 0;
+        $('meta-req').textContent = `req: ${requestId.slice(0, 8)}…`;
+        $('meta-cost').textContent = 'cost: 流式计费中…';
+        $('stream-canvas').textContent = '';
+        updateStreamMetrics();
+        setStatus('已发起受管 AI 流式续写，等待首字 SSE 推送…', 'streaming');
+
+        try {
+          const payload = {
+            request_id: requestId,
+            book_title,
+            chapter_title,
+            genre: $('w-genre').value.trim(),
+            pov: $('w-pov').value.trim(),
+            tone: $('w-tone').value,
+            context,
+            instruction: $('w-inst').value.trim(),
+            target_words: Math.min(3000, Math.max(100, Math.round(Number($('w-words').value) || 900))),
+          };
+          const res = await plugin.action('writer.stream_chapter', payload);
+          setStatus(`流式任务已启动 (${res.status}) · Prompt ${res.prompt_bytes} B · 等待 ai.delta…`, 'streaming');
+        } catch (e) {
+          streaming = false;
+          updateStreamMetrics();
+          setStatus(`启动流式续写失败：${e?.message || e}`, 'error');
+        }
+      });
+
+      $('btn-stream-stop').addEventListener('click', async () => {
+        if (!activeRequestId || typeof plugin?.action !== 'function') return;
+        $('btn-stream-stop').disabled = true;
+        try {
+          const res = await plugin.action('writer.cancel', { request_id: activeRequestId });
+          streaming = false;
+          updateStreamMetrics();
+          setStatus(`已发送停止指令 (${res.status})。`, 'ok');
+        } catch (e) {
+          setStatus(`停止生成失败：${e?.message || e}`, 'error');
+          updateStreamMetrics();
+        }
+      });
+
+      $('btn-copy-md').addEventListener('click', () => {
+        const md = `## ${$('w-chapter').value.trim() || '续写正文'}\n\n${streamText}`;
+        void copyText(md, ' Markdown 正文');
+      });
+
+      $('btn-append-ctx').addEventListener('click', () => {
+        if (!streamText) return;
+        const merged = `${$('w-context').value.trim()}\n\n${streamText}`.trim();
+        $('w-context').value = merged.length > 3600 ? merged.slice(-3600) : merged;
+        setStatus('已将本段续写追加至前文上下文末尾，可继续下一幕续写。', 'ok');
+      });
+
+      $('btn-clear-out').addEventListener('click', () => {
+        if (streaming) return;
+        streamText = '';
+        chunkCount = 0;
+        lastSeq = 0;
+        $('stream-canvas').textContent = '画布已清空。';
+        updateStreamMetrics();
+      });
+
+      $('btn-outline-run').addEventListener('click', async () => {
+        if (typeof plugin?.action !== 'function') return;
+        const book_title = $('o-book').value.trim();
+        const premise = $('o-premise').value.trim();
+        if (!book_title || !premise) {
+          setStatus('请填写作品名与本章核心剧情构想。', 'error');
+          return;
+        }
+        const requestId = uuidv4Lower();
+        $('btn-outline-run').disabled = true;
+        $('meta-req').textContent = `req: ${requestId.slice(0, 8)}…`;
+        setStatus('正在调用受管 AI 生成结构化 JSON 细纲…', 'streaming');
+        try {
+          const res = await plugin.action('writer.outline_json', {
+            request_id: requestId,
+            book_title,
+            chapter_no: Math.max(1, Math.round(Number($('o-no').value) || 1)),
+            scene_count: Math.min(8, Math.max(2, Math.round(Number($('o-scenes').value) || 4))),
+            premise,
+            characters: $('o-chars').value.trim(),
+            foreshadowing: $('o-hooks').value.trim(),
+          });
+          lastOutline = res.outline;
+          renderOutline(res.outline);
+          $('outline-receipt').textContent = `${res.model} · in ${res.input_tokens} / out ${res.output_tokens} · ${res.cost_microcredits} µcr`;
+          $('meta-cost').textContent = `cost: ${res.cost_microcredits} µcr`;
+          $('btn-copy-outline-md').disabled = !lastOutline;
+          $('btn-copy-outline-json').disabled = !lastOutline;
+          setStatus(`结构化 JSON 细纲生成完成（消耗 ${res.cost_microcredits} microcredits）。`, 'ok');
+        } catch (e) {
+          setStatus(`细纲生成失败：${e?.message || e}`, 'error');
+        } finally {
+          $('btn-outline-run').disabled = false;
+        }
+      });
+
+      $('btn-copy-outline-md').addEventListener('click', () => {
+        if (lastOutline) void copyText(outlineToMarkdown(lastOutline), ' Markdown 细纲');
+      });
+      $('btn-copy-outline-json').addEventListener('click', () => {
+        if (lastOutline) void copyText(JSON.stringify(lastOutline, null, 2), ' JSON 细纲');
+      });
+
+      void subscribeAiEvents();
+    })();
+  </script>
+</body>
+</html>

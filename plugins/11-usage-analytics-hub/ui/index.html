@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>个人会话与用量统计大屏</title>
+  <title>个人会话与用量统计大屏 V2</title>
   <style>
     :root {
       --bg: #060a12;
@@ -13,7 +13,7 @@
       --fg: #eaf1fc;
       --fg-muted: #7c8da8;
       --border: rgba(148, 163, 184, 0.16);
-      --border-strong: rgba(56, 189, 248, 0.35);
+      --border-strong: rgba(56, 189, 248, 0.36);
       --cyan: #38bdf8;
       --cyan-soft: rgba(56, 189, 248, 0.14);
       --emerald: #34d399;
@@ -21,6 +21,7 @@
       --amber: #f59e0b;
       --amber-soft: rgba(245, 158, 11, 0.14);
       --violet: #a78bfa;
+      --violet-soft: rgba(167, 139, 250, 0.14);
       --rose: #fb7185;
       --rose-soft: rgba(251, 113, 133, 0.14);
       --shadow: 0 12px 30px rgba(0, 0, 0, 0.34);
@@ -38,20 +39,24 @@
       --cyan: #0284c7;
       --cyan-soft: rgba(2, 132, 199, 0.1);
       --emerald: #059669;
+      --emerald-soft: rgba(5, 150, 105, 0.1);
       --amber: #d97706;
+      --amber-soft: rgba(217, 119, 6, 0.1);
       --violet: #7c3aed;
+      --violet-soft: rgba(124, 58, 237, 0.1);
       --rose: #e11d48;
+      --rose-soft: rgba(225, 29, 72, 0.1);
       --shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
     }
     * { box-sizing: border-box; }
     body { margin: 0; background: var(--bg); color: var(--fg); min-height: 100vh; }
     .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
-    .app { display: grid; grid-template-columns: 208px minmax(0, 1fr); min-height: 100vh; }
-    @media (max-width: 840px) { .app { grid-template-columns: 1fr; } .sidebar { border-right: 0; border-bottom: 1px solid var(--border); } }
+    .app { display: grid; grid-template-columns: 218px minmax(0, 1fr); min-height: 100vh; }
+    @media (max-width: 860px) { .app { grid-template-columns: 1fr; } .sidebar { border-right: 0; border-bottom: 1px solid var(--border); } }
 
-    .sidebar { background: var(--bg-elev); border-right: 1px solid var(--border); padding: 15px 11px; display: flex; flex-direction: column; gap: 12px; }
+    .sidebar { background: var(--bg-elev); border-right: 1px solid var(--border); padding: 15px 12px; display: flex; flex-direction: column; gap: 12px; }
     .brand { padding: 4px 8px; }
-    .brand-tag { font-size: 10px; letter-spacing: 0.15em; color: var(--cyan); font-weight: 700; }
+    .brand-tag { font-size: 10px; letter-spacing: 0.14em; color: var(--cyan); font-weight: 700; }
     .brand h1 { margin: 3px 0 2px; font-size: 15.5px; font-weight: 700; }
     .brand span { font-size: 11.5px; color: var(--fg-muted); }
 
@@ -68,27 +73,27 @@
     .main { display: flex; flex-direction: column; min-width: 0; }
     .topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--bg-elev); }
     .range-pills { display: flex; gap: 4px; background: var(--bg-input); padding: 3px; border-radius: 9px; border: 1px solid var(--border); }
-    .range-pills button { border: 0; background: transparent; color: var(--fg-muted); padding: 4px 11px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .range-pills button { border: 0; background: transparent; color: var(--fg-muted); padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
     .range-pills button.active { background: var(--cyan); color: #05111e; }
     html[data-theme="light"] .range-pills button.active { color: #fff; }
 
     .content { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-    .status-bar { font-size: 12px; color: var(--fg-muted); padding: 7px 12px; border-radius: 8px; background: var(--bg-card); border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .status-bar { font-size: 12px; color: var(--fg-muted); padding: 7px 12px; border-radius: 8px; background: var(--bg-card); border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
     .status-bar[data-kind="error"] { color: var(--rose); border-color: rgba(251, 113, 133, 0.45); }
     .status-bar[data-kind="ok"] { color: var(--emerald); border-color: rgba(52, 211, 153, 0.45); }
 
     .kpi-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
-    @media (max-width: 1080px) { .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-    @media (max-width: 620px) { .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    @media (max-width: 640px) { .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     .kpi-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 11px; padding: 12px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 4px; position: relative; overflow: hidden; }
     .kpi-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--c1, var(--cyan)), transparent); }
-    .kpi-label { font-size: 11.5px; color: var(--fg-muted); }
-    .kpi-val { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+    .kpi-label { font-size: 11.5px; color: var(--fg-muted); display: flex; justify-content: space-between; align-items: center; }
+    .kpi-val { font-size: 19px; font-weight: 800; letter-spacing: -0.02em; }
     .kpi-sub { font-size: 11.5px; color: var(--fg-muted); }
 
     .dash-2 { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 12px; align-items: stretch; }
     .split-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
-    @media (max-width: 880px) { .dash-2, .split-2 { grid-template-columns: 1fr; } }
+    @media (max-width: 900px) { .dash-2, .split-2 { grid-template-columns: 1fr; } }
 
     .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 13px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px; min-width: 0; }
     .card h3 { margin: 0; font-size: 13.5px; font-weight: 700; }
@@ -97,25 +102,31 @@
 
     button, input, select, textarea { font: inherit; color: var(--fg); background: var(--bg-input); border: 1px solid var(--border); border-radius: 7px; padding: 6px 10px; }
     button { cursor: pointer; background: var(--bg-card); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
     button.primary { background: var(--cyan); border-color: var(--cyan); color: #05111e; font-weight: 600; }
     html[data-theme="light"] button.primary { color: #fff; }
     button.danger { color: var(--rose); border-color: rgba(251, 113, 133, 0.35); }
     .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .between { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
 
-    .sess-card { border: 1px solid var(--border); border-radius: 10px; padding: 11px; background: var(--bg-input); display: flex; flex-direction: column; gap: 6px; }
+    .item-card { border: 1px solid var(--border); border-radius: 10px; padding: 11px; background: var(--bg-input); display: flex; flex-direction: column; gap: 6px; }
+    .item-card.clickable { cursor: pointer; transition: border-color .15s ease; }
+    .item-card.clickable:hover { border-color: var(--border-strong); }
     .badge { display: inline-flex; align-items: center; font-size: 11px; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--border); font-weight: 600; }
     .b-cyan { color: var(--cyan); border-color: var(--border-strong); background: var(--cyan-soft); }
     .b-emerald { color: var(--emerald); border-color: rgba(52, 211, 153, 0.45); background: var(--emerald-soft); }
     .b-amber { color: var(--amber); border-color: rgba(245, 158, 11, 0.45); background: var(--amber-soft); }
+    .b-violet { color: var(--violet); border-color: rgba(167, 139, 250, 0.45); background: var(--violet-soft); }
     .b-rose { color: var(--rose); border-color: rgba(251, 113, 133, 0.45); background: var(--rose-soft); }
 
     table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
     th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); }
     th { font-size: 11px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.04em; }
     label.field { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--fg-muted); font-weight: 600; }
-    textarea { width: 100%; min-height: 82px; resize: vertical; }
-    pre.ai-box { margin: 0; white-space: pre-wrap; word-break: break-word; padding: 10px; border-radius: 8px; border: 1px dashed var(--cyan); background: var(--bg-input); max-height: 280px; overflow: auto; font-size: 12.5px; line-height: 1.65; }
+    textarea { width: 100%; min-height: 92px; resize: vertical; }
+    .detail-box { border: 1px solid var(--border); border-radius: 10px; padding: 12px; background: var(--bg-input); display: flex; flex-direction: column; gap: 8px; }
+    .kv { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; border-bottom: 1px dashed var(--border); padding-bottom: 5px; }
+    .kv:last-child { border-bottom: 0; padding-bottom: 0; }
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -123,27 +134,35 @@
   <div class="app">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-tag">PERSONAL TELEMETRY</div>
+        <div class="brand-tag">HOST TELEMETRY V2</div>
         <h1>个人会话与用量大屏</h1>
-        <span>近期会话 · Token · 费用 · 效率</span>
+        <span>宿主实时遥测 · 会话 · 项目 · 预算</span>
       </div>
 
       <div class="budget-mini">
-        <div class="between" style="font-size:11.5px"><span>月度费用预算</span><strong id="sb-cost-pct" class="mono">0%</strong></div>
-        <div class="bar"><i id="sb-cost-bar" style="width:0%;background:var(--cyan)"></i></div>
-        <div class="between" style="font-size:11.5px"><span>月度 Token 预算</span><strong id="sb-tok-pct" class="mono">0%</strong></div>
-        <div class="bar"><i id="sb-tok-bar" style="width:0%;background:var(--emerald)"></i></div>
+        <div class="between" style="font-size:11.5px">
+          <span>30 天 Token 预算</span>
+          <strong id="sb-tok-pct" class="mono">缺测</strong>
+        </div>
+        <div class="bar"><i id="sb-tok-bar" style="width:0%;background:var(--cyan)"></i></div>
+        <div class="between" style="font-size:11px;color:var(--fg-muted)">
+          <span id="sb-used-text" class="mono">—</span>
+          <span id="sb-quota-text" class="mono">目标 15M</span>
+        </div>
       </div>
 
       <nav class="nav">
-        <button class="active" data-view="dashboard" type="button"><span>📡 全景统计大屏</span><span id="nav-days" class="mono">0d</span></button>
-        <button data-view="sessions" type="button"><span>🗂️ 近期会话整理</span><span id="nav-sess" class="mono">0</span></button>
-        <button data-view="models" type="button"><span>💎 模型性价比与预算</span><span id="nav-mod" class="mono">0</span></button>
-        <button data-view="sync" type="button"><span>🤖 AI 自动汇总复盘</span><span>✨</span></button>
+        <button class="active" data-view="telemetry" type="button"><span>📡 宿主实时遥测</span><span id="nav-days" class="mono">30d</span></button>
+        <button data-view="sessions" type="button"><span>🗂️ 宿主会话列表</span><span id="nav-sess" class="mono">0</span></button>
+        <button data-view="projects" type="button"><span>📁 宿主项目列表</span><span id="nav-proj" class="mono">0</span></button>
+        <button data-view="budget" type="button"><span>🛡️ 预算与复盘笔记</span><span id="nav-notes" class="mono">0</span></button>
       </nav>
 
       <div class="sidebar-foot">
-        <button id="btn-demo" class="primary" type="button">✨ 加载 30 天演示大屏</button>
+        <div style="font-size:11px;color:var(--fg-muted);padding:0 4px">
+          <div>口径：<span id="sb-tz" class="mono">—</span></div>
+          <div>采样：<span id="sb-asof" class="mono">—</span></div>
+        </div>
         <button id="btn-theme" type="button">☀️ 切换深浅外观</button>
       </div>
     </aside>
@@ -151,224 +170,247 @@
     <div class="main">
       <header class="topbar">
         <div class="row">
-          <strong style="font-size:14.5px">个人 AI 使用情况驾驶舱</strong>
+          <strong style="font-size:14.5px">Velai Desktop 宿主用量驾驶舱</strong>
           <div class="range-pills">
-            <button data-range="7d" type="button">近 7 天</button>
-            <button class="active" data-range="30d" type="button">近 30 天</button>
-            <button data-range="all" type="button">全部历史</button>
+            <button data-days="7" type="button">近 7 天</button>
+            <button class="active" data-days="30" type="button">近 30 天</button>
           </div>
+          <span id="top-alert-badge" class="badge b-cyan">等待遥测</span>
         </div>
         <div class="row">
-          <button id="btn-quick-sync" class="primary" type="button">🤖 一键整理近期会话</button>
-          <button id="btn-refresh" type="button">刷新</button>
+          <button id="btn-refresh" class="primary" type="button">↻ 同步宿主遥测</button>
         </div>
       </header>
 
       <div class="content">
-        <div id="status" class="status-bar"><span id="status-text">正在加载个人使用统计…</span><span id="rev-tag" class="mono">rev #0</span></div>
+        <div id="status" class="status-bar">
+          <span id="status-text">正在从宿主读取实时用量遥测…</span>
+          <span id="rev-tag" class="mono">rev #0</span>
+        </div>
 
-        <!-- KPI 5 Cards -->
-        <section class="kpi-grid">
+        <!-- 5 Host Telemetry Windows -->
+        <section class="kpi-grid" id="windows-grid">
           <div class="kpi-card" style="--c1:var(--cyan)">
-            <span class="kpi-label">区间会话数</span>
-            <strong id="k-sessions" class="kpi-val mono">0</strong>
-            <span id="k-streak" class="kpi-sub">活跃 0 天 · 连续 0 天</span>
+            <span class="kpi-label"><span>近 5 分钟 (5m)</span><span class="mono" id="w-5m-tps">—</span></span>
+            <strong id="w-5m-tok" class="kpi-val mono">—</strong>
+            <span id="w-5m-sub" class="kpi-sub">输入 — / 输出 —</span>
           </div>
           <div class="kpi-card" style="--c1:var(--emerald)">
-            <span class="kpi-label">总 Token 消耗</span>
-            <strong id="k-tokens" class="kpi-val mono">0</strong>
-            <span id="k-cache" class="kpi-sub">缓存命中率 0%</span>
+            <span class="kpi-label"><span>近 1 小时 (1h)</span><span class="mono" id="w-1h-tps">—</span></span>
+            <strong id="w-1h-tok" class="kpi-val mono">—</strong>
+            <span id="w-1h-sub" class="kpi-sub">缓存命中率 —</span>
           </div>
           <div class="kpi-card" style="--c1:var(--amber)">
-            <span class="kpi-label">区间估算费用</span>
-            <strong id="k-cost" class="kpi-val mono">$0.00</strong>
-            <span id="k-budget-sub" class="kpi-sub">月度预算占用 0%</span>
+            <span class="kpi-label"><span>今日累计 (today)</span><span class="mono" id="w-today-cache">—</span></span>
+            <strong id="w-today-tok" class="kpi-val mono">—</strong>
+            <span id="w-today-sub" class="kpi-sub">输入 — / 输出 —</span>
           </div>
           <div class="kpi-card" style="--c1:var(--violet)">
-            <span class="kpi-label">深度协作时长</span>
-            <strong id="k-mins" class="kpi-val mono">0h</strong>
-            <span id="k-turns" class="kpi-sub">共 0 轮对话</span>
+            <span class="kpi-label"><span>近 7 天 (7d)</span><span class="mono" id="w-7d-cache">—</span></span>
+            <strong id="w-7d-tok" class="kpi-val mono">—</strong>
+            <span id="w-7d-sub" class="kpi-sub">输入 — / 输出 —</span>
           </div>
           <div class="kpi-card" style="--c1:var(--rose)">
-            <span class="kpi-label">平均价值评分</span>
-            <strong id="k-rating" class="kpi-val mono">0.0 ★</strong>
-            <span id="k-peak" class="kpi-sub">高峰时段 --:00</span>
+            <span class="kpi-label"><span>近 30 天 (30d)</span><span class="mono" id="w-30d-cache">—</span></span>
+            <strong id="w-30d-tok" class="kpi-val mono">—</strong>
+            <span id="w-30d-sub" class="kpi-sub">预算占用 —</span>
           </div>
         </section>
 
-        <!-- VIEW 1: 全景统计大屏 -->
-        <section id="view-dashboard" style="display:flex;flex-direction:column;gap:12px">
+        <!-- VIEW 1: 宿主实时遥测 -->
+        <section id="view-telemetry" style="display:flex;flex-direction:column;gap:12px">
           <div class="dash-2">
             <div class="card">
               <div class="between">
-                <h3>每日 Token 消耗（含缓存节省）与费用趋势</h3>
-                <span id="daily-hover" class="mono" style="font-size:11.5px;color:var(--cyan)">悬停柱条查看当日详情</span>
+                <h3>每日 Token 消耗趋势（空缺按缺测标示）</h3>
+                <span id="daily-hover" class="mono" style="font-size:11.5px;color:var(--cyan)">悬停柱条查看当日输入/输出明细</span>
               </div>
-              <div class="svg-box"><svg id="daily-svg" viewBox="0 0 660 248"></svg></div>
+              <div class="svg-box"><svg id="daily-svg" viewBox="0 0 660 252"></svg></div>
             </div>
 
             <div class="card">
               <div class="between">
-                <h3>24 小时活跃与专注高峰分布</h3>
-                <span style="font-size:11.5px;color:var(--fg-muted)">按会话开启小时统计</span>
+                <h3>模型消耗占比</h3>
+                <span id="models-trunc-badge" class="badge b-amber" hidden>宿主已截断长尾模型</span>
               </div>
-              <div class="svg-box"><svg id="hour-svg" viewBox="0 0 420 248"></svg></div>
+              <div class="svg-box"><svg id="model-svg" viewBox="0 0 430 252"></svg></div>
             </div>
-          </div>
-
-          <div class="split-2">
-            <div class="card">
-              <h3>模型用量占比环形图</h3>
-              <div class="svg-box"><svg id="model-svg" viewBox="0 0 460 215"></svg></div>
-            </div>
-            <div class="card">
-              <h3>场景分类 Token 分布与平均价值分</h3>
-              <div class="svg-box"><svg id="cat-svg" viewBox="0 0 460 215"></svg></div>
-            </div>
-          </div>
-        </section>
-
-        <!-- VIEW 2: 近期会话整理 -->
-        <section id="view-sessions" class="dash-2" hidden>
-          <div class="card">
-            <div class="between">
-              <h3>近期会话归档库 (<span id="sess-shown">0</span>)</h3>
-              <div class="row">
-                <select id="f-cat-filter" style="width:105px">
-                  <option value="">全部分类</option>
-                  <option value="coding">编程开发</option>
-                  <option value="writing">文档写作</option>
-                  <option value="research">深度研究</option>
-                  <option value="planning">规划决策</option>
-                  <option value="ops">运维排障</option>
-                  <option value="chat">日常问答</option>
-                </select>
-                <input id="f-search" type="search" placeholder="搜索标题、模型或标签…" style="width:170px">
-              </div>
-            </div>
-            <div id="sess-list" style="display:flex;flex-direction:column;gap:8px;max-height:540px;overflow:auto"></div>
           </div>
 
           <div class="card">
             <div class="between">
-              <h3 id="form-caption">录入 / 编辑会话用量</h3>
-              <div class="row">
-                <button id="btn-from-sel" type="button" hidden>读入选中回复</button>
-                <button id="btn-new-sess" type="button">+ 新记录</button>
-              </div>
+              <h3>模型 Token 消耗排行榜</h3>
+              <span style="font-size:11.5px;color:var(--fg-muted)">数据来源：<code>nmas.host.usageSummary</code>（只读）</span>
             </div>
-            <label class="field">会话标题 <input id="s-title" maxlength="100" placeholder="例如：优化桌面插件通信协议"></label>
-            <div class="row">
-              <label class="field" style="flex:1">日期 <input id="s-date" type="date"></label>
-              <label class="field" style="width:74px">小时 <input id="s-hour" type="number" min="0" max="23" value="20"></label>
-              <label class="field" style="width:105px">场景
-                <select id="s-cat">
-                  <option value="coding">编程开发</option>
-                  <option value="writing">文档写作</option>
-                  <option value="research">深度研究</option>
-                  <option value="planning">规划决策</option>
-                  <option value="ops">运维排障</option>
-                  <option value="chat">日常问答</option>
-                </select>
-              </label>
-            </div>
-            <div class="row">
-              <label class="field" style="flex:1.2">模型 <input id="s-model" maxlength="48" value="Gemini 2.5 Pro" placeholder="如 Gemini 2.5 Pro"></label>
-              <label class="field" style="width:92px">费用($) <input id="s-cost" type="number" step="0.01" min="0" placeholder="自动估算"></label>
-              <label class="field" style="width:76px">价值分 <input id="s-rating" type="number" min="1" max="5" value="5"></label>
-            </div>
-            <div class="row">
-              <label class="field" style="flex:1">输入 Token <input id="s-in" type="number" min="0" value="80000"></label>
-              <label class="field" style="flex:1">输出 Token <input id="s-out" type="number" min="0" value="20000"></label>
-              <label class="field" style="flex:1">缓存命中 <input id="s-cache" type="number" min="0" value="40000"></label>
-            </div>
-            <div class="row">
-              <label class="field" style="flex:1">对话轮次 <input id="s-turns" type="number" min="1" value="12"></label>
-              <label class="field" style="flex:1">耗时(分钟) <input id="s-mins" type="number" min="1" value="25"></label>
-              <label class="field" style="flex:1.3">标签 <input id="s-tags" maxlength="80" placeholder="rust,ui"></label>
-            </div>
-            <label class="field">核心产出摘要 <textarea id="s-summary" maxlength="260" placeholder="记录本次会话解决的问题、产出或结论…"></textarea></label>
-            <button id="btn-save-sess" class="primary" type="button">保存会话记录</button>
-          </div>
-        </section>
-
-        <!-- VIEW 3: 模型性价比与预算 -->
-        <section id="view-models" style="display:flex;flex-direction:column;gap:12px" hidden>
-          <div class="card">
-            <h3>各模型效率与 ROI 性价比明细</h3>
             <div style="overflow-x:auto">
               <table>
-                <thead><tr><th>模型名称</th><th>会话数</th><th>总 Token</th><th>缓存命中</th><th>估算费用</th><th>单次均价</th><th>均价 / 1M Tok</th><th>平均价值分</th></tr></thead>
+                <thead>
+                  <tr><th>模型标识</th><th>总 Token</th><th>输入 Token</th><th>输出 Token</th><th>已知占比</th></tr>
+                </thead>
                 <tbody id="model-tbody"></tbody>
               </table>
             </div>
           </div>
+        </section>
+
+        <!-- VIEW 2: 宿主会话列表 -->
+        <section id="view-sessions" class="dash-2" hidden>
+          <div class="card">
+            <div class="between">
+              <h3>宿主真实会话元数据 (<span id="sess-count">0</span>)</h3>
+              <div class="row">
+                <select id="sess-archived-filter">
+                  <option value="all">全部状态</option>
+                  <option value="false">仅活跃会话</option>
+                  <option value="true">仅已归档</option>
+                </select>
+                <button id="btn-sess-prev" type="button" disabled>上一页</button>
+                <button id="btn-sess-next" type="button" disabled>下一页</button>
+              </div>
+            </div>
+            <div id="sess-list" style="display:flex;flex-direction:column;gap:8px;max-height:520px;overflow:auto"></div>
+          </div>
 
           <div class="card">
             <div class="between">
-              <h3>月度个人预算与告警阈值</h3>
-              <span id="alert-badge" class="badge b-emerald">预算健康</span>
+              <h3>会话元数据详情</h3>
+              <span class="badge b-emerald">零正文隐私保护</span>
             </div>
-            <div class="row">
-              <label class="field" style="width:180px">月度费用预算 (USD) <input id="cfg-cost" type="number" min="1" step="1"></label>
-              <label class="field" style="width:180px">月度 Token 预算 (百万 M) <input id="cfg-tok" type="number" min="0.1" step="0.5"></label>
-              <button id="btn-save-cfg" class="primary" type="button" style="align-self:flex-end">保存预算设置</button>
+            <p style="margin:0;font-size:12px;color:var(--fg-muted)">
+              通过 <code>nmas.host.getSession({ sessionId })</code> 仅读取标题、状态、创建时间与归档标记，严禁拉取聊天正文。
+            </p>
+            <div id="sess-detail" class="detail-box">
+              <div style="color:var(--fg-muted);font-size:12.5px">点击左侧任意宿主会话查看详情。</div>
             </div>
-            <p id="budget-tip" style="margin:0;font-size:12.5px;color:var(--fg-muted)"></p>
           </div>
         </section>
 
-        <!-- VIEW 4: AI 自动汇总与复盘 -->
-        <section id="view-sync" class="split-2" hidden>
+        <!-- VIEW 3: 宿主项目列表 -->
+        <section id="view-projects" style="display:flex;flex-direction:column;gap:12px" hidden>
           <div class="card">
-            <h3>🤖 请当前会话 / 助手整理近期会话并导入</h3>
-            <p style="margin:0;font-size:12px;color:var(--fg-muted)">
-              出于 Velai 沙箱隔离机制，插件不直接读取宿主底层数据库。点击下方按钮将向当前会话/个人助手发送结构化采集指令，核对回复后可一键解析并批量并入统计大屏（或在日常聊天中直接让助手调用 <code>usage.session.record</code> 工具自动归档）。
-            </p>
-            <div class="row">
-              <button id="btn-ai-collect" class="primary" type="button">1. 派发近期会话整理指令</button>
-              <button id="btn-ai-review" type="button">生成个人 AI 效率周报</button>
-              <button id="btn-ai-check" type="button" hidden>2. 核对助手回复</button>
+            <div class="between">
+              <h3>宿主工作区项目 (<span id="proj-count">0</span>)</h3>
+              <div class="row">
+                <button id="btn-proj-prev" type="button" disabled>上一页</button>
+                <button id="btn-proj-next" type="button" disabled>下一页</button>
+              </div>
             </div>
-            <p id="ai-status" style="margin:0;font-size:12px;color:var(--fg-muted)"></p>
-            <pre id="ai-preview" class="ai-box" hidden></pre>
-            <div id="ai-actions" class="row" hidden>
-              <button id="btn-ai-ingest" class="primary" type="button" hidden>一键解析 JSON 并导入大屏</button>
-              <button id="btn-ai-save-rev" class="primary" type="button" hidden>保存为最新个人复盘</button>
-              <button id="btn-ai-insert" type="button" hidden>插入输入框</button>
+            <div style="overflow-x:auto">
+              <table>
+                <thead>
+                  <tr><th>项目 ID</th><th>项目名称</th><th>运行状态</th></tr>
+                </thead>
+                <tbody id="proj-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 4: 预算与复盘笔记 -->
+        <section id="view-budget" class="split-2" hidden>
+          <div class="card">
+            <div class="between">
+              <h3>月度 Token 预算与告警阈值</h3>
+              <span id="alert-badge" class="badge b-cyan">等待计算</span>
+            </div>
+            <div class="row">
+              <label class="field" style="flex:1">30 天 Token 预算 (百万 M)
+                <input id="cfg-tok" type="number" min="0.1" max="10000" step="0.5" value="15">
+              </label>
+              <label class="field" style="width:110px">预警线 (%)
+                <input id="cfg-warn" type="number" min="1" max="99" value="70">
+              </label>
+              <label class="field" style="width:110px">严重线 (%)
+                <input id="cfg-crit" type="number" min="2" max="100" value="90">
+              </label>
+            </div>
+            <label class="field">告警策略备注
+              <input id="cfg-note" maxlength="400" placeholder="例如：高频任务优先切换轻量模型以控费">
+            </label>
+            <div class="between">
+              <span id="budget-tip" style="font-size:12px;color:var(--fg-muted)"></span>
+              <button id="btn-save-budget" class="primary" type="button">保存预算规则</button>
             </div>
           </div>
 
           <div class="card">
-            <h3>最新个人使用复盘与效率诊断</h3>
-            <pre id="saved-review" class="ai-box" style="min-height:220px;border-style:solid;border-color:var(--border)"></pre>
+            <div class="between">
+              <h3>新增 / 编辑手动复盘笔记</h3>
+              <button id="btn-note-reset" type="button">+ 新建笔记</button>
+            </div>
+            <div class="row">
+              <label class="field" style="flex:1.4">笔记标题
+                <input id="note-title" maxlength="100" placeholder="例如：本周缓存命中率复盘">
+              </label>
+              <label class="field" style="width:96px">统计窗口
+                <select id="note-range">
+                  <option value="7">近 7 天</option>
+                  <option value="30" selected>近 30 天</option>
+                </select>
+              </label>
+            </div>
+            <label class="field">标签
+              <input id="note-tags" maxlength="120" placeholder="cache,budget,weekly">
+            </label>
+            <label class="field">复盘正文
+              <textarea id="note-body" maxlength="4000" placeholder="记录本周高消耗模型观察、预算调整结论与下周优化行动…"></textarea>
+            </label>
+            <div class="between">
+              <span id="note-edit-hint" style="font-size:11.5px;color:var(--fg-muted)">通过 V2 data.list / data.delete 独立键管理</span>
+              <button id="btn-save-note" class="primary" type="button">保存复盘笔记</button>
+            </div>
+          </div>
+
+          <div class="card" style="grid-column:1 / -1">
+            <div class="between">
+              <h3>历史手动复盘笔记 (<span id="notes-count">0</span>)</h3>
+              <button id="btn-notes-more" type="button" hidden>加载更多笔记</button>
+            </div>
+            <div id="notes-list" style="display:flex;flex-direction:column;gap:8px"></div>
           </div>
         </section>
       </div>
     </div>
   </div>
+
   <script>
     (() => {
       const plugin = globalThis.nmasPlugin;
       const $ = id => document.getElementById(id);
-      const CAT_NAME = { coding: '编程开发', writing: '文档写作', research: '深度研究', planning: '规划决策', ops: '运维排障', chat: '日常问答' };
       const PALETTE = ['#38bdf8', '#34d399', '#f59e0b', '#a78bfa', '#fb7185', '#60a5fa'];
 
-      let state = null, currentRange = '30d', editingId = null, busy = false, workId = null, aiTaskKind = 'collect', latestAiText = '', canReadSel = false, canInsert = false;
+      let state = null;
+      let currentDays = 30;
+      let busy = false;
+      let sessOffset = 0;
+      let sessNextOffset = null;
+      let projOffset = 0;
+      let projNextOffset = null;
+      let editingNoteId = null;
+      let loadedNotes = [];
+      let notesNextCursor = null;
 
       const setStatus = (t, kind = '') => {
         $('status-text').textContent = t;
         $('status').dataset.kind = kind;
         $('rev-tag').textContent = `rev #${state?.revision ?? 0}`;
       };
-      const fmtTok = n => n >= 1_000_000 ? `${(n / 1_000_000).toFixed(2)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n);
-      const today = () => new Date().toISOString().slice(0, 10);
-      const uuid = () => {
-        const b = crypto.getRandomValues(new Uint8Array(16));
-        b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
-        const h = Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
-        return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
+
+      const fmtTok = v => {
+        if (v === null || v === undefined) return '缺测';
+        if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M`;
+        if (v >= 1000) return `${(v / 1000).toFixed(1)}K`;
+        return String(v);
       };
+
+      const fmtRate = v => {
+        if (v === null || v === undefined) return '缺测';
+        const pct = v <= 1 ? v * 100 : v;
+        return `${pct.toFixed(1)}%`;
+      };
+
+      const fmtTps = v => (v === null || v === undefined ? '— tok/s' : `${v.toFixed(1)} tok/s`);
+
       const svgEl = (tag, attrs = {}, text = '') => {
         const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
         for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v));
@@ -378,457 +420,513 @@
 
       function switchView(v) {
         document.querySelectorAll('.nav button').forEach(b => b.classList.toggle('active', b.dataset.view === v));
-        ['dashboard', 'sessions', 'models', 'sync'].forEach(n => { $(`view-${n}`).hidden = n !== v; });
+        ['telemetry', 'sessions', 'projects', 'budget'].forEach(n => { $(`view-${n}`).hidden = n !== v; });
       }
 
-      function renderKpis() {
-        const { kpis, budget } = state;
-        $('k-sessions').textContent = String(kpis.session_count);
-        $('k-streak').textContent = `活跃 ${kpis.active_days} 天 · 连续 ${kpis.streak_days} 天`;
-        $('k-tokens').textContent = fmtTok(kpis.total_tokens);
-        $('k-cache').textContent = `缓存命中率 ${kpis.cache_hit_pct}% (省 ${fmtTok(kpis.cached_tokens)})`;
-        $('k-cost').textContent = `$${kpis.total_cost_usd.toFixed(2)}`;
-        $('k-budget-sub').textContent = `近30天预算占用 ${budget.cost_used_pct}% / $${budget.monthly_cost_usd}`;
-        $('k-mins').textContent = `${(kpis.total_minutes / 60).toFixed(1)}h`;
-        $('k-turns').textContent = `共 ${kpis.total_turns} 轮深度交互`;
-        $('k-rating').textContent = `${kpis.avg_rating.toFixed(1)} ★`;
-        $('k-peak').textContent = kpis.session_count ? `黄金高效时段 ${String(kpis.peak_hour).padStart(2, '0')}:00` : '暂无高峰时段';
+      function alertBadgeMeta(level) {
+        if (level === 'critical') return ['b-rose', '⚠️ 严重超支告警'];
+        if (level === 'warn') return ['b-amber', '⚡ 接近预算预警线'];
+        if (level === 'ok') return ['b-emerald', '✅ 预算健康'];
+        return ['b-cyan', 'ℹ️ 30d 用量缺测'];
+      }
 
-        $('nav-days').textContent = `${kpis.active_days}d`;
-        $('nav-sess').textContent = String(state.sessions.length);
-        $('nav-mod').textContent = String(state.models.length);
+      function renderSummary() {
+        const { windows, budget, as_of, timezone, days } = state;
+        const w5 = windows['5m'], w1 = windows['1h'], wt = windows.today, w7 = windows['7d'], w30 = windows['30d'];
 
-        const cPct = Math.min(100, budget.cost_used_pct);
-        const tPct = Math.min(100, budget.token_used_pct);
-        $('sb-cost-pct').textContent = `${budget.cost_used_pct}%`;
-        $('sb-cost-bar').style.width = `${cPct}%`;
-        $('sb-cost-bar').style.background = budget.cost_used_pct >= 90 ? 'var(--rose)' : budget.cost_used_pct >= 70 ? 'var(--amber)' : 'var(--cyan)';
-        $('sb-tok-pct').textContent = `${budget.token_used_pct}%`;
-        $('sb-tok-bar').style.width = `${tPct}%`;
-        $('sb-tok-bar').style.background = budget.token_used_pct >= 90 ? 'var(--rose)' : budget.token_used_pct >= 70 ? 'var(--amber)' : 'var(--emerald)';
+        $('w-5m-tok').textContent = fmtTok(w5.total_tokens);
+        $('w-5m-tps').textContent = fmtTps(w5.tokens_per_second);
+        $('w-5m-sub').textContent = `输入 ${fmtTok(w5.input_tokens)} / 输出 ${fmtTok(w5.output_tokens)}`;
 
-        $('cfg-cost').value = String(budget.monthly_cost_usd);
+        $('w-1h-tok').textContent = fmtTok(w1.total_tokens);
+        $('w-1h-tps').textContent = fmtTps(w1.tokens_per_second);
+        $('w-1h-sub').textContent = `缓存命中率 ${fmtRate(w1.cache_rate)} (省 ${fmtTok(w1.cached_input_tokens)})`;
+
+        $('w-today-tok').textContent = fmtTok(wt.total_tokens);
+        $('w-today-cache').textContent = `缓存 ${fmtRate(wt.cache_rate)}`;
+        $('w-today-sub').textContent = `输入 ${fmtTok(wt.input_tokens)} / 输出 ${fmtTok(wt.output_tokens)}`;
+
+        $('w-7d-tok').textContent = fmtTok(w7.total_tokens);
+        $('w-7d-cache').textContent = `缓存 ${fmtRate(w7.cache_rate)}`;
+        $('w-7d-sub').textContent = `输入 ${fmtTok(w7.input_tokens)} / 输出 ${fmtTok(w7.output_tokens)}`;
+
+        $('w-30d-tok').textContent = fmtTok(w30.total_tokens);
+        $('w-30d-cache').textContent = `缓存 ${fmtRate(w30.cache_rate)}`;
+        $('w-30d-sub').textContent = budget.token_used_pct === null
+          ? '30d 预算占用：缺测'
+          : `预算占用 ${budget.token_used_pct}% / ${budget.monthly_tokens_m}M`;
+
+        $('sb-tz').textContent = timezone;
+        $('sb-asof').textContent = as_of.replace('T', ' ').slice(0, 19);
+        $('nav-days').textContent = `${days}d`;
+        $('nav-sess').textContent = String(state.sessions.items.length);
+        $('nav-proj').textContent = String(state.projects.items.length);
+        $('nav-notes').textContent = String(loadedNotes.length);
+
+        const pctText = budget.token_used_pct === null ? '缺测' : `${budget.token_used_pct}%`;
+        const barW = budget.token_used_pct === null ? 0 : Math.min(100, budget.token_used_pct);
+        $('sb-tok-pct').textContent = pctText;
+        $('sb-tok-bar').style.width = `${barW}%`;
+        $('sb-tok-bar').style.background =
+          budget.alert_level === 'critical' ? 'var(--rose)' : budget.alert_level === 'warn' ? 'var(--amber)' : 'var(--emerald)';
+        $('sb-used-text').textContent = `已用 ${fmtTok(budget.used_tokens_30d)}`;
+        $('sb-quota-text').textContent = `目标 ${budget.monthly_tokens_m}M`;
+
+        const [cls, label] = alertBadgeMeta(budget.alert_level);
+        $('top-alert-badge').className = `badge ${cls}`;
+        $('top-alert-badge').textContent = label;
+        $('alert-badge').className = `badge ${cls}`;
+        $('alert-badge').textContent = label;
+
         $('cfg-tok').value = String(budget.monthly_tokens_m);
-        const badge = $('alert-badge');
-        badge.className = `badge ${budget.alert_level === 'critical' ? 'b-rose' : budget.alert_level === 'warn' ? 'b-amber' : 'b-emerald'}`;
-        badge.textContent = budget.alert_level === 'critical' ? '⚠️ 即将超支' : budget.alert_level === 'warn' ? '⚡ 接近警戒线' : '✅ 预算健康';
-        const remainUsd = Math.max(0, budget.monthly_cost_usd - (budget.monthly_cost_usd * budget.cost_used_pct / 100));
-        $('budget-tip').textContent = `近 30 天费用预算剩余约 $${remainUsd.toFixed(2)}，Token 配额已消耗 ${budget.token_used_pct}%（目标上限 ${budget.monthly_tokens_m}M）。`;
-        $('saved-review').textContent = state.latest_review || '暂无已保存的复盘报告。可在左侧点击「生成个人 AI 效率周报」或加载演示数据。';
+        $('cfg-warn').value = String(budget.warn_pct);
+        $('cfg-crit').value = String(budget.critical_pct);
+        $('cfg-note').value = budget.alert_note || '';
+        $('budget-tip').textContent = budget.token_used_pct === null
+          ? '当前宿主 30 天用量字段为 null（缺测），待有遥测采样后自动计算告警等级。'
+          : `30 天已消耗 ${fmtTok(budget.used_tokens_30d)}（占配额 ${budget.token_used_pct}%），预警 ${budget.warn_pct}% / 严重 ${budget.critical_pct}%。`;
+        $('models-trunc-badge').hidden = !state.models_truncated;
       }
 
       function renderDailyChart() {
-        const svg = $('daily-svg'); svg.replaceChildren();
-        const daily = state.daily;
-        const W = 660, H = 248, padL = 50, padR = 46, padT = 22, padB = 34;
+        const svg = $('daily-svg');
+        svg.replaceChildren();
+        const daily = state.by_day || [];
+        const W = 660, H = 252, padL = 54, padR = 16, padT = 24, padB = 34;
         const innerW = W - padL - padR, innerH = H - padT - padB;
         if (!daily.length) {
-          svg.appendChild(svgEl('text', { x: W / 2, y: H / 2, 'text-anchor': 'middle', fill: '#7c8da8', 'font-size': 13 }, '暂无用量数据，点击左侧「✨ 加载 30 天演示大屏」或录入会话'));
+          svg.appendChild(svgEl('text', { x: W / 2, y: H / 2, 'text-anchor': 'middle', fill: '#7c8da8', 'font-size': 13 }, '宿主暂无每日用量采样记录'));
           return;
         }
-        const maxTok = Math.max(1000, ...daily.map(d => d.tokens));
-        const maxCost = Math.max(0.1, ...daily.map(d => d.cost_usd));
+        const knownTotals = daily.map(d => d.total_tokens).filter(v => v !== null);
+        const maxTok = Math.max(1000, ...knownTotals);
         for (let i = 0; i <= 4; i++) {
           const y = padT + (i / 4) * innerH;
           const tv = maxTok * (1 - i / 4);
-          const cv = maxCost * (1 - i / 4);
           svg.appendChild(svgEl('line', { x1: padL, y1: y, x2: W - padR, y2: y, stroke: 'rgba(148,163,184,0.13)' }));
           svg.appendChild(svgEl('text', { x: padL - 6, y: y + 4, 'text-anchor': 'end', fill: '#7c8da8', 'font-size': 10 }, fmtTok(Math.round(tv))));
-          svg.appendChild(svgEl('text', { x: W - padR + 6, y: y + 4, fill: '#f59e0b', 'font-size': 10 }, `$${cv.toFixed(2)}`));
         }
 
         const step = innerW / daily.length;
-        const barW = Math.min(28, Math.max(8, step * 0.56));
-        const linePts = [];
-
+        const barW = Math.min(28, Math.max(7, step * 0.58));
         daily.forEach((d, idx) => {
           const cx = padL + (idx + 0.5) * step;
-          const totalH = (d.tokens / maxTok) * innerH;
-          const cacheH = (Math.min(d.cached, d.tokens) / maxTok) * innerH;
-          const yTop = padT + innerH - totalH;
-          svg.appendChild(svgEl('rect', { x: cx - barW / 2, y: yTop, width: barW, height: Math.max(2, totalH), rx: 3, fill: '#38bdf8', opacity: 0.78 }));
-          if (cacheH > 1) {
-            svg.appendChild(svgEl('rect', { x: cx - barW / 2, y: padT + innerH - cacheH, width: barW, height: cacheH, rx: 2, fill: '#34d399', opacity: 0.9 }));
+          if (d.total_tokens === null) {
+            svg.appendChild(svgEl('rect', {
+              x: cx - barW / 2, y: padT + innerH - 18, width: barW, height: 18, rx: 3,
+              fill: 'none', stroke: '#64748b', 'stroke-dasharray': '3 2', opacity: 0.75,
+            }));
+          } else {
+            const totalH = (d.total_tokens / maxTok) * innerH;
+            const outTok = d.output_tokens ?? 0;
+            const outH = d.total_tokens > 0 ? Math.min(totalH, (outTok / maxTok) * innerH) : 0;
+            const yTop = padT + innerH - totalH;
+            svg.appendChild(svgEl('rect', {
+              x: cx - barW / 2, y: yTop, width: barW, height: Math.max(2, totalH), rx: 3,
+              fill: '#38bdf8', opacity: 0.8,
+            }));
+            if (outH > 1) {
+              svg.appendChild(svgEl('rect', {
+                x: cx - barW / 2, y: padT + innerH - outH, width: barW, height: outH, rx: 2,
+                fill: '#a78bfa', opacity: 0.92,
+              }));
+            }
           }
-          const cy = padT + innerH - (d.cost_usd / maxCost) * innerH;
-          linePts.push({ x: cx, y: cy, d });
           if (daily.length <= 10 || idx % Math.ceil(daily.length / 8) === 0 || idx === daily.length - 1) {
             svg.appendChild(svgEl('text', { x: cx, y: H - 10, 'text-anchor': 'middle', fill: '#7c8da8', 'font-size': 10 }, d.date.slice(5)));
           }
           const hit = svgEl('rect', { x: cx - step / 2, y: padT, width: step, height: innerH, fill: 'transparent', style: 'cursor:crosshair' });
           hit.addEventListener('mouseenter', () => {
-            $('daily-hover').textContent = `${d.date} · ${d.sessions} 会话 · ${fmtTok(d.tokens)} Tok (缓存 ${fmtTok(d.cached)}) · $${d.cost_usd.toFixed(2)} · ${d.minutes}m`;
+            $('daily-hover').textContent = `${d.date} · 总计 ${fmtTok(d.total_tokens)} · 输入 ${fmtTok(d.input_tokens)} · 输出 ${fmtTok(d.output_tokens)}`;
           });
           svg.appendChild(hit);
         });
-
-        const pathD = linePts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
-        svg.appendChild(svgEl('path', { d: pathD, fill: 'none', stroke: '#f59e0b', 'stroke-width': 2.2, 'pointer-events': 'none' }));
-        for (const p of linePts) {
-          svg.appendChild(svgEl('circle', { cx: p.x, cy: p.y, r: 3.3, fill: '#060a12', stroke: '#f59e0b', 'stroke-width': 2, 'pointer-events': 'none' }));
-        }
-        svg.appendChild(svgEl('text', { x: padL, y: 13, fill: '#38bdf8', 'font-size': 10.5 }, '■ 总 Token'));
-        svg.appendChild(svgEl('text', { x: padL + 72, y: 13, fill: '#34d399', 'font-size': 10.5 }, '■ 缓存命中'));
-        svg.appendChild(svgEl('text', { x: padL + 148, y: 13, fill: '#f59e0b', 'font-size': 10.5 }, '● 费用 ($USD)'));
+        svg.appendChild(svgEl('text', { x: padL, y: 14, fill: '#38bdf8', 'font-size': 10.5 }, '■ 总 Token'));
+        svg.appendChild(svgEl('text', { x: padL + 72, y: 14, fill: '#a78bfa', 'font-size': 10.5 }, '■ 输出 Token'));
+        svg.appendChild(svgEl('text', { x: padL + 150, y: 14, fill: '#64748b', 'font-size': 10.5 }, '□ 虚线=缺测(null)'));
       }
 
-      function renderHourChart() {
-        const svg = $('hour-svg'); svg.replaceChildren();
-        const hours = state.hours || new Array(24).fill(0);
-        const W = 420, H = 248, padL = 26, padR = 14, padT = 20, padB = 32;
-        const maxV = Math.max(1, ...hours);
-        const innerW = W - padL - padR, innerH = H - padT - padB;
-        const step = innerW / 24;
-        const peak = state.kpis.peak_hour;
-        hours.forEach((cnt, h) => {
-          const bh = (cnt / maxV) * innerH;
-          const x = padL + h * step + 2;
-          const isPeak = cnt > 0 && h === peak;
-          svg.appendChild(svgEl('rect', {
-            x, y: padT + innerH - bh, width: Math.max(6, step - 4), height: Math.max(2, bh), rx: 3,
-            fill: isPeak ? '#f59e0b' : cnt > 0 ? '#a78bfa' : 'rgba(148,163,184,0.14)',
-            opacity: isPeak ? 0.95 : 0.78,
-          }));
-          if (h % 4 === 0 || h === 23) {
-            svg.appendChild(svgEl('text', { x: x + (step - 4) / 2, y: H - 10, 'text-anchor': 'middle', fill: '#7c8da8', 'font-size': 10 }, `${h}h`));
-          }
-        });
-        svg.appendChild(svgEl('text', { x: padL, y: 13, fill: '#a78bfa', 'font-size': 10.5 }, '■ 活跃时段'));
-        svg.appendChild(svgEl('text', { x: padL + 78, y: 13, fill: '#f59e0b', 'font-size': 10.5 }, `■ 峰值 ${String(peak).padStart(2, '0')}:00`));
-      }
-
-      function renderModelDonut() {
-        const svg = $('model-svg'); svg.replaceChildren();
-        const list = state.models;
+      function renderModels() {
+        const svg = $('model-svg');
+        svg.replaceChildren();
+        const list = state.by_model || [];
+        const tb = $('model-tbody');
+        tb.replaceChildren();
         if (!list.length) {
-          svg.appendChild(svgEl('text', { x: 230, y: 108, 'text-anchor': 'middle', fill: '#7c8da8', 'font-size': 12.5 }, '暂无模型用量'));
+          svg.appendChild(svgEl('text', { x: 215, y: 126, 'text-anchor': 'middle', fill: '#7c8da8', 'font-size': 12.5 }, '暂无模型遥测分布'));
+          const tr = document.createElement('tr');
+          const td = document.createElement('td');
+          td.colSpan = 5; td.style.color = 'var(--fg-muted)'; td.textContent = '当前窗口内暂无模型用量数据。';
+          tr.appendChild(td); tb.appendChild(tr);
           return;
         }
-        const total = list.reduce((a, b) => a + b.tokens, 0) || 1;
-        const cx = 104, cy = 108, r = 68;
-        let angle = -Math.PI / 2;
-        list.slice(0, 6).forEach((m, idx) => {
-          const frac = m.tokens / total;
-          const next = angle + frac * Math.PI * 2;
-          const col = PALETTE[idx % PALETTE.length];
-          if (frac > 0.999) {
-            svg.appendChild(svgEl('circle', { cx, cy, r, fill: 'none', stroke: col, 'stroke-width': 24 }));
-          } else {
-            const x1 = cx + Math.cos(angle) * r, y1 = cy + Math.sin(angle) * r;
-            const x2 = cx + Math.cos(next) * r, y2 = cy + Math.sin(next) * r;
-            svg.appendChild(svgEl('path', { d: `M ${x1} ${y1} A ${r} ${r} 0 ${frac > 0.5 ? 1 : 0} 1 ${x2} ${y2}`, fill: 'none', stroke: col, 'stroke-width': 24 }));
-          }
-          const ly = 34 + idx * 30;
-          svg.appendChild(svgEl('rect', { x: 204, y: ly - 9, width: 10, height: 10, rx: 2, fill: col }));
-          svg.appendChild(svgEl('text', { x: 222, y: ly, fill: '#cbd5e1', 'font-size': 11.5 }, `${m.model.slice(0, 18)}  ${m.share_pct}% ($${m.cost_usd.toFixed(2)})`));
-          angle = next;
-        });
-        svg.appendChild(svgEl('text', { x: cx, y: cy - 3, 'text-anchor': 'middle', fill: '#7c8da8', 'font-size': 10.5 }, '总用量'));
-        svg.appendChild(svgEl('text', { x: cx, y: cy + 15, 'text-anchor': 'middle', fill: '#eaf1fc', 'font-size': 13, 'font-weight': 700 }, fmtTok(total)));
-      }
-
-      function renderCatBars() {
-        const svg = $('cat-svg'); svg.replaceChildren();
-        const cats = state.categories;
-        if (!cats.length) {
-          svg.appendChild(svgEl('text', { x: 230, y: 108, 'text-anchor': 'middle', fill: '#7c8da8', 'font-size': 12.5 }, '暂无场景分类数据'));
-          return;
+        const known = list.filter(m => m.total_tokens !== null && m.total_tokens > 0);
+        const total = known.reduce((a, b) => a + b.total_tokens, 0);
+        if (total > 0) {
+          const cx = 96, cy = 126, r = 64;
+          let angle = -Math.PI / 2;
+          known.slice(0, 6).forEach((m, idx) => {
+            const frac = m.total_tokens / total;
+            const next = angle + frac * Math.PI * 2;
+            const col = PALETTE[idx % PALETTE.length];
+            if (frac > 0.999) {
+              svg.appendChild(svgEl('circle', { cx, cy, r, fill: 'none', stroke: col, 'stroke-width': 22 }));
+            } else {
+              const x1 = cx + Math.cos(angle) * r, y1 = cy + Math.sin(angle) * r;
+              const x2 = cx + Math.cos(next) * r, y2 = cy + Math.sin(next) * r;
+              svg.appendChild(svgEl('path', {
+                d: `M ${x1} ${y1} A ${r} ${r} 0 ${frac > 0.5 ? 1 : 0} 1 ${x2} ${y2}`,
+                fill: 'none', stroke: col, 'stroke-width': 22,
+              }));
+            }
+            const ly = 42 + idx * 32;
+            svg.appendChild(svgEl('rect', { x: 186, y: ly - 9, width: 10, height: 10, rx: 2, fill: col }));
+            svg.appendChild(svgEl('text', { x: 204, y: ly, fill: '#cbd5e1', 'font-size': 11.5 }, `${m.model.slice(0, 20)} (${m.share_pct ?? '—'}%)`));
+            angle = next;
+          });
+          svg.appendChild(svgEl('text', { x: cx, y: cy - 3, 'text-anchor': 'middle', fill: '#7c8da8', 'font-size': 10.5 }, '已知总计'));
+          svg.appendChild(svgEl('text', { x: cx, y: cy + 15, 'text-anchor': 'middle', fill: '#eaf1fc', 'font-size': 13, 'font-weight': 700 }, fmtTok(total)));
+        } else {
+          svg.appendChild(svgEl('text', { x: 215, y: 126, 'text-anchor': 'middle', fill: '#7c8da8', 'font-size': 12.5 }, '模型 Token 字段均为缺测 (null)'));
         }
-        const maxTok = Math.max(1, ...cats.map(c => c.tokens));
-        cats.forEach((c, idx) => {
-          const y = 24 + idx * 31;
-          const bw = Math.max(6, (c.tokens / maxTok) * 240);
-          const col = PALETTE[idx % PALETTE.length];
-          svg.appendChild(svgEl('text', { x: 14, y: y + 12, fill: '#cbd5e1', 'font-size': 12 }, CAT_NAME[c.category] || c.category));
-          svg.appendChild(svgEl('rect', { x: 86, y, width: 240, height: 16, rx: 4, fill: 'rgba(148,163,184,0.1)' }));
-          svg.appendChild(svgEl('rect', { x: 86, y, width: bw, height: 16, rx: 4, fill: col, opacity: 0.85 }));
-          svg.appendChild(svgEl('text', { x: 334, y: y + 12, fill: '#94a3b8', 'font-size': 11 }, `${fmtTok(c.tokens)} · ${c.sessions}次 · ${c.avg_rating}★`));
-        });
-      }
 
-      function renderSessions() {
-        const cat = $('f-cat-filter').value;
-        const q = $('f-search').value.trim().toLowerCase();
-        const shown = state.sessions.filter(s => (!cat || s.category === cat) && (!q || `${s.title} ${s.model} ${s.summary} ${s.tags}`.toLowerCase().includes(q)));
-        $('sess-shown').textContent = String(shown.length);
-        const box = $('sess-list'); box.replaceChildren();
-        if (!shown.length) {
-          const p = document.createElement('p'); p.style.color = 'var(--fg-muted)'; p.textContent = '当前筛选下没有会话记录。'; box.appendChild(p); return;
-        }
-        for (const s of shown) {
-          const card = document.createElement('article'); card.className = 'sess-card';
-          const top = document.createElement('div'); top.className = 'between';
-          const title = document.createElement('strong'); title.textContent = s.title;
-          const badges = document.createElement('div'); badges.className = 'row';
-          const b1 = document.createElement('span'); b1.className = 'badge b-cyan'; b1.textContent = s.model;
-          const b2 = document.createElement('span'); b2.className = 'badge b-emerald'; b2.textContent = CAT_NAME[s.category] || s.category;
-          const b3 = document.createElement('span'); b3.className = 'badge b-amber'; b3.textContent = `${'★'.repeat(s.rating)}`;
-          badges.append(b1, b2, b3);
-          top.append(title, badges);
-
-          const meta = document.createElement('div'); meta.className = 'mono'; meta.style.cssText = 'font-size:11.5px;color:var(--fg-muted)';
-          meta.textContent = `${s.date} ${String(s.hour).padStart(2, '0')}:00 · 入 ${fmtTok(s.input_tokens)} / 出 ${fmtTok(s.output_tokens)} / 缓存 ${fmtTok(s.cached_tokens)} · $${s.cost_usd.toFixed(3)} · ${s.turns}轮 / ${s.minutes}分钟`;
-
-          const sum = document.createElement('div'); sum.style.fontSize = '12.5px'; sum.textContent = s.summary || '（无摘要）';
-          const foot = document.createElement('div'); foot.className = 'between';
-          const tag = document.createElement('span'); tag.style.cssText = 'font-size:11.5px;color:var(--fg-muted)'; tag.textContent = s.tags ? `# ${s.tags}` : '';
-          const acts = document.createElement('div'); acts.className = 'row';
-          const edit = document.createElement('button'); edit.type = 'button'; edit.textContent = '编辑';
-          edit.addEventListener('click', () => fillForm(s));
-          const del = document.createElement('button'); del.type = 'button'; del.className = 'danger'; del.textContent = '删除';
-          del.addEventListener('click', () => deleteSession(s.id));
-          acts.append(edit, del);
-          foot.append(tag, acts);
-          card.append(top, meta, sum, foot);
-          box.appendChild(card);
-        }
-      }
-
-      function renderModelTable() {
-        const tb = $('model-tbody'); tb.replaceChildren();
-        for (const m of state.models) {
-          const perSess = m.sessions ? m.cost_usd / m.sessions : 0;
-          const perM = m.tokens ? (m.cost_usd / m.tokens) * 1_000_000 : 0;
+        for (const m of list) {
           const tr = document.createElement('tr');
           for (const [val, cls] of [
-            [m.model, ''], [String(m.sessions), 'mono'], [fmtTok(m.tokens), 'mono'], [`${m.cache_pct}%`, 'mono'],
-            [`$${m.cost_usd.toFixed(2)}`, 'mono'], [`$${perSess.toFixed(3)}`, 'mono'], [`$${perM.toFixed(2)}`, 'mono'], [`${m.avg_rating} ★`, 'mono'],
+            [m.model, 'mono'],
+            [fmtTok(m.total_tokens), 'mono'],
+            [fmtTok(m.input_tokens), 'mono'],
+            [fmtTok(m.output_tokens), 'mono'],
+            [m.share_pct === null ? '缺测' : `${m.share_pct}%`, 'mono'],
           ]) {
-            const td = document.createElement('td'); if (cls) td.className = cls; td.textContent = val; tr.appendChild(td);
+            const td = document.createElement('td');
+            if (cls) td.className = cls;
+            td.textContent = val;
+            tr.appendChild(td);
           }
           tb.appendChild(tr);
         }
       }
 
-      function fillForm(s) {
-        editingId = s?.id ?? null;
-        $('form-caption').textContent = s ? `编辑会话 · ${s.date}` : '录入新会话用量';
-        $('s-title').value = s?.title ?? '';
-        $('s-date').value = s?.date ?? today();
-        $('s-hour').value = String(s?.hour ?? new Date().getHours());
-        $('s-cat').value = s?.category ?? 'coding';
-        $('s-model').value = s?.model ?? 'Gemini 2.5 Pro';
-        $('s-cost').value = s ? String(s.cost_usd) : '';
-        $('s-rating').value = String(s?.rating ?? 5);
-        $('s-in').value = String(s?.input_tokens ?? 80000);
-        $('s-out').value = String(s?.output_tokens ?? 20000);
-        $('s-cache').value = String(s?.cached_tokens ?? 40000);
-        $('s-turns').value = String(s?.turns ?? 12);
-        $('s-mins').value = String(s?.minutes ?? 25);
-        $('s-tags').value = s?.tags ?? '';
-        $('s-summary').value = s?.summary ?? '';
-      }
-
-      async function load() {
-        if (typeof plugin?.action !== 'function') { setStatus('请在 Velai Desktop 中打开个人会话与用量统计大屏。', 'error'); return; }
-        try {
-          state = await plugin.action('usage.dashboard', { range: currentRange });
-          renderKpis();
-          renderDailyChart();
-          renderHourChart();
-          renderModelDonut();
-          renderCatBars();
-          renderSessions();
-          renderModelTable();
-          setStatus(`统计大屏已同步 · 时间窗 ${currentRange} · 共 ${state.kpis.session_count} 条会话`);
-        } catch (e) { setStatus(`读取失败：${e?.message}`, 'error'); }
-      }
-
-      async function deleteSession(id) {
-        if (busy) return; busy = true;
-        try {
-          const r = await plugin.action('usage.session.delete', { expected_revision: state.revision, id });
-          if (r.status === 'deleted') { await load(); setStatus('会话记录已删除。', 'ok'); }
-          else setStatus(`删除未完成：${r.status}`, 'error');
-        } catch (e) { setStatus(`删除失败：${e?.message}`, 'error'); }
-        finally { busy = false; }
-      }
-
-      function extractJsonArray(text) {
-        const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-        const raw = fenced ? fenced[1].trim() : text.trim();
-        const start = raw.indexOf('['), end = raw.lastIndexOf(']');
-        if (start === -1 || end === -1 || end <= start) return null;
-        try {
-          const parsed = JSON.parse(raw.slice(start, end + 1));
-          return Array.isArray(parsed) ? parsed : null;
-        } catch { return null; }
-      }
-
-      async function dispatchAi(kind) {
-        aiTaskKind = kind;
-        let prompt;
-        if (kind === 'collect') {
-          prompt = '请整理我近期最有代表性的 3 到 8 个会话及大致使用情况，仅输出一个合法的 JSON 数组（可用 ```json 包裹），每项包含字段：date(YYYY-MM-DD), hour(0-23), title, category(coding/writing/research/planning/ops/chat), model, input_tokens, output_tokens, cached_tokens, turns, minutes, rating(1-5), summary, tags。';
-        } else {
-          const k = state.kpis;
-          const topModels = state.models.slice(0, 4).map(m => `${m.model}:${m.share_pct}%($${m.cost_usd})`).join(', ');
-          const topCats = state.categories.slice(0, 4).map(c => `${CAT_NAME[c.category]}:${c.sessions}次/${c.avg_rating}★`).join(', ');
-          prompt = `请基于我近期个人 AI 使用统计数据，输出一份精炼、有洞察的中文个人复盘报告（包含：1. 效率亮点；2. 模型成本与缓存优化建议；3. 下周工作流改进建议）：\n区间=${state.range}，会话数=${k.session_count}，总Token=${k.total_tokens}，缓存命中=${k.cache_hit_pct}%，费用=$${k.total_cost_usd}，预算占用=${state.budget.cost_used_pct}%，高峰时段=${k.peak_hour}:00。\n模型分布：${topModels}\n场景分布：${topCats}`;
+      function renderSessions(page) {
+        const items = page.items || [];
+        sessNextOffset = page.next_offset;
+        $('sess-count').textContent = String(items.length);
+        $('nav-sess').textContent = String(items.length);
+        $('btn-sess-prev').disabled = sessOffset <= 0;
+        $('btn-sess-next').disabled = sessNextOffset === null;
+        const box = $('sess-list');
+        box.replaceChildren();
+        if (!items.length) {
+          const p = document.createElement('p');
+          p.style.color = 'var(--fg-muted)';
+          p.textContent = '当前筛选条件下没有可见的宿主会话。';
+          box.appendChild(p);
+          return;
         }
-        workId = uuid();
-        latestAiText = '';
-        switchView('sync');
-        $('btn-ai-check').hidden = false;
-        $('ai-preview').hidden = true;
-        $('ai-actions').hidden = true;
-        $('ai-status').textContent = kind === 'collect' ? '已向当前会话派发整理指令，请等待回复…' : '正在请当前会话生成个人效率复盘…';
+        for (const s of items) {
+          const card = document.createElement('article');
+          card.className = 'item-card clickable';
+          const top = document.createElement('div');
+          top.className = 'between';
+          const title = document.createElement('strong');
+          title.textContent = s.title || '（无标题会话）';
+          const badges = document.createElement('div');
+          badges.className = 'row';
+          const b1 = document.createElement('span');
+          b1.className = `badge ${s.is_archived ? 'b-amber' : 'b-emerald'}`;
+          b1.textContent = s.is_archived ? '已归档' : '活跃';
+          const b2 = document.createElement('span');
+          b2.className = 'badge b-cyan';
+          b2.textContent = s.status || 'unknown';
+          badges.append(b1, b2);
+          top.append(title, badges);
+
+          const meta = document.createElement('div');
+          meta.className = 'mono';
+          meta.style.cssText = 'font-size:11.5px;color:var(--fg-muted)';
+          meta.textContent = `ID: ${s.id} · 创建于 ${s.created_at || '缺测'}`;
+
+          card.append(top, meta);
+          card.addEventListener('click', () => inspectSession(s.id));
+          box.appendChild(card);
+        }
+      }
+
+      async function inspectSession(sessionId) {
+        const box = $('sess-detail');
+        box.textContent = '正在读取会话元数据…';
         try {
-          await plugin.action('session.turn.request', { prompt: prompt.slice(0, 2000), work_id: workId });
-          $('ai-status').textContent = '已派发给当前会话，待回复完成后点击「2. 核对助手回复」。';
+          const res = await plugin.action('usage.host.session_detail', { session_id: sessionId });
+          box.replaceChildren();
+          if (!res.found || !res.session) {
+            box.textContent = '未找到可见的会话元数据（可能已被删除或无访问权限）。';
+            return;
+          }
+          const s = res.session;
+          for (const [k, v] of [
+            ['会话 ID', s.id],
+            ['标题', s.title ?? '（缺测 / 无标题）'],
+            ['状态', s.status ?? '缺测'],
+            ['创建时间', s.created_at ?? '缺测'],
+            ['是否已归档', s.is_archived ? '是 (archived)' : '否 (active)'],
+          ]) {
+            const row = document.createElement('div');
+            row.className = 'kv';
+            const lk = document.createElement('span'); lk.style.color = 'var(--fg-muted)'; lk.textContent = k;
+            const lv = document.createElement('strong'); lv.className = 'mono'; lv.textContent = String(v);
+            row.append(lk, lv);
+            box.appendChild(row);
+          }
         } catch (e) {
-          $('ai-status').textContent = e?.message === 'cancelled' ? '请先在宿主中选择目标会话再发送。' : `派发未确认（${e?.message || 'unknown'}）`;
+          box.textContent = `读取详情失败：${e?.message || e}`;
+        }
+      }
+
+      function renderProjects(page) {
+        const items = page.items || [];
+        projNextOffset = page.next_offset;
+        $('proj-count').textContent = String(items.length);
+        $('nav-proj').textContent = String(items.length);
+        $('btn-proj-prev').disabled = projOffset <= 0;
+        $('btn-proj-next').disabled = projNextOffset === null;
+        const tb = $('proj-tbody');
+        tb.replaceChildren();
+        if (!items.length) {
+          const tr = document.createElement('tr');
+          const td = document.createElement('td');
+          td.colSpan = 3; td.style.color = 'var(--fg-muted)'; td.textContent = '宿主暂无可见项目。';
+          tr.appendChild(td); tb.appendChild(tr);
+          return;
+        }
+        for (const p of items) {
+          const tr = document.createElement('tr');
+          const td1 = document.createElement('td'); td1.className = 'mono'; td1.textContent = p.id;
+          const td2 = document.createElement('td'); td2.textContent = p.name || '（未命名项目）';
+          const td3 = document.createElement('td');
+          const b = document.createElement('span'); b.className = 'badge b-violet'; b.textContent = p.status || 'unknown';
+          td3.appendChild(b);
+          tr.append(td1, td2, td3);
+          tb.appendChild(tr);
+        }
+      }
+
+      function renderNotes() {
+        $('notes-count').textContent = String(loadedNotes.length);
+        $('nav-notes').textContent = String(loadedNotes.length);
+        $('btn-notes-more').hidden = !notesNextCursor;
+        const box = $('notes-list');
+        box.replaceChildren();
+        if (!loadedNotes.length) {
+          const p = document.createElement('p');
+          p.style.color = 'var(--fg-muted)';
+          p.textContent = '暂无手动复盘笔记，可在上方新建保存。';
+          box.appendChild(p);
+          return;
+        }
+        for (const n of loadedNotes) {
+          const card = document.createElement('article');
+          card.className = 'item-card';
+          const top = document.createElement('div');
+          top.className = 'between';
+          const title = document.createElement('strong');
+          title.textContent = n.title;
+          const right = document.createElement('div');
+          right.className = 'row';
+          const b = document.createElement('span');
+          b.className = 'badge b-cyan';
+          b.textContent = `近 ${n.range_days} 天`;
+          const editBtn = document.createElement('button');
+          editBtn.type = 'button'; editBtn.textContent = '编辑';
+          editBtn.addEventListener('click', () => {
+            editingNoteId = n.id;
+            $('note-title').value = n.title;
+            $('note-range').value = String(n.range_days);
+            $('note-tags').value = n.tags || '';
+            $('note-body').value = n.body;
+            $('note-edit-hint').textContent = `正在编辑键：${n.key}`;
+          });
+          const delBtn = document.createElement('button');
+          delBtn.type = 'button'; delBtn.className = 'danger'; delBtn.textContent = '删除';
+          delBtn.addEventListener('click', () => deleteNote(n.key));
+          right.append(b, editBtn, delBtn);
+          top.append(title, right);
+
+          const body = document.createElement('div');
+          body.style.cssText = 'white-space:pre-wrap;font-size:12.5px';
+          body.textContent = n.body;
+
+          const foot = document.createElement('div');
+          foot.className = 'between mono';
+          foot.style.cssText = 'font-size:11px;color:var(--fg-muted)';
+          foot.textContent = `${n.key}${n.tags ? ` · #${n.tags}` : ''} · 更新于 ${(n.updated_at || '').replace('T', ' ').slice(0, 19)}`;
+          card.append(top, body, foot);
+          box.appendChild(card);
+        }
+      }
+
+      async function loadDashboard() {
+        if (typeof plugin?.action !== 'function') {
+          setStatus('请在 Velai Desktop 中打开个人会话与用量统计大屏。', 'error');
+          return;
+        }
+        try {
+          state = await plugin.action('usage.dashboard', { days: currentDays });
+          loadedNotes = state.notes.items || [];
+          notesNextCursor = state.notes.next_cursor;
+          sessOffset = 0;
+          projOffset = 0;
+          renderSummary();
+          renderDailyChart();
+          renderModels();
+          renderSessions(state.sessions);
+          renderProjects(state.projects);
+          renderNotes();
+          setStatus(`已同步宿主实时遥测（近 ${currentDays} 天）· ${state.by_model.length} 个模型 · ${state.sessions.items.length} 条会话`, 'ok');
+        } catch (e) {
+          setStatus(`读取宿主遥测失败：${e?.message || e}`, 'error');
+        }
+      }
+
+      async function loadSessionsPage(offset) {
+        try {
+          const rawFilter = $('sess-archived-filter').value;
+          const payload = { offset, limit: 20 };
+          if (rawFilter === 'true') payload.is_archived = true;
+          else if (rawFilter === 'false') payload.is_archived = false;
+          const page = await plugin.action('usage.host.sessions', payload);
+          sessOffset = offset;
+          renderSessions(page);
+        } catch (e) {
+          setStatus(`分页读取会话失败：${e?.message || e}`, 'error');
+        }
+      }
+
+      async function loadProjectsPage(offset) {
+        try {
+          const page = await plugin.action('usage.host.projects', { offset, limit: 20 });
+          projOffset = offset;
+          renderProjects(page);
+        } catch (e) {
+          setStatus(`分页读取项目失败：${e?.message || e}`, 'error');
+        }
+      }
+
+      async function deleteNote(key) {
+        if (busy || !state) return;
+        busy = true;
+        try {
+          const res = await plugin.action('usage.note.delete', { expected_revision: state.revision, key });
+          if (res.status === 'deleted') {
+            await loadDashboard();
+            setStatus(`已删除复盘笔记 ${key}`, 'ok');
+          } else {
+            setStatus(`删除未完成：${res.status}`, 'error');
+          }
+        } catch (e) {
+          setStatus(`删除失败：${e?.message || e}`, 'error');
+        } finally {
+          busy = false;
         }
       }
 
       document.querySelectorAll('.nav button').forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
       document.querySelectorAll('.range-pills button').forEach(b => b.addEventListener('click', () => {
-        currentRange = b.dataset.range;
+        currentDays = Number(b.dataset.days) === 7 ? 7 : 30;
         document.querySelectorAll('.range-pills button').forEach(x => x.classList.toggle('active', x === b));
-        void load();
+        void loadDashboard();
       }));
+
       $('btn-theme').addEventListener('click', () => {
         document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
       });
-      $('btn-refresh').addEventListener('click', load);
-      $('f-cat-filter').addEventListener('change', renderSessions);
-      $('f-search').addEventListener('input', renderSessions);
-      $('btn-new-sess').addEventListener('click', () => { fillForm(null); $('s-title').focus(); });
-      $('btn-quick-sync').addEventListener('click', () => dispatchAi('collect'));
-      $('btn-ai-collect').addEventListener('click', () => dispatchAi('collect'));
-      $('btn-ai-review').addEventListener('click', () => dispatchAi('review'));
+      $('btn-refresh').addEventListener('click', () => void loadDashboard());
 
-      $('btn-demo').addEventListener('click', async () => {
-        if (busy) return; busy = true;
-        setStatus('正在装配 30 天全景个人用量演示数据…');
-        try {
-          const r = await plugin.action('usage.seed_demo', { expected_revision: state?.revision ?? 0 });
-          if (r.status === 'seeded') { await load(); setStatus('已加载 18 条跨模型/跨场景会话与 30 天用量大屏！', 'ok'); }
-          else setStatus(`冲突：${r.status}`, 'error');
-        } catch (e) { setStatus(`加载失败：${e?.message}`, 'error'); }
-        finally { busy = false; }
-      });
+      $('sess-archived-filter').addEventListener('change', () => void loadSessionsPage(0));
+      $('btn-sess-prev').addEventListener('click', () => void loadSessionsPage(Math.max(0, sessOffset - 20)));
+      $('btn-sess-next').addEventListener('click', () => { if (sessNextOffset !== null) void loadSessionsPage(sessNextOffset); });
 
-      $('btn-save-sess').addEventListener('click', async () => {
-        if (busy) return;
-        const title = $('s-title').value.trim(), model = $('s-model').value.trim();
-        if (!title || !model) { setStatus('请填写会话标题与模型名称。', 'error'); return; }
+      $('btn-proj-prev').addEventListener('click', () => void loadProjectsPage(Math.max(0, projOffset - 20)));
+      $('btn-proj-next').addEventListener('click', () => { if (projNextOffset !== null) void loadProjectsPage(projNextOffset); });
+
+      $('btn-save-budget').addEventListener('click', async () => {
+        if (busy || !state) return;
         busy = true;
         try {
-          const inTok = Math.max(0, Number($('s-in').value) || 0);
-          const outTok = Math.max(0, Number($('s-out').value) || 0);
-          const cachedTok = Math.min(inTok, Math.max(0, Number($('s-cache').value) || 0));
-          const costVal = $('s-cost').value.trim();
-          const r = await plugin.action('usage.session.save', {
+          const res = await plugin.action('usage.budget.save', {
             expected_revision: state.revision,
-            id: editingId || `s-${Date.now().toString(36)}`,
-            date: $('s-date').value || today(),
-            hour: Math.min(23, Math.max(0, Number($('s-hour').value) || 14)),
-            title, category: $('s-cat').value, model,
-            input_tokens: inTok, output_tokens: outTok, cached_tokens: cachedTok,
-            cost_usd: costVal === '' ? Math.round(((inTok * 1.5 + outTok * 6) / 1_000_000) * 1000) / 1000 : Math.max(0, Number(costVal)),
-            turns: Math.max(1, Number($('s-turns').value) || 6),
-            minutes: Math.max(1, Number($('s-mins').value) || 10),
-            rating: Math.min(5, Math.max(1, Number($('s-rating').value) || 4)),
-            summary: $('s-summary').value.trim(),
-            tags: $('s-tags').value.trim(),
+            monthly_tokens_m: Number($('cfg-tok').value),
+            warn_pct: Math.round(Number($('cfg-warn').value)),
+            critical_pct: Math.round(Number($('cfg-crit').value)),
+            alert_note: $('cfg-note').value,
           });
-          if (r.status === 'saved') { fillForm(null); await load(); setStatus('会话用量记录已保存。', 'ok'); }
-          else setStatus(`保存未完成：${r.status}`, 'error');
-        } catch (e) { setStatus(`保存失败：${e?.message}`, 'error'); }
-        finally { busy = false; }
-      });
-
-      $('btn-save-cfg').addEventListener('click', async () => {
-        if (busy) return; busy = true;
-        try {
-          const r = await plugin.action('usage.config.save', {
-            expected_revision: state.revision,
-            monthly_cost_usd: Math.max(1, Number($('cfg-cost').value) || 45),
-            monthly_tokens_m: Math.max(0.1, Number($('cfg-tok').value) || 12),
-          });
-          if (r.status === 'saved') { await load(); setStatus('预算阈值已保存。', 'ok'); }
-          else setStatus(`保存未完成：${r.status}`, 'error');
-        } catch (e) { setStatus(`保存失败：${e?.message}`, 'error'); }
-        finally { busy = false; }
-      });
-
-      $('btn-ai-check').addEventListener('click', async () => {
-        if (!workId) return;
-        $('ai-status').textContent = '正在核对会话结果…';
-        try {
-          const r = await plugin.action('session.turn.result', { work_id: workId });
-          if (r.state === 'completed' && !r.truncated && typeof r.text === 'string' && r.text.trim()) {
-            latestAiText = r.text.trim();
-            $('ai-preview').textContent = latestAiText;
-            $('ai-preview').hidden = false;
-            $('ai-actions').hidden = false;
-            const arr = extractJsonArray(latestAiText);
-            $('btn-ai-ingest').hidden = !arr;
-            $('btn-ai-save-rev').hidden = aiTaskKind !== 'review';
-            $('btn-ai-insert').hidden = !canInsert;
-            $('ai-status').textContent = arr ? `已识别 ${arr.length} 条结构化会话记录，可点击一键导入大屏！` : '已收到完整回复：';
+          if (res.status === 'saved') {
+            await loadDashboard();
+            setStatus('月度 Token 预算规则已保存。', 'ok');
           } else {
-            $('ai-status').textContent = `当前状态：${r.state}`;
+            setStatus(`保存预算失败：${res.status}（请确认预警线 < 严重线）`, 'error');
           }
-        } catch (e) { $('ai-status').textContent = `核对失败：${e?.message}`; }
+        } catch (e) {
+          setStatus(`保存预算异常：${e?.message || e}`, 'error');
+        } finally {
+          busy = false;
+        }
       });
 
-      $('btn-ai-ingest').addEventListener('click', async () => {
-        const items = extractJsonArray(latestAiText);
-        if (!items || !items.length || busy) return;
+      $('btn-note-reset').addEventListener('click', () => {
+        editingNoteId = null;
+        $('note-title').value = '';
+        $('note-tags').value = '';
+        $('note-body').value = '';
+        $('note-edit-hint').textContent = '新建模式：将生成独立复盘键';
+      });
+
+      $('btn-save-note').addEventListener('click', async () => {
+        if (busy || !state) return;
+        const title = $('note-title').value.trim();
+        const body = $('note-body').value.trim();
+        if (!title || !body) { setStatus('请填写笔记标题和复盘正文。', 'error'); return; }
         busy = true;
         try {
-          const r = await plugin.action('usage.session.batch_ingest', { expected_revision: state.revision, items });
-          if (r.status === 'saved') { await load(); switchView('dashboard'); setStatus(`已成功导入 ${r.ingested} 条会话并刷新统计大屏！`, 'ok'); }
-          else setStatus(`导入未完成：${r.status}`, 'error');
-        } catch (e) { setStatus(`导入失败：${e?.message}`, 'error'); }
-        finally { busy = false; }
-      });
-
-      $('btn-ai-save-rev').addEventListener('click', async () => {
-        if (!latestAiText || busy) return; busy = true;
-        try {
-          const r = await plugin.action('usage.config.save', {
+          const payload = {
             expected_revision: state.revision,
-            monthly_cost_usd: state.budget.monthly_cost_usd,
-            monthly_tokens_m: state.budget.monthly_tokens_m,
-            latest_review: latestAiText.slice(0, 1600),
-          });
-          if (r.status === 'saved') { await load(); setStatus('个人复盘报告已归档。', 'ok'); }
-        } catch (e) { setStatus(`保存失败：${e?.message}`, 'error'); }
-        finally { busy = false; }
-      });
-
-      $('btn-ai-insert').addEventListener('click', async () => {
-        if (!latestAiText) return;
-        try {
-          const r = await plugin.action('host.draft.insert', { text: latestAiText });
-          setStatus(r?.inserted ? '已插入当前会话输入框。' : '插入未确认。', r?.inserted ? 'ok' : 'error');
-        } catch (e) { setStatus(`插入失败：${e?.message}`, 'error'); }
-      });
-
-      $('btn-from-sel').addEventListener('click', async () => {
-        try {
-          const r = await plugin.action('host.selection.read', {});
-          if (typeof r?.text === 'string' && r.text.trim()) {
-            $('s-summary').value = r.text.trim().slice(0, 260);
-            if (!$('s-title').value.trim()) $('s-title').value = r.text.trim().split('\n')[0].slice(0, 50);
-            setStatus('已读入当前选中回复至摘要栏。', 'ok');
+            title,
+            range_days: Number($('note-range').value) === 7 ? 7 : 30,
+            tags: $('note-tags').value.trim(),
+            body,
+          };
+          if (editingNoteId) payload.id = editingNoteId;
+          const res = await plugin.action('usage.note.save', payload);
+          if (res.status === 'saved') {
+            editingNoteId = null;
+            $('note-title').value = '';
+            $('note-tags').value = '';
+            $('note-body').value = '';
+            await loadDashboard();
+            setStatus(`复盘笔记已保存 (${res.key})`, 'ok');
+          } else {
+            setStatus(`保存笔记未完成：${res.status}`, 'error');
           }
-        } catch { setStatus('无法读取选中回复，请先在聊天中点选消息。', 'error'); }
+        } catch (e) {
+          setStatus(`保存笔记失败：${e?.message || e}`, 'error');
+        } finally {
+          busy = false;
+        }
       });
 
-      fillForm(null);
-      if (typeof plugin?.action === 'function') {
-        plugin.action('host.capabilities', {}).then(c => {
-          const acts = Array.isArray(c?.actions) ? c.actions : [];
-          canReadSel = acts.includes('host.selection.read');
-          canInsert = acts.includes('host.draft.insert');
-          $('btn-from-sel').hidden = !canReadSel;
-        }).catch(() => {});
-      }
-      void load();
+      $('btn-notes-more').addEventListener('click', async () => {
+        if (!notesNextCursor) return;
+        try {
+          const more = await plugin.action('usage.note.list', { limit: 20, cursor: notesNextCursor });
+          loadedNotes = [...loadedNotes, ...(more.items || [])];
+          notesNextCursor = more.next_cursor;
+          renderNotes();
+        } catch (e) {
+          setStatus(`加载更多笔记失败：${e?.message || e}`, 'error');
+        }
+      });
+
+      void loadDashboard();
     })();
   </script>
 </body>
