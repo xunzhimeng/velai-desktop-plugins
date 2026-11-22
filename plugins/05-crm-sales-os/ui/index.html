@@ -76,7 +76,48 @@ button.danger{color:var(--danger);border-color:rgba(220,38,38,.35);background:va
 .modal{width:min(620px,100%);max-height:90vh;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow-md);display:flex;flex-direction:column;gap:12px}
 @media(max-width:960px){.shell{grid-template-columns:1fr}.sidebar{position:static;height:auto;border-right:none;border-bottom:1px solid var(--border);padding:10px 12px;gap:10px}.nav{flex-direction:row;overflow-x:auto}.nav-btn{width:auto;white-space:nowrap}.side-footer{flex-direction:row;margin-top:0;padding-top:8px}.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.charts-grid,.split-360{grid-template-columns:1fr}.scenario-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.kpi-grid,.form-grid,.info-grid,.scenario-grid{grid-template-columns:1fr}}
-</style>
+
+    /* === V2 Host Theme & Compact Surface Start === */
+    :root[data-theme="dark"], html[data-theme="dark"] { color-scheme: dark; --bg: #0b1120; --surface: #111827; --fg: #f1f5f9; --muted: #94a3b8; --border: #1f2b40; --accent: #6366f1; --v2-host-accent: #6366f1; }
+    :root[data-theme="light"], html[data-theme="light"] { color-scheme: light; --bg: #f4f6fb; --surface: #ffffff; --fg: #0f172a; --muted: #64748b; --border: #e2e8f0; --accent: #4f46e5; --v2-host-accent: #4f46e5; }
+    :root[data-theme="dark"]:not([data-theme-override="1"]), html[data-theme="dark"]:not([data-theme-override="1"]) { --bg: var(--host-bg, #0b1120); --surface: var(--host-surface, #111827); --fg: var(--host-fg, #f1f5f9); --muted: var(--host-muted, #94a3b8); --border: var(--host-border, #1f2b40); --v2-host-accent: var(--host-primary, #6366f1); }
+    :root[data-theme="light"]:not([data-theme-override="1"]), html[data-theme="light"]:not([data-theme-override="1"]) { --bg: var(--host-bg, #f4f6fb); --surface: var(--host-surface, #ffffff); --fg: var(--host-fg, #0f172a); --muted: var(--host-muted, #64748b); --border: var(--host-border, #e2e8f0); --v2-host-accent: var(--host-primary, #4f46e5); }
+    :is(button, input, select, textarea, .v2-surface-tab):focus-visible { outline: 2px solid var(--v2-host-accent, var(--accent)); outline-offset: 1px; }
+    html[data-surface="chat"], html[data-surface="assistant"],
+    html[data-surface="chat"] body, html[data-surface="assistant"] body { overflow-x: hidden; }
+    html[data-surface="chat"] .sidebar, html[data-surface="assistant"] .sidebar { display: none !important; }
+    html[data-surface="chat"] .shell, html[data-surface="assistant"] .shell { grid-template-columns: 1fr !important; }
+    html[data-surface="chat"] .charts-grid, html[data-surface="assistant"] .charts-grid, html[data-surface="chat"] .split-360, html[data-surface="assistant"] .split-360, html[data-surface="chat"] .kanban, html[data-surface="assistant"] .kanban, html[data-surface="chat"] .info-grid, html[data-surface="assistant"] .info-grid, html[data-surface="chat"] .form-grid, html[data-surface="assistant"] .form-grid { grid-template-columns: 1fr !important; }
+    html[data-surface="chat"] .kpi-grid, html[data-surface="assistant"] .kpi-grid, html[data-surface="chat"] .scenario-grid, html[data-surface="assistant"] .scenario-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px; }
+    html[data-surface="chat"] :is(section, article, main, .card, .panel, .view),
+    html[data-surface="assistant"] :is(section, article, main, .card, .panel, .view) { min-width: 0; }
+    html[data-surface="chat"] :is(svg, canvas, pre),
+    html[data-surface="assistant"] :is(svg, canvas, pre) { max-width: 100%; }
+    html[data-surface="chat"] .main, html[data-surface="assistant"] .main { padding: 10px 10px 18px; gap: 10px; }
+    html[data-surface="chat"] .topbar, html[data-surface="assistant"] .topbar { gap: 8px; }
+    .v2-surface-nav { display: none; }
+    html[data-surface="chat"] .v2-surface-nav, html[data-surface="assistant"] .v2-surface-nav {
+      display: flex; align-items: center; gap: 6px; padding: 7px 10px; margin: -10px -10px 2px -10px;
+      overflow-x: auto; scrollbar-width: none; flex-shrink: 0;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 30;
+    }
+    html[data-surface="chat"] .v2-surface-nav::-webkit-scrollbar, html[data-surface="assistant"] .v2-surface-nav::-webkit-scrollbar { display: none; }
+    .v2-surface-tab {
+      appearance: none; border: 1px solid var(--border); background: transparent;
+      color: var(--muted); border-radius: 999px; padding: 4px 10px; font-size: 12px;
+      line-height: 1.35; font-weight: 500; white-space: nowrap; flex-shrink: 0; cursor: pointer;
+      transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+    }
+    .v2-surface-tab:hover { color: var(--fg); border-color: var(--v2-host-accent, var(--accent)); }
+    .v2-surface-tab.active {
+      color: var(--v2-host-accent, var(--accent));
+      border-color: var(--v2-host-accent, var(--accent));
+      background: color-mix(in srgb, var(--v2-host-accent, var(--accent)) 14%, transparent);
+      font-weight: 600;
+    }
+    /* === V2 Host Theme & Compact Surface End === */
+  </style>
 </head>
 <body>
 <div class="shell">
@@ -571,8 +612,8 @@ document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', (
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => { $(b.dataset.close).hidden = true; }));
 on('btn-refresh', 'click', () => void loadSnapshot());
 const mqDark = matchMedia('(prefers-color-scheme: dark)');
-let userTheme = false;
-if (mqDark.matches) document.documentElement.dataset.theme = 'dark';
+let userTheme = Boolean(document.documentElement.getAttribute('data-theme'));
+if (!userTheme) document.documentElement.dataset.theme = mqDark.matches ? 'dark' : 'light';
 mqDark.addEventListener?.('change', e => { if (!userTheme) document.documentElement.dataset.theme = e.matches ? 'dark' : 'light'; });
 on('btn-theme', 'click', () => { userTheme = true; document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; });
 on('btn-seed', 'click', () => runBusy(async () => {
@@ -712,6 +753,140 @@ $('act-f-type').innerHTML = actTypeOpts;
 $('act-filter-type').innerHTML = `<option value="">全部互动类型</option>${actTypeOpts}`;
 void loadSnapshot();
 })();
+
+/* === V2 Host Theme & Compact Surface JS Start === */
+(() => {
+  const root = document.documentElement;
+  const BTN_MODE = "label";
+  const HAS_SIDEBAR = true;
+  const MAIN_SEL = ".main";
+  const INIT_MQ = false;
+  const VALID_THEMES = new Set(['light', 'dark']);
+  const VALID_SURFACES = new Set(['workspace', 'chat', 'assistant']);
+
+  const normalizeTheme = val => (val === 'light' || val === 'dark' ? val : null);
+
+  if (INIT_MQ && !normalizeTheme(root.getAttribute('data-theme'))) {
+    try {
+      const dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      root.setAttribute('data-theme', dark ? 'dark' : 'light');
+    } catch {}
+  }
+
+  let hostTheme = normalizeTheme(root.getAttribute('data-theme'));
+
+  function syncThemeButton(theme) {
+    const btn = document.getElementById('btn-theme');
+    if (!btn || !VALID_THEMES.has(theme)) return;
+    btn.setAttribute('aria-pressed', String(theme === 'dark'));
+    btn.dataset.activeTheme = theme;
+    btn.title = theme === 'dark' ? '当前深色主题，点击切换浅色' : '当前浅色主题，点击切换深色';
+    if (BTN_MODE === 'short') {
+      btn.textContent = theme === 'light' ? '☾ 深色' : '☀ 浅色';
+    } else if (BTN_MODE === 'emoji') {
+      const txt = (btn.textContent || '').trim();
+      const rest = txt.replace(/^(?:☀️|☀|🌙|☾|◐)\s*/, '');
+      btn.textContent = (theme === 'light' ? '🌙 ' : '☀️ ') + (rest || '外观');
+    } else {
+      btn.textContent = theme === 'dark' ? '☀ 切换浅色' : '☾ 切换深色';
+    }
+  }
+
+  function applyHostTheme(raw) {
+    const data = raw && typeof raw === 'object'
+      ? (raw.theme || raw.surface || raw.tokens ? raw : (raw.payload && typeof raw.payload === 'object' ? raw.payload : raw))
+      : null;
+    if (!data || typeof data !== 'object') return;
+    const nextTheme = normalizeTheme(data.theme);
+    if (nextTheme) {
+      hostTheme = nextTheme;
+      root.removeAttribute('data-theme-override');
+      root.setAttribute('data-theme', nextTheme);
+      syncThemeButton(nextTheme);
+    }
+    if (typeof data.surface === 'string' && VALID_SURFACES.has(data.surface)) {
+      root.setAttribute('data-surface', data.surface);
+    }
+    if (data.tokens && typeof data.tokens === 'object') {
+      for (const [k, v] of Object.entries(data.tokens)) {
+        if (typeof v === 'string' && k) {
+          try { root.style.setProperty(k.startsWith('--') ? k : '--' + k, v); } catch {}
+        }
+      }
+    }
+  }
+
+  const initialTheme = normalizeTheme(root.getAttribute('data-theme'));
+  if (initialTheme) syncThemeButton(initialTheme);
+
+  const themeBtn = document.getElementById('btn-theme');
+  if (themeBtn) {
+    themeBtn.addEventListener('click', () => {
+      const cur = normalizeTheme(root.getAttribute('data-theme'));
+      if (!cur) return;
+      if (hostTheme && cur !== hostTheme) root.setAttribute('data-theme-override', '1');
+      else root.removeAttribute('data-theme-override');
+      syncThemeButton(cur);
+    });
+  }
+
+  try {
+    window.addEventListener('host.theme.changed', ev => {
+      try { applyHostTheme(ev && typeof ev === 'object' && 'detail' in ev ? ev.detail : ev); } catch {}
+    });
+  } catch {}
+  try {
+    const sub = globalThis.nmasPlugin?.subscribe?.('host.theme.changed', payload => {
+      try { applyHostTheme(payload); } catch {}
+    });
+    if (sub && typeof sub.catch === 'function') sub.catch(() => {});
+  } catch {}
+
+  if (HAS_SIDEBAR) {
+    const sidebar = document.querySelector('.sidebar');
+    const hostMain = document.querySelector(MAIN_SEL) || document.querySelector('.main, .main-area, .main-col, .workspace');
+    const srcBtns = sidebar ? Array.from(sidebar.querySelectorAll('button[data-view]')) : [];
+    if (sidebar && hostMain && srcBtns.length > 0 && !hostMain.querySelector('.v2-surface-nav')) {
+      const nav = document.createElement('nav');
+      nav.className = 'v2-surface-nav';
+      nav.setAttribute('aria-label', '视图切换');
+      const pairs = srcBtns.map(src => {
+        const clone = src.cloneNode(true);
+        clone.querySelectorAll('svg, .nav-badge, .pill, .mono').forEach(el => el.remove());
+        const navLeft = clone.querySelector('.nav-left');
+        let label = '';
+        if (navLeft) {
+          label = Array.from(navLeft.children).map(el => (el.textContent || '').trim()).filter(Boolean).join(' ');
+        } else {
+          label = (clone.textContent || '').replace(/\s+/g, ' ').trim();
+        }
+        const tab = document.createElement('button');
+        tab.type = 'button';
+        tab.className = 'v2-surface-tab';
+        tab.dataset.surfaceView = src.dataset.view || '';
+        tab.textContent = label || src.dataset.view || '视图';
+        tab.addEventListener('click', () => { try { src.click(); } catch {} });
+        nav.appendChild(tab);
+        return [src, tab];
+      });
+      const syncNav = () => {
+        for (const [src, tab] of pairs) {
+          const active = src.classList.contains('active');
+          tab.classList.toggle('active', active);
+          if (active) tab.setAttribute('aria-current', 'page');
+          else tab.removeAttribute('aria-current');
+        }
+      };
+      syncNav();
+      hostMain.prepend(nav);
+      try {
+        const obs = new MutationObserver(syncNav);
+        obs.observe(sidebar, { subtree: true, attributes: true, attributeFilter: ['class'] });
+      } catch {}
+    }
+  }
+})();
+/* === V2 Host Theme & Compact Surface JS End === */
 </script>
 </body>
 </html>
