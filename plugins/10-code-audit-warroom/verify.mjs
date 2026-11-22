@@ -1,7 +1,33 @@
 import assert from 'node:assert/strict';
 
 export async function verify({ createHarness }) {
-  const h = await createHarness();
+  const vulnerableSample = [
+    'import crypto from "node:crypto";',
+    'const api_key = "sk-live_9f8e7d6c5b4a3210abcd";',
+    'export function runExpr(expr) {',
+    '  return eval(expr);',
+    '}',
+    'export function queryUser(db, userId) {',
+    '  return db.query(`SELECT * FROM users WHERE id = ${userId}`);',
+    '}',
+    'export function RenderHtml({ html }) {',
+    '  return { dangerouslySetInnerHTML: { __html: html } };',
+    '}',
+    'export const digest = s => crypto.createHash("md5").update(s).digest("hex");',
+  ].join('\n');
+
+  const safeSample = [
+    'export function add(a, b) {',
+    '  return a + b;',
+    '}',
+  ].join('\n');
+
+  const h = await createHarness({
+    fsInitial: {
+      'src/vulnerable.js': vulnerableSample,
+      'src/safe.js': safeSample,
+    },
+  });
 
   // 1. 初始空态
   const emptyState = await h.action('warroom.state', {});
@@ -11,7 +37,7 @@ export async function verify({ createHarness }) {
   assert.equal(emptyState.actions.length, 0);
   assert.equal(emptyState.kpis.health_score, 100);
 
-  // 2. 一键加载「桌面端插件沙箱与网关安全审计」演示数据
+  // 2. 一键加载演示数据
   const seeded = await h.action('demo.seed', { expected_revision: 0 });
   assert.equal(seeded.status, 'seeded');
   assert.equal(seeded.findings_count, 6);
@@ -23,8 +49,8 @@ export async function verify({ createHarness }) {
   assert.equal(st.findings.length, 6);
   assert.equal(st.incidents.length, 2);
   assert.equal(st.actions.length, 6);
-  assert.equal(st.kpis.open_p0_p1, 3); // SEC-001(open crit), SEC-002(mitigating crit), SEC-003(open high)
-  assert.equal(st.kpis.mttr_min, 30); // (38 + 22) / 2
+  assert.equal(st.kpis.open_p0_p1, 3);
+  assert.equal(st.kpis.mttr_min, 30);
   assert.ok(st.kpis.health_score >= 40 && st.kpis.health_score <= 90);
   assert.ok(st.radar_scores.isolation < 85);
 
@@ -111,29 +137,89 @@ export async function verify({ createHarness }) {
   assert.ok(report.markdown.includes('SEC-001'));
   assert.ok(report.markdown.includes('INC-001'));
 
-  // 7. Agent Tools: audit.finding.add & audit.summary
-  const toolAdd = await h.tool('audit.finding.add', {
-    title: '插件更新源未限制重定向后的目标域名一致性',
+  // 7. 只读工作区 FS 浏览与内置静态安全规则扫描
+  const fsRoot = await h.action('audit.fs_list', { path: '' });
+  assert.ok(fsRoot.entries.some(e => e.name === 'src' && e.kind === 'dir'));
+
+  const fsSrc = await h.action('audit.fs_list', { path: 'src' });
+  assert.ok(fsSrc.entries.some(e => e.name === 'vulnerable.js' && e.kind === 'file'));
+
+  const scanVuln = await h.action('audit.fs_scan_file', { path: 'src/vulnerable.js' });
+  assert.equal(scanVuln.status, 'scanned');
+  assert.match(scanVuln.sha256, /^[0-9a-f]{64}$/);
+  assert.equal(scanVuln.line_count, 12);
+  const hitRules = new Set(scanVuln.candidates.map(c => c.rule_id));
+  assert.ok(hitRules.has('hardcoded-secret'), '应检出硬编码密钥');
+  assert.ok(hitRules.has('dynamic-code-exec'), '应检出 eval');
+  assert.ok(hitRules.has('sql-concat'), '应检出 SQL 模板拼接');
+  assert.ok(hitRules.has('unsafe-dom-xss'), '应检出 dangerouslySetInnerHTML');
+  assert.ok(hitRules.has('weak-crypto'), '应检出 MD5 弱哈希');
+  const evalHit = scanVuln.candidates.find(c => c.rule_id === 'dynamic-code-exec');
+  assert.equal(evalHit.line, 4);
+
+  const scanSafe = await h.action('audit.fs_scan_file', { path: 'src/safe.js' });
+  assert.equal(scanSafe.status, 'scanned');
+  assert.equal(scanSafe.candidates.length, 0);
+
+  const scanDir = await h.action('audit.fs_scan_file', { path: 'src' });
+  assert.equal(scanDir.status, 'not_a_file');
+
+  // 8. 敏感路径 .env / .git 负向拒绝测试
+  await assert.rejects(
+    () => h.action('audit.fs_list', { path: '.git' }),
+    err => err.code === 'permission_denied',
+  );
+  await assert.rejects(
+    () => h.action('audit.fs_scan_file', { path: '.env' }),
+    err => err.code === 'permission_denied',
+  );
+  await assert.rejects(
+    () => h.action('audit.fs_scan_file', { path: '.git/config' }),
+    err => err.code === 'permission_denied',
+  );
+
+  // 9. 3 个 v2 Agent Tools: audit.read_project_file, audit.log_finding, audit.get_warroom_summary
+  const readProj = await h.tool('audit.read_project_file', {
+    path: 'src/vulnerable.js',
+    start_line: 1,
+    end_line: 8,
+    run_scan: true,
+  });
+  assert.equal(readProj.success, true);
+  assert.equal(readProj.status, 'ready');
+  assert.equal(readProj.total_lines, 12);
+  assert.ok(readProj.candidates.some(c => c.rule_id === 'dynamic-code-exec'));
+
+  const readEnvDenied = await h.tool('audit.read_project_file', { path: '.env' });
+  assert.equal(readEnvDenied.success, false);
+  assert.equal(readEnvDenied.status, 'permission_denied');
+
+  const readGitDenied = await h.tool('audit.read_project_file', { path: '.git/HEAD' });
+  assert.equal(readGitDenied.success, false);
+  assert.equal(readGitDenied.status, 'permission_denied');
+
+  const toolAdd = await h.tool('audit.log_finding', {
+    title: '动态 eval 执行外部表达式存在任意代码执行风险',
     category: 'owasp',
-    dimension: 'supply_chain',
-    severity: 'high',
-    impact: 4,
+    dimension: 'validation',
+    severity: 'critical',
+    impact: 5,
     likelihood: 4,
-    component: 'updater-client',
-    remediation: '校验跳转目标严格属于白名单域名并核对 SHA-256。',
+    component: 'src/vulnerable.js:L4',
+    remediation: '移除 eval 调用，改用显式白名单表达式求值器。',
   });
   assert.equal(toolAdd.success, true);
   assert.equal(toolAdd.status, 'saved');
   assert.equal(toolAdd.id, 'SEC-007');
-  assert.equal(toolAdd.risk_score, 16);
+  assert.equal(toolAdd.risk_score, 20);
 
-  const summary = await h.tool('audit.summary', {});
+  const summary = await h.tool('audit.get_warroom_summary', {});
   assert.equal(summary.success, true);
   assert.equal(summary.status, 'ready');
   assert.ok(summary.high_risk_findings.some(f => f.id === 'SEC-007'));
   assert.equal(summary.incident_lessons.length, 2);
 
-  // 8. document.list / export / import
+  // 10. document.list / export / import 回归
   const list = await h.action('document.list', {});
   assert.ok(list.items.some(i => i.id === 'SNAPSHOT'));
   assert.ok(list.items.some(i => i.id === 'SEC-001'));

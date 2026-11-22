@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 
 export async function verify({ createHarness }) {
-  const h = await createHarness();
+  const h = await createHarness({
+    fsInitial: {
+      'docs/README.md': '# Product Docs\n',
+    },
+  });
 
   // 1. Empty initial state
   const empty = await h.action('studio.load', {});
@@ -131,11 +135,60 @@ export async function verify({ createHarness }) {
   const impPrd = await h.action('document.import', { text: expPrd.text });
   assert.equal(impPrd.imported, true);
 
-  // 10. Delete requirement & verify cleanup
+  // 10. Delete requirement & verify cleanup (via v2 data.delete)
   const beforeDel = await h.action('studio.load', {});
   const del = await h.action('req.delete', { expected_revision: beforeDel.revision, id: toolCreated.id });
   assert.equal(del.status, 'deleted');
   const afterDel = await h.action('studio.load', {});
   assert.equal(afterDel.requirements.some(r => r.id === toolCreated.id), false);
   assert.equal(afterDel.roadmap.lanes.some(l => l.req_id === toolCreated.id), false);
+
+  // 11. V2 Workspace FS sync (fs_list / fs_export_doc create_only + CAS / fs_import_doc / sensitive path guard)
+  const rootList = await h.action('fs_list', { path: '' });
+  assert.equal(rootList.status, 'ok');
+  assert.ok(rootList.entries.some(e => e.name === 'docs' && e.kind === 'dir'));
+
+  const expNew = await h.action('fs_export_doc', {
+    id: 'prd:req-telemetry-v2',
+    path: 'docs/prd-telemetry.md',
+    format: 'markdown',
+    create_only: true,
+  });
+  assert.equal(expNew.status, 'written');
+  assert.equal(expNew.sha256.length, 64);
+  assert.ok(expNew.size_bytes > 50);
+
+  const dupCreate = await h.action('fs_export_doc', {
+    id: 'prd:req-telemetry-v2',
+    path: 'docs/prd-telemetry.md',
+    format: 'markdown',
+    create_only: true,
+  });
+  assert.equal(dupCreate.status, 'conflict');
+
+  const importedDoc = await h.action('fs_import_doc', { path: 'docs/prd-telemetry.md' });
+  assert.equal(importedDoc.status, 'ok');
+  assert.equal(importedDoc.format, 'markdown');
+  assert.equal(importedDoc.sha256, expNew.sha256);
+  assert.ok(importedDoc.content.includes('插件性能遥测与火焰图分析'));
+
+  const casUpdate = await h.action('fs_export_doc', {
+    id: 'all',
+    path: 'docs/prd-telemetry.md',
+    format: 'markdown',
+    expected_sha256: importedDoc.sha256,
+  });
+  assert.equal(casUpdate.status, 'written');
+  assert.notEqual(casUpdate.sha256, importedDoc.sha256);
+
+  const staleCas = await h.action('fs_export_doc', {
+    id: 'all',
+    path: 'docs/prd-telemetry.md',
+    format: 'markdown',
+    expected_sha256: importedDoc.sha256,
+  });
+  assert.equal(staleCas.status, 'conflict');
+
+  const blockedEnv = await h.action('fs_import_doc', { path: '.env' });
+  assert.equal(blockedEnv.status, 'permission_denied');
 }

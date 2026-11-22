@@ -458,9 +458,26 @@ textarea{resize:vertical;line-height:1.55;}
 <textarea id="io-text" rows="10" placeholder="点击「导出预览」查看当前项目数据，或在此粘贴 JSON 后点击「执行导入」…"></textarea>
 </div>
 <div class="card-head">
-<span class="card-sub" id="io-hint">单次导入/导出上限 12 KiB</span>
+<span class="card-sub" id="io-hint">单次导入/导出上限 240 KiB (V2)</span>
 <div class="toolbar">
 <button id="io-import" class="btn primary" type="button">执行导入</button>
+</div>
+</div>
+<div style="border-top:1px solid var(--border);padding-top:12px;display:flex;flex-direction:column;gap:8px">
+<div class="field-label"><span>项目工作区文件同步 (V2 Workspace FS)</span><span id="fs-sha-hint" style="font-weight:400;color:var(--fg-dim)">支持新建或 CAS 覆盖发布</span></div>
+<div class="toolbar">
+<input id="fs-dir" type="text" placeholder="工作区目录（空表示根目录，如 docs）" style="flex:1;min-width:140px">
+<button id="fs-btn-list" class="btn sm" type="button">浏览目录</button>
+</div>
+<div id="fs-entries" style="display:flex;flex-wrap:wrap;gap:6px;font-size:11.5px;color:var(--fg-muted)"></div>
+<div class="toolbar">
+<input id="fs-path" type="text" placeholder="相对路径，如 docs/prd-roadmap.md" style="flex:1;min-width:160px">
+<select id="fs-fmt" aria-label="同步格式">
+<option value="markdown">Markdown</option>
+<option value="json">JSON</option>
+</select>
+<button id="fs-btn-read" class="btn sm" type="button">从项目读取</button>
+<button id="fs-btn-write" class="btn sm primary" type="button">发布到项目</button>
 </div>
 </div>
 </div>
@@ -1283,6 +1300,66 @@ toast(`导入成功（共 ${r.count ?? 1} 项）。`, 'ok');
 toast(`导入被拒绝：${r.reason || '格式无效'}`, 'error');
 }
 } catch (e) { toast(`导入失败：${e?.message || '未知错误'}`, 'error'); }
+});
+let lastFsSha = '';
+let lastFsPath = '';
+$('fs-btn-list').addEventListener('click', async () => {
+const dir = $('fs-dir').value.trim();
+try {
+const r = await plugin.action('fs_list', { path: dir, limit: 50 });
+const box = $('fs-entries');
+box.replaceChildren();
+if (r.status !== 'ok') { toast(`读取目录失败：${r.error || r.status}`, 'error'); return; }
+if (!r.entries.length) { box.textContent = '（当前目录为空）'; return; }
+for (const ent of r.entries) {
+const chip = document.createElement('button');
+chip.type = 'button';
+chip.className = 'chip';
+chip.textContent = ent.kind === 'dir' ? `📁 ${ent.name}/` : `📄 ${ent.name}`;
+chip.addEventListener('click', () => {
+const next = dir ? `${dir}/${ent.name}` : ent.name;
+if (ent.kind === 'dir') { $('fs-dir').value = next; $('fs-btn-list').click(); }
+else { $('fs-path').value = next; }
+});
+box.appendChild(chip);
+}
+} catch (e) { toast(`浏览目录失败：${e?.message || '未知错误'}`, 'error'); }
+});
+$('fs-btn-read').addEventListener('click', async () => {
+const relPath = $('fs-path').value.trim();
+if (!relPath) { toast('请输入工作区相对路径。', 'error'); return; }
+try {
+const r = await plugin.action('fs_import_doc', { path: relPath });
+if (r.status === 'ok') {
+$('io-text').value = r.content;
+lastFsSha = r.sha256;
+lastFsPath = relPath;
+$('fs-sha-hint').textContent = `已加载 SHA-256: ${r.sha256.slice(0, 10)}… (${r.size_bytes} B)`;
+toast(`已读取 ${relPath}（格式：${r.format}）`, 'ok');
+} else {
+toast(`读取失败：${r.error || r.status}`, 'error');
+}
+} catch (e) { toast(`读取失败：${e?.message || '未知错误'}`, 'error'); }
+});
+$('fs-btn-write').addEventListener('click', async () => {
+const id = $('io-select').value || 'all';
+const relPath = $('fs-path').value.trim();
+if (!relPath) { toast('请输入要发布的相对路径。', 'error'); return; }
+const fmt = $('fs-fmt').value;
+const payload = { id, path: relPath, format: fmt };
+if (lastFsSha && lastFsPath === relPath) payload.expected_sha256 = lastFsSha;
+else payload.create_only = true;
+try {
+const r = await plugin.action('fs_export_doc', payload);
+if (r.status === 'written') {
+lastFsSha = r.sha256;
+lastFsPath = relPath;
+$('fs-sha-hint').textContent = `已发布 SHA-256: ${r.sha256.slice(0, 10)}… (${r.size_bytes} B)`;
+toast(`已同步写入 ${relPath}（${r.size_bytes} B）`, 'ok');
+} else {
+toast(`发布未完成 (${r.status})：${r.error || '若文件已存在请先点击「从项目读取」获取最新 SHA-256'}`, 'error');
+}
+} catch (e) { toast(`发布失败：${e?.message || '未知错误'}`, 'error'); }
 });
 void loadAll();
 })();

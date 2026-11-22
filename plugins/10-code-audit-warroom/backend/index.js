@@ -6,10 +6,10 @@ const KEY_FINDINGS = 'registry';
 const KEY_INCIDENTS = 'coe-log';
 const KEY_ACTIONS = 'tracker';
 
-const MAX_RECORD_BYTES = 13 * 1024;
-const MAX_FINDINGS = 40;
-const MAX_INCIDENTS = 12;
-const MAX_ACTIONS = 48;
+const MAX_RECORD_BYTES = 240 * 1024;
+const MAX_FINDINGS = 120;
+const MAX_INCIDENTS = 40;
+const MAX_ACTIONS = 160;
 
 const CATEGORIES = ['owasp', 'architecture', 'performance', 'compliance'];
 const DIMENSIONS = ['auth', 'isolation', 'validation', 'supply_chain', 'observability'];
@@ -28,6 +28,154 @@ const DIM_LABELS = {
   supply_chain: '依赖安全',
   observability: '可观测性',
 };
+
+const STATIC_SCAN_RULES = [
+  {
+    rule_id: 'hardcoded-secret',
+    title: '疑似硬编码密钥 / 凭据字面量',
+    severity: 'critical',
+    category: 'owasp',
+    dimension: 'auth',
+    impact: 5,
+    likelihood: 4,
+    remediation: '立即移除源码中的明文密钥或口令，改由环境变量、宿主密钥槽或 KMS 注入，并轮换已泄露凭据。',
+    test(line) {
+      if (/\bAKIA[0-9A-Z]{16}\b/.test(line)) return true;
+      if (/\bgh[pousr]_[A-Za-z0-9]{20,}\b/.test(line)) return true;
+      if (/\bsk-[A-Za-z0-9_-]{16,}\b/.test(line)) return true;
+      if (/-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(line)) return true;
+      const m = /\b(api_?key|secret_?key|access_?token|private_?key|db_?pass(?:word)?|passwd|password)\b\s*[:=]\s*['"]([^'"]{8,})['"]/i.exec(line);
+      if (m) {
+        const val = m[2].toLowerCase();
+        if (!val.includes('example') && !val.includes('placeholder') && !val.includes('changeme') && !/^\*+$/.test(val)) {
+          return true;
+        }
+      }
+      return false;
+    },
+  },
+  {
+    rule_id: 'dynamic-code-exec',
+    title: '动态代码执行 (eval / new Function)',
+    severity: 'critical',
+    category: 'owasp',
+    dimension: 'validation',
+    impact: 5,
+    likelihood: 4,
+    remediation: '禁止使用 eval、new Function 或字符串形式定时器执行动态代码；改用显式白名单分发或结构化解析器。',
+    test(line) {
+      return /\beval\s*\(/.test(line) || /\bnew\s+Function\s*\(/.test(line) || /\bset(?:Timeout|Interval)\s*\(\s*['"`]/.test(line);
+    },
+  },
+  {
+    rule_id: 'sql-concat',
+    title: '疑似 SQL 字符串拼接 / 模板插值注入风险',
+    severity: 'high',
+    category: 'owasp',
+    dimension: 'validation',
+    impact: 5,
+    likelihood: 3,
+    remediation: '将拼接的 SQL 改为参数化预编译语句（Prepared Statement / Bind Parameters），严禁直接拼入用户输入。',
+    test(line) {
+      const hasSql = /\b(SELECT|INSERT\s+INTO|UPDATE\s+\w+\s+SET|DELETE\s+FROM)\b/i.test(line);
+      if (!hasSql) return false;
+      return (/`[^`]*\$\{[^}]+\}/.test(line)) || (/['"][^'"]*(?:SELECT|INSERT|UPDATE|DELETE)[^'"]*['"]\s*\+/i.test(line)) || (/\+\s*['"][^'"]*(?:WHERE|VALUES|SET|AND)\b/i.test(line));
+    },
+  },
+  {
+    rule_id: 'unsafe-dom-xss',
+    title: '不安全的 HTML 注入 (dangerouslySetInnerHTML / innerHTML)',
+    severity: 'high',
+    category: 'owasp',
+    dimension: 'validation',
+    impact: 4,
+    likelihood: 4,
+    remediation: '避免直接写入未净化的 HTML；优先使用 textContent / 安全 DOM API，若确需渲染富文本须经过严格白名单消毒。',
+    test(line) {
+      return /\bdangerouslySetInnerHTML\b/.test(line) || /\.innerHTML\s*=/.test(line) || /\bdocument\.write\s*\(/.test(line);
+    },
+  },
+  {
+    rule_id: 'command-injection',
+    title: '疑似命令注入风险 (exec / shell: true / os.system)',
+    severity: 'high',
+    category: 'owasp',
+    dimension: 'isolation',
+    impact: 5,
+    likelihood: 3,
+    remediation: '使用 execFile/spawn 传入参数数组并关闭 shell: true，严禁将外部变量拼接进 Shell 命令字符串。',
+    test(line) {
+      return /\b(?:exec|execSync)\s*\([^)]*(?:\+|\$\{)/.test(line) || /\bshell\s*:\s*true\b/.test(line) || /\bos\.system\s*\(/.test(line);
+    },
+  },
+  {
+    rule_id: 'insecure-tls',
+    title: '禁用 TLS 证书校验（中间人攻击风险）',
+    severity: 'medium',
+    category: 'compliance',
+    dimension: 'isolation',
+    impact: 4,
+    likelihood: 3,
+    remediation: '移除 rejectUnauthorized: false、NODE_TLS_REJECT_UNAUTHORIZED=0 或 verify=False，使用受信任 CA 证书链。',
+    test(line) {
+      return /\brejectUnauthorized\s*:\s*false\b/.test(line) || /NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*['"]?0['"]?/.test(line) || /\bverify\s*=\s*False\b/.test(line);
+    },
+  },
+  {
+    rule_id: 'weak-crypto',
+    title: '使用了弱哈希算法 (MD5 / SHA-1)',
+    severity: 'low',
+    category: 'compliance',
+    dimension: 'supply_chain',
+    impact: 2,
+    likelihood: 3,
+    remediation: '安全校验、签名与口令哈希应升级为 SHA-256/SHA-3 或 Argon2/scrypt，避免 MD5/SHA-1。',
+    test(line) {
+      return /\bcreateHash\s*\(\s*['"](?:md5|sha1)['"]\s*\)/i.test(line) || /\bhashlib\.(?:md5|sha1)\s*\(/.test(line);
+    },
+  },
+];
+
+function redactSnippet(line) {
+  return String(line || '')
+    .trim()
+    .replace(/\b(AKIA[0-9A-Z]{4})[0-9A-Z]{12}\b/g, '$1************')
+    .replace(/\b(gh[pousr]_[A-Za-z0-9]{4})[A-Za-z0-9]+\b/g, '$1********')
+    .replace(/\b(sk-[A-Za-z0-9_-]{4})[A-Za-z0-9_-]+\b/g, '$1********')
+    .slice(0, 200);
+}
+
+function scanSourceText(content) {
+  const lines = String(content || '').split(/\r?\n/);
+  const candidates = [];
+  for (let i = 0; i < lines.length && candidates.length < 100; i++) {
+    const rawLine = lines[i];
+    const trimmed = rawLine.trim();
+    if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('#')) {
+      // 跳过纯注释行（但仍检测 Private Key 块）
+      if (!/-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(trimmed)) continue;
+    }
+    for (const rule of STATIC_SCAN_RULES) {
+      if (rule.test(rawLine)) {
+        candidates.push({
+          rule_id: rule.rule_id,
+          title: rule.title,
+          severity: rule.severity,
+          category: rule.category,
+          dimension: rule.dimension,
+          impact: rule.impact,
+          likelihood: rule.likelihood,
+          risk_score: rule.impact * rule.likelihood,
+          line: i + 1,
+          snippet: redactSnippet(rawLine),
+          remediation: rule.remediation,
+        });
+        if (candidates.length >= 100) break;
+      }
+    }
+  }
+  return { line_count: lines.length, candidates };
+}
 
 function jsonBytes(v) {
   let bytes = 0;
@@ -123,7 +271,6 @@ function computePosture(findings, incidents, actions) {
   const verifiedActions = actions.filter(a => a.status === 'verified').length;
   const closureRate = actions.length > 0 ? Math.round((verifiedActions / actions.length) * 1000) / 10 : 100;
 
-  // 总体安全健康分 (0-100)
   const sevPenalty = { critical: 16, high: 9, medium: 4, low: 1.5 };
   let penalty = 0;
   for (const f of findings) {
@@ -134,7 +281,6 @@ function computePosture(findings, incidents, actions) {
   const bonus = actions.length > 0 ? Math.round((verifiedActions / actions.length) * 6) : 0;
   const healthScore = Math.max(0, Math.min(100, Math.round(100 - penalty + bonus)));
 
-  // 5 维安全雷达分 (0-100)
   const radarScores = {};
   for (const dim of DIMENSIONS) {
     const dimFindings = findings.filter(f => f.dimension === dim);
@@ -203,7 +349,7 @@ function buildDemoData() {
       risk_score: 16,
       status: 'open',
       component: 'schema-validator / quickjs-runtime',
-      remediation: '将迭代校验深度硬限制为 16 层、总节点数上限 16384，并在反序列化前拦截超过 16 KiB 载荷。',
+      remediation: '将迭代校验深度硬限制为 16 层、总节点数上限 512，并在反序列化前拦截超预算载荷。',
       created_at: '2026-11-16',
     },
     {
@@ -285,16 +431,16 @@ function buildDemoData() {
       timeline: [
         { time: '09:35', event: '监控捕获桌面端插件进程 RSS 内存呈阶梯式增长' },
         { time: '09:44', event: '定位为高频诊断动作每次创建临时大正则数组且未限制入参体积' },
-        { time: '09:57', event: '发布热修将单次入参收紧至 14 KiB 并在每轮调用后触发增量 GC' },
+        { time: '09:57', event: '发布热修收紧单次载荷并在每轮调用后触发增量 GC' },
       ],
       five_whys: [
         { level: 1, question: '为什么插件运行时会触发宿主 OOM 保护？', answer: '单实例内存占用在 10 分钟内线性上涨超过 190MB。' },
         { level: 2, question: '为什么内存没有被及时回收？', answer: '高频轮询动作持续分配短生命周期大对象，而宿主仅在空闲超时后才运行完整 GC。' },
         { level: 3, question: '为什么单次调用会分配大量内存？', answer: '未对前端输入防抖，且后端未拦截超大文本载荷。' },
         { level: 4, question: '为什么压测没发现内存泄漏趋势？', answer: '单元测试只验证单次调用正确性，缺少连续 500 次调用的常驻内存水位断言。' },
-        { level: 5, question: '为什么插件准入缺少资源配额红线？', answer: '尚未在验证链路中固化单次载荷 14 KiB 与运行时内存上限基线（根本原因）。' },
+        { level: 5, question: '为什么插件准入缺少资源配额红线？', answer: '尚未在验证链路中固化单次载荷预算与运行时内存上限基线（根本原因）。' },
       ],
-      lessons: '所有插件调用严格执行 <= 14 KiB 载荷预算与前端输入防抖，宿主需为每个 QuickJS 实例配置独立内存上限与周期 GC。',
+      lessons: '所有插件调用严格执行载荷预算与前端输入防抖，宿主需为每个 QuickJS 实例配置独立内存上限与周期 GC。',
     },
   ];
 
@@ -377,7 +523,7 @@ function buildMarkdownReport(findings, incidents, actions, posture, targetIncide
     .sort((a, b) => b.risk_score - a.risk_score);
   const chosenIncidents = targetIncidentId
     ? incidents.filter(i => i.id === targetIncidentId)
-    : incidents.slice(0, 2);
+    : incidents.slice(0, 4);
   const pendingActions = actions.filter(a => a.status !== 'verified');
 
   const lines = [
@@ -422,7 +568,7 @@ function buildMarkdownReport(findings, incidents, actions, posture, targetIncide
     }
   }
 
-  return lines.join('\n').slice(0, 9800);
+  return lines.join('\n').slice(0, 32000);
 }
 
 export default async function (request) {
@@ -465,7 +611,7 @@ export default async function (request) {
       const riskScore = input.impact * input.likelihood;
       const record = {
         id: finalId,
-        title,
+        title: title.slice(0, 120),
         category: input.category,
         dimension: input.dimension,
         severity: input.severity,
@@ -473,7 +619,7 @@ export default async function (request) {
         likelihood: input.likelihood,
         risk_score: riskScore,
         status: input.status,
-        component,
+        component: component.slice(0, 120),
         remediation: (input.remediation || '').trim().slice(0, 420),
         created_at: existing?.created_at || todayStr(),
       };
@@ -589,6 +735,50 @@ export default async function (request) {
       return res.status === 'saved' ? { status: 'deleted', revision: res.revision } : { status: 'conflict', revision: res.revision };
     }
 
+    if (contribution === 'audit.fs_list') {
+      const relDir = typeof input.path === 'string' ? input.path : '';
+      const res = await globalThis.nmas.fs.listDir({
+        path: relDir,
+        limit: input.limit ?? 50,
+        ...(input.cursor ? { cursor: input.cursor } : {}),
+      });
+      const entries = (res.entries || []).map(e => ({
+        name: e.name,
+        path: relDir ? `${relDir}/${e.name}` : e.name,
+        kind: e.kind,
+        size_bytes: e.size_bytes ?? null,
+      }));
+      return {
+        path: relDir,
+        entries,
+        next_cursor: res.next_cursor ?? null,
+      };
+    }
+
+    if (contribution === 'audit.fs_scan_file') {
+      const st = await globalThis.nmas.fs.stat({ path: input.path });
+      if (st.kind !== 'file') {
+        return {
+          status: 'not_a_file',
+          path: input.path,
+          size_bytes: 0,
+          sha256: null,
+          line_count: 0,
+          candidates: [],
+        };
+      }
+      const file = await globalThis.nmas.fs.readText({ path: input.path });
+      const { line_count, candidates } = scanSourceText(file.content);
+      return {
+        status: 'scanned',
+        path: input.path,
+        size_bytes: file.size_bytes,
+        sha256: file.sha256,
+        line_count,
+        candidates,
+      };
+    }
+
     if (contribution === 'report.generate') {
       const f = await readFindings();
       const inc = await readIncidents();
@@ -631,14 +821,14 @@ export default async function (request) {
     if (contribution === 'document.export') {
       const serializeDoc = payload => {
         const pretty = JSON.stringify(payload, null, 2);
-        return jsonBytes(pretty) <= 11800 ? pretty : JSON.stringify(payload);
+        return jsonBytes(pretty) <= 64000 ? pretty : JSON.stringify(payload);
       };
       const f = await readFindings();
       const inc = await readIncidents();
       if (input.id === 'SNAPSHOT') {
         const act = await readActions();
         const text = serializeDoc({ format: DOC_FORMAT, version: 1, kind: 'snapshot', findings: f.items, incidents: inc.items, actions: act.items });
-        if (jsonBytes(text) > 12000) return { error: 'too_large' };
+        if (jsonBytes(text) > 65000) return { error: 'too_large' };
         return { filename: 'audit-warroom-snapshot.json', text };
       }
       const finding = f.items.find(x => x.id === input.id);
@@ -680,7 +870,7 @@ export default async function (request) {
           likelihood,
           risk_score: impact * likelihood,
           status: FINDING_STATUSES.includes(src.status) ? src.status : 'open',
-          component: typeof src.component === 'string' && src.component.trim() ? src.component.trim().slice(0, 80) : 'unspecified',
+          component: typeof src.component === 'string' && src.component.trim() ? src.component.trim().slice(0, 120) : 'unspecified',
           remediation: typeof src.remediation === 'string' ? src.remediation.trim().slice(0, 420) : '',
           created_at: todayStr(),
         };
@@ -741,7 +931,7 @@ export default async function (request) {
   }
 
   if (kind === 'tool') {
-    if (contribution === 'audit.summary') {
+    if (contribution === 'audit.get_warroom_summary') {
       const f = await readFindings();
       const inc = await readIncidents();
       const act = await readActions();
@@ -771,7 +961,42 @@ export default async function (request) {
       };
     }
 
-    if (contribution === 'audit.finding.add') {
+    if (contribution === 'audit.read_project_file') {
+      try {
+        const file = await globalThis.nmas.fs.readText({ path: input.path });
+        const allLines = String(file.content || '').split(/\r?\n/);
+        const start = Math.max(1, input.start_line ?? 1);
+        const end = Math.min(allLines.length, input.end_line ?? allLines.length);
+        const sliced = start <= end ? allLines.slice(start - 1, end).join('\n') : '';
+        const shouldScan = input.run_scan !== false;
+        const scan = shouldScan ? scanSourceText(file.content) : { candidates: [] };
+        const filteredCandidates = scan.candidates
+          .filter(c => c.line >= start && c.line <= end)
+          .map(({ rule_id, title, severity, line, snippet, remediation }) => ({
+            rule_id, title, severity, line, snippet, remediation,
+          }));
+        return {
+          success: true,
+          status: 'ready',
+          path: input.path,
+          size_bytes: file.size_bytes,
+          sha256: file.sha256,
+          total_lines: allLines.length,
+          content: sliced.slice(0, 120000),
+          candidates: filteredCandidates,
+        };
+      } catch (e) {
+        const code = e?.code === 'permission_denied' || e?.code === 'resource_limit' ? e.code : 'error';
+        return {
+          success: false,
+          status: code,
+          path: input.path,
+          error: String(e?.message || code).slice(0, 240),
+        };
+      }
+    }
+
+    if (contribution === 'audit.log_finding') {
       const title = (input.title || '').trim();
       const component = (input.component || '').trim();
       if (!title || !component || !CATEGORIES.includes(input.category) || !SEVERITIES.includes(input.severity)) {
@@ -783,7 +1008,7 @@ export default async function (request) {
       const dimension = DIMENSIONS.includes(input.dimension) ? input.dimension : inferDimension(input.category);
       const record = {
         id,
-        title,
+        title: title.slice(0, 120),
         category: input.category,
         dimension,
         severity: input.severity,
@@ -791,7 +1016,7 @@ export default async function (request) {
         likelihood: input.likelihood,
         risk_score: riskScore,
         status: 'open',
-        component,
+        component: component.slice(0, 120),
         remediation: (input.remediation || '').trim().slice(0, 420),
         created_at: todayStr(),
       };

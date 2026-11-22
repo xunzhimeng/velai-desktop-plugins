@@ -1,10 +1,13 @@
-const MAX_RECORD_BYTES = 13 * 1024;
+const MAX_RECORD_BYTES = 240 * 1024;
 const DOC_FORMAT = 'velai.novel-studio';
+const SHA256_RE = /^[0-9a-f]{64}$/;
 
 function jsonBytes(v) {
   let b = 0;
-  for (const ch of JSON.stringify(v)) {
-    const cp = ch.codePointAt(0);
+  const s = JSON.stringify(v);
+  for (let i = 0; i < s.length; i++) {
+    const cp = s.codePointAt(i);
+    if (cp > 0xffff) i += 1;
     b += cp <= 0x7f ? 1 : cp <= 0x7ff ? 2 : cp <= 0xffff ? 3 : 4;
   }
   return b;
@@ -15,11 +18,27 @@ function countWords(text) {
   return m ? m.length : 0;
 }
 
+function normalizeChapterMeta(ch) {
+  return {
+    id: ch.id,
+    volume: ch.volume || '第一卷',
+    order: ch.order,
+    title: ch.title,
+    status: ch.status,
+    tension: ch.tension,
+    pov: ch.pov || '',
+    word_count: ch.word_count || 0,
+    summary: ch.summary || '',
+    fs_path: typeof ch.fs_path === 'string' && ch.fs_path ? ch.fs_path : null,
+    fs_sha256: typeof ch.fs_sha256 === 'string' && SHA256_RE.test(ch.fs_sha256) ? ch.fs_sha256 : null,
+  };
+}
+
 const DEFAULT_BOOK = {
   schema_version: 1,
   title: '未命名长篇计划',
   genre: '科幻悬疑',
-  logline: '点击右上角「加载演示项目《星渊回响》」可立即体验完整多卷小说、人物关系图谱、张力曲线与 AI 续写工作流。',
+  logline: '点击左下角「加载演示《星渊回响》」可立即体验多卷长篇账本、人物关系星系图、张力曲线与工作区手稿 CAS 同步。',
   target_words: 120000,
   chapters: [],
 };
@@ -52,17 +71,73 @@ async function writeKey(collection, key, expectedRevision, value) {
   }
 }
 
+async function deleteKey(collection, key, expectedRevision) {
+  try {
+    const r = await globalThis.nmas.data.delete({
+      collection,
+      key,
+      expected_revision: expectedRevision,
+    });
+    return { status: 'deleted', revision: r.revision };
+  } catch (e) {
+    if (e?.code === 'conflict' && e.outcome_unknown === false) {
+      return { status: 'conflict', revision: expectedRevision };
+    }
+    throw e;
+  }
+}
+
+async function listAllChapterKeys() {
+  const keys = [];
+  let cursor;
+  for (let page = 0; page < 8; page++) {
+    const res = await globalThis.nmas.data.list({
+      collection: 'chapters',
+      prefix: 'ch:',
+      limit: 50,
+      ...(cursor ? { cursor } : {}),
+    });
+    for (const k of res.keys || []) keys.push(k);
+    if (!res.next_cursor) break;
+    cursor = res.next_cursor;
+  }
+  return keys;
+}
+
 function computeTotalWords(chapters) {
   return chapters.reduce((acc, ch) => acc + (ch.word_count || 0), 0);
 }
 
+function deriveTitleFromMarkdown(content, relPath) {
+  const lines = String(content || '').split(/\r?\n/);
+  for (const line of lines.slice(0, 12)) {
+    const m = /^#\s+(.+)$/.exec(line.trim());
+    if (m && m[1].trim()) return m[1].trim().slice(0, 100);
+  }
+  const base = String(relPath || '').split('/').pop() || '导入章节';
+  return base.replace(/\.(md|markdown|txt)$/i, '').slice(0, 100) || '导入章节';
+}
+
+function formatChapterMarkdown(meta, chDoc, includeHeader) {
+  const body = chDoc.body || '';
+  if (!includeHeader) return body;
+  const headerLines = [
+    `# ${meta.title}`,
+    '',
+    `> 卷目：${meta.volume || '第一卷'} ｜ 视角：${meta.pov || '全知'} ｜ 状态：${meta.status} ｜ 张力：${meta.tension}/10`,
+  ];
+  if (meta.summary) headerLines.push(`> 摘要：${meta.summary}`);
+  headerLines.push('');
+  return `${headerLines.join('\n')}\n${body}`;
+}
+
 function demoPayload() {
   const chaptersMeta = [
-    { id: 'ch-01', volume: '第一卷 · 沉没轨道', order: 1, title: '第1章 零号信标重启', status: 'done', tension: 6, pov: '林深', word_count: 342, summary: '深空打捞员林深在废弃轨道站发现早应销毁的零号信标正在向地球发送倒计时。' },
-    { id: 'ch-02', volume: '第一卷 · 沉没轨道', order: 2, title: '第2章 静默档案室', status: 'done', tension: 5, pov: '沈清秋', word_count: 288, summary: '轨管局监察官沈清秋截获异常频段，发现信标签名竟属于十年前失踪的导师。' },
-    { id: 'ch-03', volume: '第一卷 · 沉没轨道', order: 3, title: '第3章 失压舱门', status: 'revising', tension: 9, pov: '林深', word_count: 316, summary: '武装清道夫突袭打捞船，林深与沈清秋被迫在失压走廊联手逃生。' },
-    { id: 'ch-04', volume: '第一卷 · 沉没轨道', order: 4, title: '第4章 灰烬议会', status: 'draft', tension: 7, pov: '陆沉舟', word_count: 195, summary: '议会副席陆沉舟下令封锁近地轨道，并启动尘封已久的“回声协议”。' },
-    { id: 'ch-05', volume: '第二卷 · 逆向潮汐', order: 5, title: '第5章 记忆折射体', status: 'draft', tension: 8, pov: '林深', word_count: 170, summary: '解码信标内核后，众人震惊地发现它记录的不是过去，而是七十二小时后的未来画面。' },
+    { id: 'ch-01', volume: '第一卷 · 沉没轨道', order: 1, title: '第1章 零号信标重启', status: 'done', tension: 6, pov: '林深', word_count: 342, summary: '深空打捞员林深在废弃轨道站发现早应销毁的零号信标正在向地球发送倒计时。', fs_path: null, fs_sha256: null },
+    { id: 'ch-02', volume: '第一卷 · 沉没轨道', order: 2, title: '第2章 静默档案室', status: 'done', tension: 5, pov: '沈清秋', word_count: 288, summary: '轨管局监察官沈清秋截获异常频段，发现信标签名竟属于十年前失踪的导师。', fs_path: null, fs_sha256: null },
+    { id: 'ch-03', volume: '第一卷 · 沉没轨道', order: 3, title: '第3章 失压舱门', status: 'revising', tension: 9, pov: '林深', word_count: 316, summary: '武装清道夫突袭打捞船，林深与沈清秋被迫在失压走廊联手逃生。', fs_path: null, fs_sha256: null },
+    { id: 'ch-04', volume: '第一卷 · 沉没轨道', order: 4, title: '第4章 灰烬议会', status: 'draft', tension: 7, pov: '陆沉舟', word_count: 195, summary: '议会副席陆沉舟下令封锁近地轨道，并启动尘封已久的“回声协议”。', fs_path: null, fs_sha256: null },
+    { id: 'ch-05', volume: '第二卷 · 逆向潮汐', order: 5, title: '第5章 记忆折射体', status: 'draft', tension: 8, pov: '林深', word_count: 170, summary: '解码信标内核后，众人震惊地发现它记录的不是过去，而是七十二小时后的未来画面。', fs_path: null, fs_sha256: null },
   ];
 
   const bodies = {
@@ -148,18 +223,21 @@ export default async function (request) {
       const metaRes = await readKey('meta', 'book', DEFAULT_BOOK);
       const worldRes = await readKey('world', 'bible', DEFAULT_WORLD);
       const plotRes = await readKey('plot', 'board', DEFAULT_PLOT);
+      const storedKeys = await listAllChapterKeys();
       const book = metaRes.value;
       const world = worldRes.value;
       const plot = plotRes.value;
+      const chapters = (book.chapters || []).map(normalizeChapterMeta);
       return {
         revision: metaRes.revision,
+        stored_chapter_keys: storedKeys,
         book: {
           title: book.title,
           genre: book.genre,
           logline: book.logline,
           target_words: book.target_words,
-          total_words: computeTotalWords(book.chapters || []),
-          chapters: book.chapters || [],
+          total_words: computeTotalWords(chapters),
+          chapters,
         },
         characters: world.characters || [],
         relations: world.relations || [],
@@ -193,6 +271,8 @@ export default async function (request) {
         body: r.value.body || '',
         beats: r.value.beats || '',
         notes: r.value.notes || '',
+        fs_path: typeof r.value.fs_path === 'string' && r.value.fs_path ? r.value.fs_path : null,
+        fs_sha256: typeof r.value.fs_sha256 === 'string' && SHA256_RE.test(r.value.fs_sha256) ? r.value.fs_sha256 : null,
       };
     }
 
@@ -202,13 +282,18 @@ export default async function (request) {
       const metaRes = await readKey('meta', 'book', DEFAULT_BOOK);
       if (metaRes.revision !== expected_revision) return { status: 'conflict', revision: metaRes.revision };
 
-      const chDoc = { schema_version: 1, body, beats, notes };
+      const list = metaRes.value.chapters || [];
+      const existing = list.find(c => c.id === id);
+      const fsPath = input.fs_path !== undefined ? (input.fs_path || null) : (existing?.fs_path || null);
+      const fsSha = input.fs_sha256 !== undefined
+        ? (typeof input.fs_sha256 === 'string' && SHA256_RE.test(input.fs_sha256) ? input.fs_sha256 : null)
+        : (existing?.fs_sha256 || null);
+
+      const chDoc = { schema_version: 1, body, beats, notes, fs_path: fsPath, fs_sha256: fsSha };
       const savedBody = await writeKey('chapters', `ch:${id}`, expected_revision, chDoc);
       if (savedBody.status !== 'saved') return savedBody;
 
       const word_count = countWords(body);
-      const list = metaRes.value.chapters || [];
-      const existing = list.find(c => c.id === id);
       const entry = {
         id,
         volume: volume.trim() || '第一卷',
@@ -219,6 +304,8 @@ export default async function (request) {
         pov: pov.trim(),
         word_count,
         summary: summary.trim(),
+        fs_path: fsPath,
+        fs_sha256: fsSha,
       };
       const nextChapters = existing ? list.map(c => (c.id === id ? entry : c)) : [...list, entry];
       const savedMeta = await writeKey('meta', 'book', savedBody.revision, { ...metaRes.value, schema_version: 1, chapters: nextChapters });
@@ -230,8 +317,10 @@ export default async function (request) {
       if (metaRes.revision !== input.expected_revision) return { status: 'conflict', revision: metaRes.revision };
       const list = metaRes.value.chapters || [];
       if (!list.some(c => c.id === input.id)) return { status: 'not_found', revision: metaRes.revision };
+      const deletedBody = await deleteKey('chapters', `ch:${input.id}`, input.expected_revision);
+      if (deletedBody.status !== 'deleted') return { status: 'conflict', revision: deletedBody.revision };
       const nextChapters = list.filter(c => c.id !== input.id).map((c, idx) => ({ ...c, order: idx + 1 }));
-      const saved = await writeKey('meta', 'book', input.expected_revision, { ...metaRes.value, chapters: nextChapters });
+      const saved = await writeKey('meta', 'book', deletedBody.revision, { ...metaRes.value, schema_version: 1, chapters: nextChapters });
       return saved.status === 'saved' ? { status: 'deleted', revision: saved.revision } : { status: 'conflict', revision: saved.revision };
     }
 
@@ -258,10 +347,19 @@ export default async function (request) {
     if (contribution === 'novel.seed_demo') {
       const metaRes = await readKey('meta', 'book', DEFAULT_BOOK);
       if (metaRes.revision !== input.expected_revision) return { status: 'conflict', revision: metaRes.revision };
+      const existingKeys = await listAllChapterKeys();
       const demo = demoPayload();
+      const demoKeys = new Set(Object.keys(demo.bodies).map(id => `ch:${id}`));
       let rev = input.expected_revision;
+      for (const oldKey of existingKeys) {
+        if (!demoKeys.has(oldKey)) {
+          const d = await deleteKey('chapters', oldKey, rev);
+          if (d.status !== 'deleted') return { status: 'conflict', revision: d.revision };
+          rev = d.revision;
+        }
+      }
       for (const [chId, doc] of Object.entries(demo.bodies)) {
-        const w = await writeKey('chapters', `ch:${chId}`, rev, { schema_version: 1, ...doc });
+        const w = await writeKey('chapters', `ch:${chId}`, rev, { schema_version: 1, ...doc, fs_path: null, fs_sha256: null });
         if (w.status !== 'saved') return { status: 'conflict', revision: w.revision };
         rev = w.revision;
       }
@@ -274,6 +372,142 @@ export default async function (request) {
       const wBook = await writeKey('meta', 'book', rev, demo.book);
       if (wBook.status !== 'saved') return { status: 'conflict', revision: wBook.revision };
       return { status: 'seeded', revision: wBook.revision };
+    }
+
+    if (contribution === 'novel.fs_list') {
+      const relDir = typeof input.path === 'string' ? input.path : '';
+      const res = await globalThis.nmas.fs.listDir({
+        path: relDir,
+        limit: input.limit ?? 50,
+        ...(input.cursor ? { cursor: input.cursor } : {}),
+      });
+      const entries = (res.entries || []).map(e => ({
+        name: e.name,
+        path: relDir ? `${relDir}/${e.name}` : e.name,
+        kind: e.kind,
+        size_bytes: e.size_bytes ?? null,
+      }));
+      return {
+        path: relDir,
+        entries,
+        next_cursor: res.next_cursor ?? null,
+      };
+    }
+
+    if (contribution === 'novel.fs_stat') {
+      const st = await globalThis.nmas.fs.stat({ path: input.path });
+      return {
+        path: input.path,
+        kind: st.kind,
+        size_bytes: st.size_bytes ?? null,
+        sha256: st.sha256 ?? null,
+      };
+    }
+
+    if (contribution === 'novel.fs_import_chapter') {
+      const file = await globalThis.nmas.fs.readText({ path: input.path });
+      const metaRes = await readKey('meta', 'book', DEFAULT_BOOK);
+      if (metaRes.revision !== input.expected_revision) return { status: 'conflict', revision: metaRes.revision };
+
+      const list = metaRes.value.chapters || [];
+      let chId = input.id ? input.id.trim() : '';
+      if (chId && !/^[a-zA-Z0-9._-]+$/.test(chId)) {
+        return { status: 'invalid_input', revision: metaRes.revision };
+      }
+      if (!chId) {
+        const linked = list.find(c => c.fs_path === input.path);
+        chId = linked ? linked.id : `ch-${Date.now().toString(36)}-${list.length + 1}`;
+      }
+      const existing = list.find(c => c.id === chId);
+      const prevDoc = existing ? (await readKey('chapters', `ch:${chId}`, { beats: '', notes: '' })).value : { beats: '', notes: '' };
+      const body = String(file.content || '').slice(0, 80000);
+      const finalTitle = (input.title && input.title.trim()) || existing?.title || deriveTitleFromMarkdown(body, input.path);
+      const word_count = countWords(body);
+
+      const savedBody = await writeKey('chapters', `ch:${chId}`, input.expected_revision, {
+        schema_version: 1,
+        body,
+        beats: prevDoc.beats || '',
+        notes: prevDoc.notes || '',
+        fs_path: input.path,
+        fs_sha256: file.sha256,
+      });
+      if (savedBody.status !== 'saved') return savedBody;
+
+      const entry = {
+        id: chId,
+        volume: (input.volume && input.volume.trim()) || existing?.volume || '工作区导入卷',
+        order: existing ? existing.order : list.length + 1,
+        title: finalTitle.slice(0, 100),
+        status: existing?.status || 'draft',
+        tension: existing?.tension || 6,
+        pov: (input.pov && input.pov.trim()) || existing?.pov || '',
+        word_count,
+        summary: existing?.summary || `从项目文件 ${input.path} 导入`,
+        fs_path: input.path,
+        fs_sha256: file.sha256,
+      };
+      const nextChapters = existing ? list.map(c => (c.id === chId ? entry : c)) : [...list, entry];
+      const savedMeta = await writeKey('meta', 'book', savedBody.revision, {
+        ...metaRes.value,
+        schema_version: 1,
+        chapters: nextChapters,
+      });
+      if (savedMeta.status !== 'saved') return savedMeta;
+      return {
+        status: 'imported',
+        revision: savedMeta.revision,
+        id: chId,
+        title: entry.title,
+        word_count,
+        fs_path: input.path,
+        fs_sha256: file.sha256,
+        size_bytes: file.size_bytes,
+      };
+    }
+
+    if (contribution === 'novel.fs_export_chapter') {
+      const hasCreate = input.create_only === true;
+      const hasHash = typeof input.expected_sha256 === 'string' && SHA256_RE.test(input.expected_sha256);
+      if (hasCreate === hasHash) {
+        return {
+          status: 'invalid_input',
+          path: input.path,
+          message: 'create_only: true 与 64 位十六进制 expected_sha256 必须严格二选一。',
+        };
+      }
+      const metaRes = await readKey('meta', 'book', DEFAULT_BOOK);
+      const meta = (metaRes.value.chapters || []).find(c => c.id === input.id);
+      if (!meta) {
+        return { status: 'not_found', path: input.path, message: `未找到章节 ${input.id}` };
+      }
+      const chRes = await readKey('chapters', `ch:${input.id}`, { body: '', beats: '', notes: '' });
+      const content = formatChapterMarkdown(meta, chRes.value, input.include_header !== false);
+      try {
+        const written = await globalThis.nmas.fs.writeText({
+          path: input.path,
+          content,
+          ...(hasCreate ? { create_only: true } : { expected_sha256: input.expected_sha256 }),
+        });
+        return {
+          status: 'exported',
+          path: input.path,
+          size_bytes: written.size_bytes,
+          sha256: written.sha256,
+          message: hasCreate ? '已原子新建发布到项目目录。' : '已通过 SHA-256 校验原子更新到本地项目文件。',
+        };
+      } catch (e) {
+        if (e?.code === 'conflict' && e.outcome_unknown === false) {
+          return {
+            status: 'conflict',
+            path: input.path,
+            message: hasCreate
+              ? '目标文件已存在，create_only 模式拒绝覆盖。请先核对本地文件或改用 expected_sha256 原子更新。'
+              : '目标文件自上次同步后已被外部修改或不存在（SHA-256 冲突），已停止覆盖，请先核对本地文件差异。',
+          };
+        }
+        throw e;
+      }
     }
 
     if (contribution === 'document.list') {
@@ -305,15 +539,17 @@ export default async function (request) {
       try { parsed = JSON.parse(input.text); } catch { return { imported: false, reason: 'invalid_json' }; }
       if (parsed?.format !== DOC_FORMAT || parsed?.version !== 1) return { imported: false, reason: 'invalid_document' };
       const metaRes = await readKey('meta', 'book', DEFAULT_BOOK);
-      let rev = metaRes.revision;
+      const rev = metaRes.revision;
       if (parsed.kind === 'chapter' && parsed.meta?.title) {
         const newId = `ch-${Date.now().toString(36)}`;
-        const body = String(parsed.content?.body || '').slice(0, 10000);
+        const body = String(parsed.content?.body || '').slice(0, 80000);
         const w1 = await writeKey('chapters', `ch:${newId}`, rev, {
           schema_version: 1,
           body,
-          beats: String(parsed.content?.beats || '').slice(0, 1000),
-          notes: String(parsed.content?.notes || '').slice(0, 1000),
+          beats: String(parsed.content?.beats || '').slice(0, 4000),
+          notes: String(parsed.content?.notes || '').slice(0, 4000),
+          fs_path: null,
+          fs_sha256: null,
         });
         if (w1.status !== 'saved') return { imported: false, reason: w1.status };
         const list = metaRes.value.chapters || [];
@@ -327,6 +563,8 @@ export default async function (request) {
           pov: String(parsed.meta.pov || '').slice(0, 40),
           word_count: countWords(body),
           summary: String(parsed.meta.summary || '').slice(0, 240),
+          fs_path: null,
+          fs_sha256: null,
         };
         const w2 = await writeKey('meta', 'book', w1.revision, { ...metaRes.value, chapters: [...list, nextEntry] });
         return w2.status === 'saved' ? { imported: true } : { imported: false, reason: w2.status };
@@ -336,58 +574,144 @@ export default async function (request) {
   }
 
   if (kind === 'tool') {
-    if (contribution === 'novel.outline') {
+    if (contribution === 'novel.get_story_context') {
       const metaRes = await readKey('meta', 'book', DEFAULT_BOOK);
+      const worldRes = await readKey('world', 'bible', DEFAULT_WORLD);
       const plotRes = await readKey('plot', 'board', DEFAULT_PLOT);
-      const chapters = (metaRes.value.chapters || []).map(({ id, order, title, tension, pov, summary }) => ({ id, order, title, tension, pov, summary }));
-      if (!chapters.length) return { success: true, status: 'empty', title: metaRes.value.title, total_words: 0, chapters: [], open_threads: [] };
+      const chapters = (metaRes.value.chapters || []).map(c => ({
+        id: c.id,
+        volume: c.volume || '第一卷',
+        order: c.order,
+        title: c.title,
+        status: c.status,
+        tension: c.tension,
+        pov: c.pov || '',
+        word_count: c.word_count || 0,
+        summary: c.summary || '',
+        fs_path: typeof c.fs_path === 'string' && c.fs_path ? c.fs_path : null,
+      }));
+      const characters = (worldRes.value.characters || []).map(({ id, name, role, faction, traits, goal }) => ({
+        id, name, role, faction, traits, goal,
+      }));
       const open_threads = (plotRes.value.threads || [])
         .filter(t => t.status === 'planted' || t.status === 'hinted')
-        .map(({ title, planted_ch, priority }) => ({ title, planted_ch, priority }));
-      return {
-        success: true,
-        status: 'ready',
+        .map(({ id, title, planted_ch, priority, status }) => ({ id, title, planted_ch, priority, status }));
+
+      const base = {
         title: metaRes.value.title,
-        total_words: computeTotalWords(metaRes.value.chapters || []),
+        genre: metaRes.value.genre,
+        logline: metaRes.value.logline,
+        total_words: computeTotalWords(chapters),
         chapters,
+        characters,
         open_threads,
       };
-    }
 
-    if (contribution === 'novel.chapter.read') {
-      const metaRes = await readKey('meta', 'book', DEFAULT_BOOK);
-      const ch = (metaRes.value.chapters || []).find(c => c.id === input.id);
-      if (!ch) return { success: false, status: 'not_found' };
-      const content = await readKey('chapters', `ch:${input.id}`, { body: '', beats: '' });
+      if (input.chapter_id) {
+        const target = chapters.find(c => c.id === input.chapter_id);
+        if (!target) {
+          return { success: false, status: 'chapter_not_found', ...base };
+        }
+        const chDoc = await readKey('chapters', `ch:${input.chapter_id}`, { body: '', beats: '', notes: '' });
+        return {
+          success: true,
+          status: 'ready',
+          ...base,
+          chapter_detail: {
+            id: target.id,
+            title: target.title,
+            pov: target.pov,
+            beats: chDoc.value.beats || '',
+            notes: chDoc.value.notes || '',
+            body: input.include_body === false ? '' : (chDoc.value.body || ''),
+          },
+        };
+      }
+
       return {
         success: true,
-        status: 'ready',
-        title: ch.title,
-        pov: ch.pov,
-        beats: content.value.beats || '',
-        body: content.value.body || '',
+        status: chapters.length ? 'ready' : 'empty',
+        ...base,
       };
     }
 
-    if (contribution === 'novel.bible.upsert') {
-      if (input.kind === 'thread') {
-        const plotRes = await readKey('plot', 'board', DEFAULT_PLOT);
-        const id = `th-${Date.now().toString(36)}`;
-        const next = [
-          ...(plotRes.value.threads || []),
-          { id, title: input.title.trim(), planted_ch: input.planted_ch || 1, payoff_ch: 0, status: 'planted', priority: 'major', detail: input.detail.trim().slice(0, 240) },
-        ];
-        const saved = await writeKey('plot', 'board', plotRes.revision, { schema_version: 1, threads: next });
-        return { success: saved.status === 'saved', status: saved.status, id };
+    if (contribution === 'novel.read_manuscript_file') {
+      try {
+        const file = await globalThis.nmas.fs.readText({ path: input.path });
+        return {
+          success: true,
+          status: 'ready',
+          path: input.path,
+          content: String(file.content || '').slice(0, 120000),
+          word_count: countWords(file.content || ''),
+          size_bytes: file.size_bytes,
+          sha256: file.sha256,
+        };
+      } catch (e) {
+        const code = e?.code === 'permission_denied' || e?.code === 'resource_limit' ? e.code : 'error';
+        return {
+          success: false,
+          status: code,
+          path: input.path,
+          error: String(e?.message || code).slice(0, 240),
+        };
       }
-      const worldRes = await readKey('world', 'bible', DEFAULT_WORLD);
-      const id = `l-${Date.now().toString(36)}`;
-      const nextLore = [
-        ...(worldRes.value.lore || []),
-        { id, category: input.kind, title: input.title.trim(), detail: input.detail.trim() },
-      ];
-      const saved = await writeKey('world', 'bible', worldRes.revision, { ...worldRes.value, schema_version: 1, lore: nextLore });
-      return { success: saved.status === 'saved', status: saved.status, id };
+    }
+
+    if (contribution === 'novel.upsert_chapter_outline') {
+      const id = String(input.id || '').trim();
+      const title = String(input.title || '').trim();
+      if (!title || !/^[a-zA-Z0-9._-]+$/.test(id)) {
+        return { success: false, status: 'invalid_input' };
+      }
+      const metaRes = await readKey('meta', 'book', DEFAULT_BOOK);
+      const list = metaRes.value.chapters || [];
+      const existing = list.find(c => c.id === id);
+      const prevDocRes = await readKey('chapters', `ch:${id}`, { body: '', beats: '', notes: '', fs_path: null, fs_sha256: null });
+      const prevDoc = prevDocRes.value;
+
+      const body = input.body !== undefined ? String(input.body) : (prevDoc.body || '');
+      const beats = input.beats !== undefined ? String(input.beats) : (prevDoc.beats || '');
+      const notes = input.notes !== undefined ? String(input.notes) : (prevDoc.notes || '');
+      const fsPath = existing?.fs_path || prevDoc.fs_path || null;
+      const fsSha = existing?.fs_sha256 || prevDoc.fs_sha256 || null;
+
+      const savedBody = await writeKey('chapters', `ch:${id}`, prevDocRes.revision, {
+        schema_version: 1,
+        body,
+        beats,
+        notes,
+        fs_path: fsPath,
+        fs_sha256: fsSha,
+      });
+      if (savedBody.status !== 'saved') {
+        return { success: false, status: savedBody.status };
+      }
+
+      const word_count = countWords(body);
+      const order = existing ? existing.order : list.length + 1;
+      const entry = {
+        id,
+        volume: input.volume !== undefined ? (input.volume.trim() || '第一卷') : (existing?.volume || '第一卷'),
+        order,
+        title,
+        status: input.status || existing?.status || 'draft',
+        tension: input.tension !== undefined ? input.tension : (existing?.tension || 6),
+        pov: input.pov !== undefined ? input.pov.trim() : (existing?.pov || ''),
+        word_count,
+        summary: input.summary !== undefined ? input.summary.trim() : (existing?.summary || ''),
+        fs_path: fsPath,
+        fs_sha256: fsSha,
+      };
+      const nextChapters = existing ? list.map(c => (c.id === id ? entry : c)) : [...list, entry];
+      const savedMeta = await writeKey('meta', 'book', savedBody.revision, {
+        ...metaRes.value,
+        schema_version: 1,
+        chapters: nextChapters,
+      });
+      return savedMeta.status === 'saved'
+        ? { success: true, status: 'saved', id, order, word_count, revision: savedMeta.revision }
+        : { success: false, status: savedMeta.status };
     }
   }
 

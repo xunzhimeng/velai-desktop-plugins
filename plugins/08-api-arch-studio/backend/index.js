@@ -4,12 +4,12 @@ const COL_SCHEMAS = 'schemas';
 const KEY_INDEX = 'index';
 const DOC_FORMAT = 'velai-api-arch-studio';
 
-const MAX_RECORD_BYTES = 13800;
-const MAX_CODE_BYTES = 11800;
-const MAX_SERVICES = 24;
-const MAX_EDGES = 48;
-const MAX_ENDPOINTS = 32;
-const MAX_SCHEMAS = 24;
+const MAX_RECORD_BYTES = 240 * 1024;
+const MAX_CODE_BYTES = 220 * 1024;
+const MAX_SERVICES = 48;
+const MAX_EDGES = 96;
+const MAX_ENDPOINTS = 64;
+const MAX_SCHEMAS = 48;
 
 const ID_RE = /^[a-zA-Z0-9._-]+$/;
 const SVC_KINDS = ['gateway', 'service', 'db', 'queue', 'external'];
@@ -362,6 +362,30 @@ function compileTypeScript(services, endpoints, schemas, serviceFilter) {
 
   const { text, truncated } = truncateUtf8(lines.join('\n'), MAX_CODE_BYTES);
   return { code: text, endpoint_count: eps.length, schema_count: schemas.length, truncated };
+}
+
+function compileAdrMarkdown(services, edges, endpoints, analysis) {
+  const lines = [
+    '# 架构决策记录 (ADR) 与 API 拓扑快照',
+    `- 服务节点：${services.length} | 依赖边：${edges.length} | 接口契约：${endpoints.length} | 稳定接口占比：${analysis.stable_ratio}%`,
+    '',
+    '## 1. 服务分层拓扑',
+    ...(services.length
+      ? services.map(s => `- **${s.name}** (\`${s.id}\`, ${s.kind}, Tier ${s.tier}, Owner: ${s.owner || '-'}) — ${s.description || '无说明'}`)
+      : ['- （暂无服务节点）']),
+    '',
+    '## 2. 架构风险与循环依赖诊断',
+    ...(analysis.warnings.length
+      ? analysis.warnings.map(w => `- ⚠️ ${w}`)
+      : ['- ✅ 未检测到循环依赖或高耦合告警']),
+    '',
+    '## 3. API 契约目录',
+    '| Method | Path | Service | Auth | Status | Summary |',
+    '| --- | --- | --- | --- | --- | --- |',
+    ...endpoints.map(ep => `| ${ep.method} | \`${ep.path}\` | ${ep.service_id} | ${ep.auth} | ${ep.status} | ${ep.summary} |`),
+    '',
+  ];
+  return lines.join('\n');
 }
 
 async function readServicesDoc() {
@@ -875,7 +899,7 @@ export default async function (request) {
         filename = `arch-${svc.id}.json`;
       }
       const text = JSON.stringify(payload, null, 2);
-      if (utf8Bytes(text) > 12000) return { error: 'too_large' };
+      if (utf8Bytes(text) > MAX_RECORD_BYTES) return { error: 'too_large' };
       return { filename, text };
     }
 
@@ -972,6 +996,108 @@ export default async function (request) {
         endpoints_count: nextEps.length,
         schemas_count: nextScs.length,
       };
+    }
+
+    if (contribution === 'fs_list') {
+      const relPath = typeof input.path === 'string' ? input.path.trim() : '';
+      const limit = input.limit ?? 50;
+      const cursor = input.cursor;
+      try {
+        const res = await globalThis.nmas.fs.listDir({ path: relPath, limit, cursor });
+        return {
+          status: 'ok',
+          path: relPath,
+          entries: res.entries || [],
+          next_cursor: res.next_cursor ?? null,
+        };
+      } catch (err) {
+        const code = err?.code === 'invalid_input' ? 'invalid_input' : 'permission_denied';
+        return { status: code, path: relPath, entries: [], next_cursor: null, error: String(err?.message || code).slice(0, 160) };
+      }
+    }
+
+    if (contribution === 'fs_import_doc') {
+      const relPath = (input.path || '').trim();
+      if (!relPath) {
+        return { status: 'invalid_input', path: '', content: '', size_bytes: 0, sha256: '', format: 'text', error: '缺少文件路径' };
+      }
+      try {
+        const res = await globalThis.nmas.fs.readText({ path: relPath });
+        const lower = relPath.toLowerCase();
+        let format = lower.endsWith('.md') ? 'markdown' : lower.endsWith('.ts') ? 'typescript' : 'text';
+        try {
+          const parsed = JSON.parse(res.content);
+          if (parsed?.format === DOC_FORMAT) format = 'snapshot_json';
+          else if (typeof parsed?.openapi === 'string') format = 'openapi_json';
+        } catch {
+          // non-JSON file
+        }
+        return {
+          status: 'ok',
+          path: relPath,
+          content: res.content,
+          size_bytes: res.size_bytes,
+          sha256: res.sha256,
+          format,
+        };
+      } catch (err) {
+        const code = err?.code === 'resource_limit' ? 'resource_limit' : err?.code === 'invalid_input' ? 'invalid_input' : 'permission_denied';
+        return { status: code, path: relPath, content: '', size_bytes: 0, sha256: '', format: 'text', error: String(err?.message || code).slice(0, 160) };
+      }
+    }
+
+    if (contribution === 'fs_export_doc') {
+      const relPath = (input.path || '').trim();
+      const target = input.target;
+      const filter = typeof input.service_id === 'string' && input.service_id.trim() ? input.service_id.trim() : '';
+      const hasCreate = input.create_only === true;
+      const hasSha = typeof input.expected_sha256 === 'string' && /^[0-9a-f]{64}$/.test(input.expected_sha256);
+      if (!relPath || hasCreate === hasSha) {
+        return {
+          status: 'invalid_input',
+          path: relPath,
+          size_bytes: 0,
+          sha256: '',
+          error: 'create_only 与 expected_sha256 必须二选一',
+        };
+      }
+      const all = await readAll();
+      let content = '';
+      if (target === 'openapi') {
+        content = compileOpenApi(all.services, all.endpoints, all.schemas, filter).code;
+      } else if (target === 'typescript') {
+        content = compileTypeScript(all.services, all.endpoints, all.schemas, filter).code;
+      } else if (target === 'adr') {
+        const analysis = analyzeTopology(all.services, all.edges, all.endpoints);
+        content = compileAdrMarkdown(all.services, all.edges, all.endpoints, analysis);
+      } else if (target === 'snapshot') {
+        content = JSON.stringify({
+          format: DOC_FORMAT,
+          version: 1,
+          services: all.services,
+          edges: all.edges,
+          endpoints: all.endpoints,
+          schemas: all.schemas,
+        }, null, 2);
+      } else {
+        return { status: 'invalid_input', path: relPath, size_bytes: 0, sha256: '', error: '不支持的导出目标' };
+      }
+      try {
+        const writeReq = hasCreate
+          ? { path: relPath, content, create_only: true }
+          : { path: relPath, content, expected_sha256: input.expected_sha256 };
+        const receipt = await globalThis.nmas.fs.writeText(writeReq);
+        return { status: 'written', path: relPath, size_bytes: receipt.size_bytes, sha256: receipt.sha256 };
+      } catch (err) {
+        const mapCode = {
+          conflict: 'conflict',
+          resource_limit: 'resource_limit',
+          invalid_input: 'invalid_input',
+          permission_denied: 'permission_denied',
+        };
+        const status = mapCode[err?.code] || 'permission_denied';
+        return { status, path: relPath, size_bytes: 0, sha256: '', error: String(err?.message || status).slice(0, 160) };
+      }
     }
   }
 

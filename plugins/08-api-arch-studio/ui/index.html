@@ -290,6 +290,22 @@ textarea{resize:vertical;min-height:72px}
     </div>
     <label class="field"><span>JSON 内容</span><textarea id="io-text" rows="9" class="mono" style="font-size:12px" placeholder='{"format":"velai-api-arch-studio","version":1,...}'></textarea></label>
     <div class="row" style="justify-content:flex-end"><button class="btn" data-close="modal-io" type="button">关闭</button><button id="btn-io-imp" class="btn primary" type="button">导入并合并</button></div>
+    <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;flex-direction:column;gap:8px">
+      <div class="row" style="justify-content:space-between;font-size:12px"><strong>项目工作区文档同步 (V2 Workspace FS)</strong><span id="fs-sha-hint" style="color:var(--fg2)">支持新建或 CAS 覆盖发布</span></div>
+      <div class="row">
+        <input id="fs-dir" type="text" placeholder="工作区目录（空表示根目录，如 docs）" style="flex:1">
+        <button id="fs-btn-list" class="btn sm" type="button">浏览目录</button>
+      </div>
+      <div id="fs-entries" style="display:flex;flex-wrap:wrap;gap:6px;font-size:11.5px;color:var(--fg2)"></div>
+      <div class="row">
+        <input id="fs-path" type="text" placeholder="相对路径，如 docs/openapi.json 或 docs/adr.md" style="flex:1">
+        <select id="fs-target" style="width:128px"><option value="openapi">OpenAPI 3.0</option><option value="typescript">TypeScript</option><option value="adr">ADR Markdown</option><option value="snapshot">架构快照 JSON</option></select>
+      </div>
+      <div class="row" style="justify-content:flex-end">
+        <button id="fs-btn-read" class="btn sm" type="button">从项目读取</button>
+        <button id="fs-btn-write" class="btn sm primary" type="button">同步发布到项目</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -926,6 +942,58 @@ textarea{resize:vertical;min-height:72px}
       if (r.imported) { $('modal-io').hidden = true; S.epDraft = null; S.scDraft = null; await refresh(`导入成功：${r.services_count} 服务 · ${r.endpoints_count} 接口 · ${r.schemas_count} 模型。`); }
       else setStatus(`导入失败：${r.reason || '格式无效'}`, 'error');
     } catch (e) { setStatus(`导入异常：${e?.message || '未知错误'}`, 'error'); }
+  });
+
+  let lastFsSha = '';
+  let lastFsPath = '';
+  $('fs-btn-list').addEventListener('click', async () => {
+    const dir = $('fs-dir').value.trim();
+    try {
+      const r = await plugin.action('fs_list', { path: dir, limit: 50 });
+      const box = $('fs-entries');
+      box.replaceChildren();
+      if (r.status !== 'ok') { setStatus(`目录读取失败：${r.error || r.status}`, 'error'); return; }
+      if (!r.entries.length) { box.textContent = '（当前目录为空）'; return; }
+      for (const ent of r.entries) {
+        const b = el('button', { type: 'button', class: 'btn sm' }, ent.kind === 'dir' ? `📁 ${ent.name}/` : `📄 ${ent.name}`);
+        b.addEventListener('click', () => {
+          const next = dir ? `${dir}/${ent.name}` : ent.name;
+          if (ent.kind === 'dir') { $('fs-dir').value = next; $('fs-btn-list').click(); }
+          else { $('fs-path').value = next; }
+        });
+        box.appendChild(b);
+      }
+    } catch (e) { setStatus(`目录浏览异常：${e?.message || '未知错误'}`, 'error'); }
+  });
+  $('fs-btn-read').addEventListener('click', async () => {
+    const relPath = $('fs-path').value.trim();
+    if (!relPath) { setStatus('请输入工作区相对路径。', 'error'); return; }
+    try {
+      const r = await plugin.action('fs_import_doc', { path: relPath });
+      if (r.status === 'ok') {
+        $('io-text').value = r.content;
+        lastFsSha = r.sha256;
+        lastFsPath = relPath;
+        $('fs-sha-hint').textContent = `SHA-256: ${r.sha256.slice(0, 10)}… (${r.size_bytes} B)`;
+        setStatus(`已读取 ${relPath} (${r.format})`, 'ok');
+      } else setStatus(`读取失败：${r.error || r.status}`, 'error');
+    } catch (e) { setStatus(`读取异常：${e?.message || '未知错误'}`, 'error'); }
+  });
+  $('fs-btn-write').addEventListener('click', async () => {
+    const relPath = $('fs-path').value.trim();
+    if (!relPath) { setStatus('请输入目标相对路径。', 'error'); return; }
+    const payload = { target: $('fs-target').value, path: relPath };
+    if (lastFsSha && lastFsPath === relPath) payload.expected_sha256 = lastFsSha;
+    else payload.create_only = true;
+    try {
+      const r = await plugin.action('fs_export_doc', payload);
+      if (r.status === 'written') {
+        lastFsSha = r.sha256;
+        lastFsPath = relPath;
+        $('fs-sha-hint').textContent = `已发布 SHA-256: ${r.sha256.slice(0, 10)}… (${r.size_bytes} B)`;
+        setStatus(`已同步写入 ${relPath} (${r.size_bytes} B)`, 'ok');
+      } else setStatus(`发布未完成 (${r.status})：${r.error || '文件已存在时请先从项目读取获取最新 SHA-256'}`, 'error');
+    } catch (e) { setStatus(`发布异常：${e?.message || '未知错误'}`, 'error'); }
   });
 
   void refresh();

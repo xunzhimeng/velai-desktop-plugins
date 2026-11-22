@@ -5,8 +5,9 @@ const KEY_REQ = 'list';
 const KEY_MAP = 'plan';
 const KEY_SPEC_IDX = 'index';
 
-const MAX_BYTES = 12 * 1024;
-const MAX_REQS = 40;
+const MAX_RECORD_BYTES = 240 * 1024;
+const MAX_BYTES = MAX_RECORD_BYTES;
+const MAX_REQS = 80;
 const STATUSES = ['backlog', 'planned', 'in_progress', 'review', 'shipped'];
 const BUNDLE_FORMAT = 'velai.product-studio.bundle';
 const PRD_FORMAT = 'velai.product-studio.prd';
@@ -169,6 +170,66 @@ async function safeWrite(collection, key, expectedRevision, value) {
   }
 }
 
+async function safeDelete(collection, key, expectedRevision) {
+  try {
+    const receipt = await globalThis.nmas.data.delete({
+      collection,
+      key,
+      expected_revision: expectedRevision,
+    });
+    return { ok: true, status: 'deleted', revision: receipt.revision };
+  } catch (err) {
+    if (err?.code === 'conflict' && err.outcome_unknown === false) {
+      return { ok: false, status: 'conflict', revision: expectedRevision };
+    }
+    throw err;
+  }
+}
+
+function formatPrdMarkdown(req, spec) {
+  return [
+    `# PRD: ${req.title}`,
+    `- ID: \`${req.id}\` | 模块：${req.module} | 优先级：${req.priority} (RICE ${req.rice}) | 负责人：${req.owner || '-'} | 迭代：${req.sprint || '-'}`,
+    '',
+    '## 1. 背景与目标',
+    spec.background || '（待补充）',
+    '',
+    '## 2. 用户故事',
+    spec.user_stories || '（待补充）',
+    '',
+    '## 3. 核心业务流程',
+    spec.core_flow || '（待补充）',
+    '',
+    '## 4. 验收标准 (AC)',
+    spec.acceptance_criteria || '（待补充）',
+    '',
+    '## 5. 边界与风险',
+    spec.risks || '（待补充）',
+    '',
+  ].join('\n');
+}
+
+function formatRoadmapMarkdown(items, roadmap) {
+  const lines = [
+    '# 产品需求与路线图总览',
+    `- 周期：共 ${roadmap.total_weeks} 周（当前 W${roadmap.current_week}） | 需求总数：${items.length}`,
+    '',
+    '## 里程碑',
+    ...(roadmap.milestones.length
+      ? roadmap.milestones.map(m => `- W${m.week}: ${m.title}`)
+      : ['- （暂无里程碑）']),
+    '',
+    '## 需求优先级列表 (按 RICE 降序)',
+    '| ID | 需求 | 模块 | 状态 | 优先级 | RICE | 负责人 | 迭代 |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- |',
+  ];
+  const sorted = [...items].sort((a, b) => b.rice - a.rice);
+  for (const r of sorted) {
+    lines.push(`| ${r.id} | ${r.title} | ${r.module} | ${r.status} | ${r.priority} | ${r.rice} | ${r.owner || '-'} | ${r.sprint || '-'} |`);
+  }
+  return `${lines.join('\n')}\n`;
+}
+
 function buildKpi(items, scores) {
   const total = items.length;
   const in_progress = items.filter(i => i.status === 'in_progress' || i.status === 'review').length;
@@ -271,7 +332,7 @@ function buildDemoData() {
     },
     {
       id: 'req-turn-orchestrator',
-      title: '插件到会话异步 Turn 编排协议',
+      title: '受管 AI 伴生与 Workspace FS 协同协议',
       module: 'AI 编排',
       status: 'in_progress',
       reach: 2400,
@@ -280,14 +341,14 @@ function buildDemoData() {
       effort: 3.5,
       owner: '陈默',
       sprint: 'S3 · 体验跃升',
-      summary: '允许插件通过 session.turn.request/result 委托当前会话生成结构化草稿并回流审阅采纳。',
+      summary: '支持独立 AI 伴生插件与项目工作区 FS CAS 双向同步，实现文档草稿审阅与确定性落盘。',
       lane: { start_week: 5, duration_weeks: 3, progress: 45 },
       spec: {
-        background: '科研文献综述、会议纪要提炼等深度场景需要复用用户当前会话的模型上下文与长推理能力。',
-        user_stories: '作为科研用户，我希望在文献插件勾选多篇论文后一键发给当前会话生成综述，核对无误后再存为笔记。',
-        core_flow: '1. 插件生成 UUID work_id 并派发 prompt 至宿主页面桥\n2. 宿主在当前会话执行生成任务并实时更新状态机\n3. 插件按需轮询或手动核对 session.turn.result 并人工采纳',
-        acceptance_criteria: '1. 必须仅限 account/none 域插件声明，project 域严格禁止\n2. 结果截断时 truncated=true 显式提醒用户回原会话查看\n3. 支持中途取消任务且不遗留脏状态',
-        risks: '用户未选中活跃会话时派发需优雅返回 cancelled 并引导选择会话。',
+        background: '产品 PRD、架构 ADR 等深度文档场景需要结合工作区文件读写与受管 AI 伴生能力。',
+        user_stories: '作为产品经理，我希望在工作区浏览并导入已有文档，经审阅后以 CAS 方式安全写回项目仓库。',
+        core_flow: '1. 插件调用 nmas.fs.listDir/readText 读取项目工作区文件并获取 SHA-256\n2. 编辑或通过独立 AI 伴生插件完善内容\n3. 通过 expected_sha256 或 create_only 原子写回工作区',
+        acceptance_criteria: '1. workspace.fs.* 仅限 project scope 插件且禁止 assistant surface\n2. 严禁访问 .env / .git / 密钥等敏感路径\n3. 并发写入冲突时返回确定性 conflict 错误',
+        risks: '需校验父目录存在性且不自动建目录，避免误写至未预期路径。',
       },
     },
     {
@@ -524,7 +585,7 @@ export default async function (request) {
         const w3 = await safeWrite(COL_SPEC, KEY_SPEC_IDX, nextRev, { schema_version: 1, scores: nextScores });
         if (w3.ok) nextRev = w3.revision;
       }
-      const w4 = await safeWrite(COL_SPEC, `doc:${id}`, nextRev, null);
+      const w4 = await safeDelete(COL_SPEC, `doc:${id}`, nextRev);
       if (w4.ok) nextRev = w4.revision;
 
       return { status: 'deleted', revision: nextRev };
@@ -775,6 +836,107 @@ export default async function (request) {
       }
 
       return { imported: false, reason: 'invalid_document', count: 0 };
+    }
+
+    if (contribution === 'fs_list') {
+      const relPath = typeof input.path === 'string' ? input.path.trim() : '';
+      const limit = input.limit ?? 50;
+      const cursor = input.cursor;
+      try {
+        const res = await globalThis.nmas.fs.listDir({ path: relPath, limit, cursor });
+        return {
+          status: 'ok',
+          path: relPath,
+          entries: res.entries || [],
+          next_cursor: res.next_cursor ?? null,
+        };
+      } catch (err) {
+        const code = err?.code === 'invalid_input' ? 'invalid_input' : 'permission_denied';
+        return { status: code, path: relPath, entries: [], next_cursor: null, error: String(err?.message || code).slice(0, 160) };
+      }
+    }
+
+    if (contribution === 'fs_import_doc') {
+      const relPath = (input.path || '').trim();
+      if (!relPath) {
+        return { status: 'invalid_input', path: '', content: '', size_bytes: 0, sha256: '', format: 'text', error: '缺少文件路径' };
+      }
+      try {
+        const res = await globalThis.nmas.fs.readText({ path: relPath });
+        let format = relPath.toLowerCase().endsWith('.md') ? 'markdown' : 'text';
+        try {
+          const parsed = JSON.parse(res.content);
+          if (parsed?.format === BUNDLE_FORMAT) format = 'bundle_json';
+          else if (parsed?.format === PRD_FORMAT) format = 'prd_json';
+        } catch {
+          // non-JSON content
+        }
+        return {
+          status: 'ok',
+          path: relPath,
+          content: res.content,
+          size_bytes: res.size_bytes,
+          sha256: res.sha256,
+          format,
+        };
+      } catch (err) {
+        const code = err?.code === 'resource_limit' ? 'resource_limit' : err?.code === 'invalid_input' ? 'invalid_input' : 'permission_denied';
+        return { status: code, path: relPath, content: '', size_bytes: 0, sha256: '', format: 'text', error: String(err?.message || code).slice(0, 160) };
+      }
+    }
+
+    if (contribution === 'fs_export_doc') {
+      const docId = (input.id || '').trim();
+      const relPath = (input.path || '').trim();
+      const fmt = input.format === 'json' ? 'json' : 'markdown';
+      const hasCreate = input.create_only === true;
+      const hasSha = typeof input.expected_sha256 === 'string' && /^[0-9a-f]{64}$/.test(input.expected_sha256);
+      if (!relPath || hasCreate === hasSha) {
+        return {
+          status: 'invalid_input',
+          path: relPath,
+          size_bytes: 0,
+          sha256: '',
+          error: 'create_only 与 expected_sha256 必须二选一',
+        };
+      }
+      let content = '';
+      if (docId === 'all') {
+        const reqData = await readReqs();
+        const mapData = await readRoadmap();
+        content = fmt === 'json'
+          ? JSON.stringify({ format: BUNDLE_FORMAT, version: 1, requirements: reqData.items, roadmap: mapData.roadmap }, null, 2)
+          : formatRoadmapMarkdown(reqData.items, mapData.roadmap);
+      } else if (docId.startsWith('prd:')) {
+        const reqId = docId.slice(4);
+        const reqData = await readReqs();
+        const req = reqData.items.find(i => i.id === reqId);
+        if (!req) {
+          return { status: 'not_found', path: relPath, size_bytes: 0, sha256: '', error: '未找到指定需求' };
+        }
+        const specData = await readSpecDoc(reqId);
+        content = fmt === 'json'
+          ? JSON.stringify({ format: PRD_FORMAT, version: 1, requirement: req, spec: specData.spec }, null, 2)
+          : formatPrdMarkdown(req, specData.spec);
+      } else {
+        return { status: 'not_found', path: relPath, size_bytes: 0, sha256: '', error: '不支持的文档标识' };
+      }
+      try {
+        const writeReq = hasCreate
+          ? { path: relPath, content, create_only: true }
+          : { path: relPath, content, expected_sha256: input.expected_sha256 };
+        const receipt = await globalThis.nmas.fs.writeText(writeReq);
+        return { status: 'written', path: relPath, size_bytes: receipt.size_bytes, sha256: receipt.sha256 };
+      } catch (err) {
+        const mapCode = {
+          conflict: 'conflict',
+          resource_limit: 'resource_limit',
+          invalid_input: 'invalid_input',
+          permission_denied: 'permission_denied',
+        };
+        const status = mapCode[err?.code] || 'permission_denied';
+        return { status, path: relPath, size_bytes: 0, sha256: '', error: String(err?.message || status).slice(0, 160) };
+      }
     }
   }
 

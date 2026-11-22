@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 
 export async function verify({ createHarness }) {
-  const h = await createHarness();
+  const h = await createHarness({
+    fsInitial: {
+      'docs/README.md': '# Architecture Docs\n',
+    },
+  });
 
   // 1. 初始空状态
   const init = await h.action('arch.state', {});
@@ -130,4 +134,53 @@ export async function verify({ createHarness }) {
   const imp = await h.action('document.import', { text: exp.text });
   assert.equal(imp.imported, true);
   assert.ok(imp.services_count >= 6);
+
+  // 10. V2 Workspace FS 同步（OpenAPI + ADR + create_only / CAS expected_sha256 / 敏感路径拦截）
+  const rootList = await h.action('fs_list', { path: '' });
+  assert.equal(rootList.status, 'ok');
+  assert.ok(rootList.entries.some(e => e.name === 'docs' && e.kind === 'dir'));
+
+  const expOa = await h.action('fs_export_doc', {
+    target: 'openapi',
+    path: 'docs/openapi.json',
+    create_only: true,
+  });
+  assert.equal(expOa.status, 'written');
+  assert.equal(expOa.sha256.length, 64);
+
+  const dupOa = await h.action('fs_export_doc', {
+    target: 'openapi',
+    path: 'docs/openapi.json',
+    create_only: true,
+  });
+  assert.equal(dupOa.status, 'conflict');
+
+  const readOa = await h.action('fs_import_doc', { path: 'docs/openapi.json' });
+  assert.equal(readOa.status, 'ok');
+  assert.equal(readOa.format, 'openapi_json');
+  assert.equal(readOa.sha256, expOa.sha256);
+
+  const expAdr = await h.action('fs_export_doc', {
+    target: 'adr',
+    path: 'docs/adr-001.md',
+    create_only: true,
+  });
+  assert.equal(expAdr.status, 'written');
+
+  const casAdr = await h.action('fs_export_doc', {
+    target: 'adr',
+    path: 'docs/adr-001.md',
+    expected_sha256: expAdr.sha256,
+  });
+  assert.equal(casAdr.status, 'written');
+
+  const staleAdr = await h.action('fs_export_doc', {
+    target: 'adr',
+    path: 'docs/adr-001.md',
+    expected_sha256: '0'.repeat(64),
+  });
+  assert.equal(staleAdr.status, 'conflict');
+
+  const denied = await h.action('fs_import_doc', { path: '.env' });
+  assert.equal(denied.status, 'permission_denied');
 }

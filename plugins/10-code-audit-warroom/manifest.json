@@ -1,16 +1,16 @@
 {
-  "manifest_version": 1,
+  "manifest_version": 2,
   "plugin_id": "code-audit-warroom",
   "name": "安全审计与故障复盘作战室 (COE)",
-  "version": "1.0.0",
-  "host_api": 1,
+  "version": "2.0.0",
+  "host_api": 2,
   "backend": "backend/index.js",
   "page": "ui/index.html",
   "ui": {
     "icon": "edit",
     "surfaces": ["workspace", "chat"]
   },
-  "permissions": ["data.read", "data.write"],
+  "permissions": ["data.read", "data.write", "workspace.fs.read"],
   "actions": [
     {
       "id": "warroom.state",
@@ -70,7 +70,7 @@
                 "likelihood": { "type": "integer", "minimum": 1, "maximum": 5 },
                 "risk_score": { "type": "integer", "minimum": 1, "maximum": 25 },
                 "status": { "type": "string", "enum": ["open", "mitigating", "verified", "wontfix"] },
-                "component": { "type": "string", "minLength": 1, "maxLength": 80 },
+                "component": { "type": "string", "minLength": 1, "maxLength": 120 },
                 "remediation": { "type": "string", "maxLength": 420 },
                 "created_at": { "type": "string", "minLength": 10, "maxLength": 10 }
               }
@@ -159,7 +159,7 @@
           "impact": { "type": "integer", "minimum": 1, "maximum": 5 },
           "likelihood": { "type": "integer", "minimum": 1, "maximum": 5 },
           "status": { "type": "string", "enum": ["open", "mitigating", "verified", "wontfix"] },
-          "component": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "component": { "type": "string", "minLength": 1, "maxLength": 120 },
           "remediation": { "type": "string", "maxLength": 420 }
         }
       },
@@ -333,6 +333,90 @@
       }
     },
     {
+      "id": "audit.fs_list",
+      "title": "只读浏览项目源码目录",
+      "permissions": ["workspace.fs.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "path": { "type": "string", "maxLength": 512 },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 100 },
+          "cursor": { "type": "string", "maxLength": 128 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "entries", "next_cursor"],
+        "properties": {
+          "path": { "type": "string", "maxLength": 512 },
+          "entries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name", "path", "kind", "size_bytes"],
+              "properties": {
+                "name": { "type": "string", "maxLength": 255 },
+                "path": { "type": "string", "maxLength": 1024 },
+                "kind": { "type": "string", "enum": ["file", "dir"] },
+                "size_bytes": { "type": ["integer", "null"], "minimum": 0, "maximum": 1073741824 }
+              }
+            }
+          },
+          "next_cursor": { "type": ["string", "null"], "maxLength": 128 }
+        }
+      }
+    },
+    {
+      "id": "audit.fs_scan_file",
+      "title": "只读静态安全规则扫描单个项目文件",
+      "permissions": ["workspace.fs.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1, "maxLength": 512 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "path", "size_bytes", "sha256", "line_count", "candidates"],
+        "properties": {
+          "status": { "type": "string", "enum": ["scanned", "not_a_file"] },
+          "path": { "type": "string", "maxLength": 512 },
+          "size_bytes": { "type": "integer", "minimum": 0, "maximum": 1048576 },
+          "sha256": { "type": ["string", "null"], "maxLength": 64 },
+          "line_count": { "type": "integer", "minimum": 0, "maximum": 200000 },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["rule_id", "title", "severity", "category", "dimension", "impact", "likelihood", "risk_score", "line", "snippet", "remediation"],
+              "properties": {
+                "rule_id": { "type": "string", "maxLength": 48 },
+                "title": { "type": "string", "maxLength": 120 },
+                "severity": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
+                "category": { "type": "string", "enum": ["owasp", "architecture", "performance", "compliance"] },
+                "dimension": { "type": "string", "enum": ["auth", "isolation", "validation", "supply_chain", "observability"] },
+                "impact": { "type": "integer", "minimum": 1, "maximum": 5 },
+                "likelihood": { "type": "integer", "minimum": 1, "maximum": 5 },
+                "risk_score": { "type": "integer", "minimum": 1, "maximum": 25 },
+                "line": { "type": "integer", "minimum": 1, "maximum": 200000 },
+                "snippet": { "type": "string", "maxLength": 200 },
+                "remediation": { "type": "string", "maxLength": 420 }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "id": "report.generate",
       "title": "生成 Markdown 安全审计与 COE 复盘报告",
       "permissions": ["data.read"],
@@ -349,7 +433,7 @@
         "additionalProperties": false,
         "required": ["markdown", "health_score"],
         "properties": {
-          "markdown": { "type": "string", "maxLength": 10240 },
+          "markdown": { "type": "string", "maxLength": 32768 },
           "health_score": { "type": "integer", "minimum": 0, "maximum": 100 }
         }
       }
@@ -373,9 +457,9 @@
         "properties": {
           "status": { "type": "string", "enum": ["seeded", "conflict", "limit"] },
           "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
-          "findings_count": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "findings_count": { "type": "integer", "minimum": 0, "maximum": 200 },
           "incidents_count": { "type": "integer", "minimum": 0, "maximum": 100 },
-          "actions_count": { "type": "integer", "minimum": 0, "maximum": 100 }
+          "actions_count": { "type": "integer", "minimum": 0, "maximum": 200 }
         }
       }
     },
@@ -427,7 +511,7 @@
         "required": [],
         "properties": {
           "filename": { "type": "string", "maxLength": 80 },
-          "text": { "type": "string", "maxLength": 12288 },
+          "text": { "type": "string", "maxLength": 65536 },
           "error": { "type": "string", "maxLength": 64 }
         }
       }
@@ -441,7 +525,7 @@
         "additionalProperties": false,
         "required": ["text"],
         "properties": {
-          "text": { "type": "string", "minLength": 2, "maxLength": 12288 }
+          "text": { "type": "string", "minLength": 2, "maxLength": 65536 }
         }
       },
       "output_schema": {
@@ -458,7 +542,7 @@
   ],
   "tools": [
     {
-      "id": "audit.summary",
+      "id": "audit.get_warroom_summary",
       "title": "读取项目安全健康分与高危风险摘要",
       "description": "获取当前项目安全健康分 (0-100)、五维雷达分、未闭环高危漏洞、MTTR 与历史故障 COE 教训摘要。",
       "permissions": ["data.read"],
@@ -505,7 +589,7 @@
                 "severity": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
                 "risk_score": { "type": "integer", "minimum": 1, "maximum": 25 },
                 "status": { "type": "string", "enum": ["open", "mitigating", "verified", "wontfix"] },
-                "component": { "type": "string", "minLength": 1, "maxLength": 80 }
+                "component": { "type": "string", "minLength": 1, "maxLength": 120 }
               }
             }
           },
@@ -529,7 +613,55 @@
       }
     },
     {
-      "id": "audit.finding.add",
+      "id": "audit.read_project_file",
+      "title": "只读读取项目源码并运行静态安全预扫描",
+      "description": "只读读取当前项目工作区内的源码或配置文件，可选按行区间截取并运行内置静态安全规则检测，返回代码正文与候选风险列表。",
+      "permissions": ["workspace.fs.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1, "maxLength": 512 },
+          "start_line": { "type": "integer", "minimum": 1, "maximum": 200000 },
+          "end_line": { "type": "integer", "minimum": 1, "maximum": 200000 },
+          "run_scan": { "type": "boolean" }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status", "path"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["ready", "permission_denied", "resource_limit", "error"] },
+          "path": { "type": "string", "maxLength": 512 },
+          "size_bytes": { "type": "integer", "minimum": 0, "maximum": 1048576 },
+          "sha256": { "type": "string", "maxLength": 64 },
+          "total_lines": { "type": "integer", "minimum": 0, "maximum": 200000 },
+          "content": { "type": "string", "maxLength": 120000 },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["rule_id", "title", "severity", "line", "snippet", "remediation"],
+              "properties": {
+                "rule_id": { "type": "string", "maxLength": 48 },
+                "title": { "type": "string", "maxLength": 120 },
+                "severity": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
+                "line": { "type": "integer", "minimum": 1, "maximum": 200000 },
+                "snippet": { "type": "string", "maxLength": 200 },
+                "remediation": { "type": "string", "maxLength": 420 }
+              }
+            }
+          },
+          "error": { "type": "string", "maxLength": 240 }
+        }
+      }
+    },
+    {
+      "id": "audit.log_finding",
       "title": "登记新的安全审计发现",
       "description": "向当前项目作战室登记一条安全漏洞或架构缺陷，自动分配 SEC-NNN 编号并计算风险分。",
       "permissions": ["data.read", "data.write"],
@@ -544,7 +676,7 @@
           "severity": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
           "impact": { "type": "integer", "minimum": 1, "maximum": 5 },
           "likelihood": { "type": "integer", "minimum": 1, "maximum": 5 },
-          "component": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "component": { "type": "string", "minLength": 1, "maxLength": 120 },
           "remediation": { "type": "string", "maxLength": 420 }
         }
       },

@@ -42,7 +42,7 @@
     }
     * { box-sizing: border-box; }
     body { margin: 0; background: var(--bg); color: var(--fg); min-height: 100vh; }
-    .app { display: grid; grid-template-columns: 210px minmax(0, 1fr); min-height: 100vh; }
+    .app { display: grid; grid-template-columns: 215px minmax(0, 1fr); min-height: 100vh; }
     @media (max-width: 820px) { .app { grid-template-columns: 1fr; } .sidebar { border-right: 0; border-bottom: 1px solid var(--border); } }
 
     .sidebar { background: var(--bg-elev); border-right: 1px solid var(--border); padding: 16px 12px; display: flex; flex-direction: column; gap: 14px; }
@@ -84,13 +84,14 @@
     html[data-theme="light"] button.primary { color: #fff; }
     button.ghost { background: transparent; }
     button.danger { color: var(--red); border-color: rgba(251, 113, 133, 0.35); }
+    button.sm { padding: 4px 8px; font-size: 12px; }
     button:disabled { opacity: 0.48; cursor: not-allowed; }
     .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .between { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
 
     /* Writing IDE 3-column */
-    .write-grid { display: grid; grid-template-columns: 220px minmax(0, 1fr) 290px; gap: 14px; align-items: start; }
-    @media (max-width: 1120px) { .write-grid { grid-template-columns: 200px minmax(0, 1fr); } .ai-panel { grid-column: 1 / -1; } }
+    .write-grid { display: grid; grid-template-columns: 220px minmax(0, 1fr) 310px; gap: 14px; align-items: start; }
+    @media (max-width: 1160px) { .write-grid { grid-template-columns: 200px minmax(0, 1fr); } .sync-panel { grid-column: 1 / -1; } }
     @media (max-width: 720px) { .write-grid { grid-template-columns: 1fr; } }
 
     .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow); min-width: 0; }
@@ -107,7 +108,17 @@
     label.field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--fg-muted); font-weight: 600; }
     textarea.manuscript { min-height: 360px; line-height: 1.85; font-size: 14.5px; font-family: "Songti SC", "Noto Serif SC", Georgia, serif; padding: 14px; resize: vertical; }
     textarea.small { min-height: 76px; resize: vertical; font-size: 12.5px; }
-    .ai-output { white-space: pre-wrap; word-break: break-word; max-height: 280px; overflow: auto; padding: 10px; border-radius: 8px; background: var(--bg-input); border: 1px dashed var(--accent); font-size: 13px; line-height: 1.7; margin: 0; }
+
+    /* FS Sync Panel */
+    .fs-list { display: flex; flex-direction: column; gap: 5px; max-height: 210px; overflow: auto; padding: 6px; border-radius: 8px; background: var(--bg-input); border: 1px solid var(--border); }
+    .fs-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 5px 7px; border-radius: 6px; font-size: 12px; background: var(--bg-card); border: 1px solid var(--border); }
+    .fs-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; cursor: pointer; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+    .fs-name:hover { color: var(--accent); }
+    .fs-box { padding: 9px 10px; border-radius: 8px; background: var(--bg-input); border: 1px solid var(--border); font-size: 12px; display: flex; flex-direction: column; gap: 6px; }
+    .fs-box.conflict { border-color: rgba(251, 113, 133, 0.55); background: rgba(251, 113, 133, 0.08); color: var(--red); }
+    .fs-box.ok { border-color: rgba(52, 211, 153, 0.45); background: rgba(52, 211, 153, 0.08); }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; word-break: break-all; }
+    .companion-card { border: 1px dashed rgba(167, 139, 250, 0.45); background: rgba(167, 139, 250, 0.08); border-radius: 10px; padding: 10px 11px; display: flex; flex-direction: column; gap: 5px; font-size: 12px; }
 
     /* Graph & Charts */
     .split-2 { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(260px, 1fr); gap: 14px; align-items: start; }
@@ -130,9 +141,9 @@
   <div class="app">
     <aside class="sidebar">
       <div class="brand">
-        <span class="brand-tag">NOVEL STUDIO PRO</span>
+        <span class="brand-tag">NOVEL STUDIO V2 · PROJECT</span>
         <h1 id="book-title" class="brand-title">AI 长篇小说开发系统</h1>
-        <span id="book-genre" class="brand-sub">长篇创作工作台</span>
+        <span id="book-genre" class="brand-sub">长篇创作与工作区同步工作台</span>
       </div>
 
       <div class="progress-card">
@@ -142,7 +153,7 @@
       </div>
 
       <nav class="nav">
-        <button class="active" data-view="write" type="button"><span>✍️ 卷章写作台</span><span id="nav-ch" class="pill">0</span></button>
+        <button class="active" data-view="write" type="button"><span>✍️ 卷章写作与同步</span><span id="nav-ch" class="pill">0</span></button>
         <button data-view="characters" type="button"><span>🕸️ 人物关系图谱</span><span id="nav-char" class="pill">0</span></button>
         <button data-view="plot" type="button"><span>📈 张力曲线与伏笔</span><span id="nav-plot" class="pill">0</span></button>
         <button data-view="world" type="button"><span>🌌 世界观与书目</span><span id="nav-lore" class="pill">0</span></button>
@@ -207,43 +218,58 @@
                 <input id="ch-tension" type="range" min="1" max="10" value="6">
               </label>
             </div>
-            <label class="field">本章一句话摘要（供 AI 理解前文脉络）
+            <label class="field">本章一句话摘要（供 Agent Tool 理解前文脉络）
               <input id="ch-summary" maxlength="240" placeholder="概括本章推动的核心事件与悬念…">
             </label>
             <label class="field">场景节拍 (Scene Beats)
-              <textarea id="ch-beats" class="small" maxlength="1000" placeholder="1. 开场钩子&#10;2. 冲突升级&#10;3. 章节结尾反转"></textarea>
+              <textarea id="ch-beats" class="small" maxlength="4000" placeholder="1. 开场钩子&#10;2. 冲突升级&#10;3. 章节结尾反转"></textarea>
             </label>
-            <label class="field">正文手稿
-              <textarea id="ch-body" class="manuscript" maxlength="10000" placeholder="开始书写本章正文，或在右侧使用 AI 创作副驾结合世界观与人物设定辅助续写…"></textarea>
+            <label class="field">正文手稿（V2 单章支持 240 KiB 长正文）
+              <textarea id="ch-body" class="manuscript" maxlength="80000" placeholder="开始书写本章正文，或从右侧项目手稿同步面板导入本地 Markdown 章节…"></textarea>
             </label>
             <label class="field">作者备忘
-              <input id="ch-notes" maxlength="1000" placeholder="记录伏笔提醒、文风控制点…">
+              <input id="ch-notes" maxlength="4000" placeholder="记录伏笔提醒、文风控制点…">
             </label>
           </div>
 
-          <div class="card ai-panel">
-            <h3>🤖 AI 创作副驾</h3>
-            <p style="margin:0;font-size:12px;color:var(--fg-muted)">自动挂载本书大纲、视角人物设定、当前节拍与未回收伏笔，直接派发给 Velai 当前会话。</p>
-            <label class="field">创作指令模式
-              <select id="ai-mode">
-                <option value="continue">按节拍续写 600 字正文</option>
-                <option value="polish">电影感沉浸式文笔润色</option>
-                <option value="ooc">人物 OOC 与逻辑漏洞体检</option>
-                <option value="next_outline">策划下一章高冲突分镜大纲</option>
-              </select>
-            </label>
-            <label class="field">补充创作要求（可选）
-              <textarea id="ai-extra" class="small" placeholder="例如：增加环境压迫感，不要过早暴露陆沉舟真实意图"></textarea>
-            </label>
-            <div class="row">
-              <button id="btn-ai-send" class="primary" type="button" style="flex:1">派发给当前会话</button>
-              <button id="btn-ai-check" type="button" hidden>核对结果</button>
+          <div class="card sync-panel">
+            <div class="between">
+              <h3>📁 项目手稿同步 (CAS)</h3>
+              <button id="btn-fs-list" class="sm" type="button">浏览目录</button>
             </div>
-            <p id="ai-status" style="margin:0;font-size:12px;color:var(--fg-muted)"></p>
-            <pre id="ai-preview" class="ai-output" hidden></pre>
-            <div id="ai-adopt-row" class="row" hidden>
-              <button id="btn-ai-append" class="primary" type="button" style="flex:1">追加到正文末尾</button>
-              <button id="btn-ai-replace" type="button">替换正文</button>
+            <div class="row">
+              <input id="fs-dir" style="flex:1;min-width:110px" placeholder="相对目录，如 chapters（留空为根目录）" maxlength="512">
+              <button id="btn-fs-up" class="sm" type="button" title="返回上级目录">↑ 上级</button>
+            </div>
+            <div id="fs-entries" class="fs-list">
+              <span style="color:var(--fg-muted);font-size:12px">点击「浏览目录」列出项目工作区中的 Markdown 手稿与子目录。</span>
+            </div>
+
+            <div class="fs-box">
+              <strong style="font-size:12px">目标手稿路径与 CAS 哈希锚点</strong>
+              <label class="field">项目相对路径
+                <input id="fs-target-path" placeholder="例如：chapters/ch-01.md" maxlength="512">
+              </label>
+              <label class="field">预期 SHA-256（CAS 更新必填；新建留空）
+                <input id="fs-expected-sha" class="mono" placeholder="64 位十六进制 SHA-256（导入/检查后自动填入）" maxlength="64">
+              </label>
+              <div class="row">
+                <button id="btn-fs-stat" class="sm" type="button">检查 Stat</button>
+                <button id="btn-fs-import" class="sm" type="button">导入为章节</button>
+              </div>
+              <div class="row">
+                <button id="btn-fs-export-new" class="primary sm" type="button" style="flex:1">新建发布 (create_only)</button>
+                <button id="btn-fs-export-cas" class="sm" type="button" style="flex:1">CAS 原子更新</button>
+              </div>
+            </div>
+
+            <div id="fs-feedback" class="fs-box" hidden></div>
+
+            <div class="companion-card">
+              <strong style="color:var(--violet)">✨ 流式 AI 伴生创作提示</strong>
+              <span style="color:var(--fg-muted);line-height:1.55">
+                为遵守 Velai Desktop V2 安全隔离（项目文件读写插件不混用受管 AI 通道），流式续写与润色请搭配伴生插件 <strong>novel-ai-writer</strong>；或在 Velai 对话中直接调用本插件提供的 3 个 v2 Agent Tools（<code>novel.get_story_context</code> / <code>novel.read_manuscript_file</code> / <code>novel.upsert_chapter_outline</code>）。
+              </span>
             </div>
           </div>
         </section>
@@ -384,24 +410,23 @@
       const TH_NEXT = { planted: 'hinted', hinted: 'payoff', payoff: 'planted', abandoned: 'planted' };
       const TH_NAME = { planted: '已埋设', hinted: '已推进', payoff: '已回收', abandoned: '已弃置' };
 
-      let state = { revision: 0, book: null, characters: [], relations: [], lore: [], threads: [] };
-      let activeChId = null, activeCharId = null, busy = false, pendingWorkId = null, latestAi = '';
+      let state = { revision: 0, book: null, characters: [], relations: [], lore: [], threads: [], stored_chapter_keys: [] };
+      let activeChId = null, activeCharId = null, busy = false, currentDir = '';
 
       const setStatus = (msg, kind = '') => {
         $('status-text').textContent = msg;
         $('status').dataset.kind = kind;
         $('rev-tag').textContent = `rev #${state.revision}`;
       };
+      const setFsFeedback = (msg, kind = '') => {
+        const box = $('fs-feedback');
+        box.className = `fs-box${kind ? ` ${kind}` : ''}`;
+        box.textContent = msg;
+        box.hidden = !msg;
+      };
       const countWords = t => {
         const m = (t || '').match(/[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)*|[\u3400-\u4dbf\u4e00-\u9fff]/g);
         return m ? m.length : 0;
-      };
-      const uuid = () => {
-        const b = crypto.getRandomValues(new Uint8Array(16));
-        b[6] = (b[6] & 0x0f) | 0x40;
-        b[8] = (b[8] & 0x3f) | 0x80;
-        const h = Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
-        return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
       };
       const svgEl = (tag, attrs = {}, text = '') => {
         const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
@@ -472,9 +497,10 @@
           top.append(dot, ch.title);
           const meta = document.createElement('div');
           meta.className = 'ch-meta';
-          meta.innerHTML = '';
-          const s1 = document.createElement('span'); s1.textContent = `${ch.pov || '全知'} · 张力 ${ch.tension}`;
-          const s2 = document.createElement('span'); s2.textContent = `${ch.word_count} 字`;
+          const s1 = document.createElement('span');
+          s1.textContent = `${ch.pov || '全知'} · 张力 ${ch.tension}${ch.fs_path ? ' · 🔗' : ''}`;
+          const s2 = document.createElement('span');
+          s2.textContent = `${ch.word_count} 字`;
           meta.append(s1, s2);
           btn.append(top, meta);
           btn.addEventListener('click', () => openChapter(ch.id));
@@ -500,6 +526,8 @@
           $('ch-body').value = '';
           $('ch-notes').value = '';
           $('live-words').textContent = '0 字';
+          $('fs-target-path').value = '';
+          $('fs-expected-sha').value = '';
           return;
         }
         $('editor-caption').textContent = `正在编辑 · ${meta.title}`;
@@ -510,13 +538,173 @@
         $('ch-tension').value = String(meta.tension);
         $('tension-val').textContent = String(meta.tension);
         $('ch-summary').value = meta.summary;
+        $('fs-target-path').value = meta.fs_path || `${meta.id}.md`;
+        $('fs-expected-sha').value = meta.fs_sha256 || '';
         try {
           const doc = await plugin.action('novel.chapter.get', { id });
           $('ch-beats').value = doc.found ? doc.beats : '';
           $('ch-body').value = doc.found ? doc.body : '';
           $('ch-notes').value = doc.found ? doc.notes : '';
+          if (doc.found && doc.fs_path) $('fs-target-path').value = doc.fs_path;
+          if (doc.found && doc.fs_sha256) $('fs-expected-sha').value = doc.fs_sha256;
           $('live-words').textContent = `${countWords($('ch-body').value)} 字`;
         } catch (e) { setStatus(`读取章节失败：${e?.message}`, 'error'); }
+      }
+
+      async function browseFs(dirPath) {
+        currentDir = (dirPath || '').trim().replace(/^\/+|\/+$/g, '');
+        $('fs-dir').value = currentDir;
+        const box = $('fs-entries');
+        box.textContent = '正在读取项目工作区目录…';
+        try {
+          const res = await plugin.action('novel.fs_list', { path: currentDir, limit: 50 });
+          box.replaceChildren();
+          if (!res.entries.length) {
+            const sp = document.createElement('span');
+            sp.style.cssText = 'color:var(--fg-muted);font-size:12px';
+            sp.textContent = '目录为空。';
+            box.appendChild(sp);
+            return;
+          }
+          for (const ent of res.entries) {
+            const row = document.createElement('div');
+            row.className = 'fs-row';
+            const name = document.createElement('span');
+            name.className = 'fs-name';
+            name.textContent = `${ent.kind === 'dir' ? '📂 ' : '📄 '}${ent.name}`;
+            name.title = ent.path;
+            const actions = document.createElement('div');
+            actions.className = 'row';
+            actions.style.gap = '4px';
+            if (ent.kind === 'dir') {
+              name.addEventListener('click', () => browseFs(ent.path));
+              const openBtn = document.createElement('button');
+              openBtn.type = 'button';
+              openBtn.className = 'sm';
+              openBtn.textContent = '进入';
+              openBtn.addEventListener('click', () => browseFs(ent.path));
+              actions.appendChild(openBtn);
+            } else {
+              name.addEventListener('click', () => {
+                $('fs-target-path').value = ent.path;
+                void inspectFsStat(ent.path);
+              });
+              const sz = document.createElement('span');
+              sz.style.cssText = 'font-size:11px;color:var(--fg-muted)';
+              sz.textContent = `${ent.size_bytes ?? 0}B`;
+              const impBtn = document.createElement('button');
+              impBtn.type = 'button';
+              impBtn.className = 'sm';
+              impBtn.textContent = '导入';
+              impBtn.addEventListener('click', () => {
+                $('fs-target-path').value = ent.path;
+                void importFsChapter(ent.path);
+              });
+              actions.append(sz, impBtn);
+            }
+            row.append(name, actions);
+            box.appendChild(row);
+          }
+          setStatus(`已列出工作区目录 ${currentDir || '/'}（${res.entries.length} 项）`);
+        } catch (e) {
+          box.textContent = `无法读取目录：${e?.message || '权限被拒绝'}`;
+          setFsFeedback(`目录浏览失败：${e?.message || '未知错误'}`, 'conflict');
+        }
+      }
+
+      async function inspectFsStat(path) {
+        const target = (path || $('fs-target-path').value).trim();
+        if (!target) { setFsFeedback('请填写项目相对文件路径。', 'conflict'); return; }
+        try {
+          const st = await plugin.action('novel.fs_stat', { path: target });
+          if (st.sha256) $('fs-expected-sha').value = st.sha256;
+          setFsFeedback(`Stat 成功：${st.path} (${st.kind}, ${st.size_bytes ?? 0} B) · SHA-256: ${st.sha256 ? st.sha256.slice(0, 16) + '…' : '无'}`, 'ok');
+        } catch (e) {
+          setFsFeedback(`Stat 失败：${e?.message || '文件不存在或路径被禁止'}`, 'conflict');
+        }
+      }
+
+      async function importFsChapter(path) {
+        const target = (path || $('fs-target-path').value).trim();
+        if (!target) { setFsFeedback('请先指定要导入的项目相对路径。', 'conflict'); return; }
+        if (busy) return;
+        busy = true;
+        try {
+          const res = await plugin.action('novel.fs_import_chapter', {
+            expected_revision: state.revision,
+            path: target,
+          });
+          if (res.status === 'imported') {
+            $('fs-expected-sha').value = res.fs_sha256 || '';
+            await load(res.id);
+            setFsFeedback(`已导入 ${res.fs_path} → 章节《${res.title}》（${res.word_count} 字），已记录 SHA-256 锚点。`, 'ok');
+            setStatus(`成功导入工作区手稿 ${res.fs_path}`, 'ok');
+          } else {
+            setFsFeedback(`导入未完成：${res.status}`, 'conflict');
+          }
+        } catch (e) {
+          setFsFeedback(`导入失败：${e?.message || '路径受限或读取异常'}`, 'conflict');
+          setStatus(`导入失败：${e?.message}`, 'error');
+        } finally {
+          busy = false;
+        }
+      }
+
+      async function exportFsChapter(mode) {
+        if (!activeChId) { setFsFeedback('请先选择或保存一个章节后再导出。', 'conflict'); return; }
+        const target = $('fs-target-path').value.trim();
+        if (!target) { setFsFeedback('请填写导出目标相对路径（如 chapters/ch-01.md）。', 'conflict'); return; }
+        const payload = { id: activeChId, path: target, include_header: true };
+        if (mode === 'create') {
+          payload.create_only = true;
+        } else {
+          const sha = $('fs-expected-sha').value.trim();
+          if (!/^[0-9a-f]{64}$/.test(sha)) {
+            setFsFeedback('CAS 原子更新模式必须填写有效的 64 位十六进制 expected_sha256（可先点击「检查 Stat」核对）。', 'conflict');
+            return;
+          }
+          payload.expected_sha256 = sha;
+        }
+        if (busy) return;
+        busy = true;
+        try {
+          const res = await plugin.action('novel.fs_export_chapter', payload);
+          if (res.status === 'exported') {
+            $('fs-expected-sha').value = res.sha256 || '';
+            setFsFeedback(`原子导出成功：${res.path}（${res.size_bytes} B）· 新 SHA-256: ${res.sha256?.slice(0, 16)}…`, 'ok');
+            setStatus(`已导出至工作区 ${res.path}`, 'ok');
+            // 同步保存章节的 fs_path / fs_sha256 锚点
+            const meta = state.book?.chapters.find(c => c.id === activeChId);
+            if (meta && res.sha256) {
+              const saved = await plugin.action('novel.chapter.save', {
+                expected_revision: state.revision,
+                id: activeChId,
+                volume: $('ch-vol').value.trim() || meta.volume,
+                title: $('ch-title').value.trim() || meta.title,
+                status: $('ch-status').value,
+                tension: Number($('ch-tension').value),
+                pov: $('ch-pov').value.trim(),
+                summary: $('ch-summary').value.trim(),
+                beats: $('ch-beats').value,
+                notes: $('ch-notes').value,
+                body: $('ch-body').value,
+                fs_path: res.path,
+                fs_sha256: res.sha256,
+              });
+              if (saved.status === 'saved') await load(activeChId);
+            }
+          } else if (res.status === 'conflict') {
+            setFsFeedback(`⚠️ 检测到文件冲突：${res.message}`, 'conflict');
+            setStatus('导出因 CAS 冲突中止，未覆盖本地文件。', 'error');
+          } else {
+            setFsFeedback(`导出未完成 (${res.status})：${res.message || ''}`, 'conflict');
+          }
+        } catch (e) {
+          setFsFeedback(`导出被拒绝：${e?.message || '路径不合法或父目录不存在'}`, 'conflict');
+          setStatus(`导出失败：${e?.message}`, 'error');
+        } finally {
+          busy = false;
+        }
       }
 
       function renderRelationGraph() {
@@ -533,7 +721,6 @@
         defs.appendChild(glow);
         svg.appendChild(defs);
 
-        // background grid circles
         const cx = 320, cy = 210;
         for (const r of [75, 140, 195]) {
           svg.appendChild(svgEl('circle', { cx, cy, r, fill: 'none', stroke: 'rgba(148,163,184,0.1)', 'stroke-dasharray': '3 5' }));
@@ -549,7 +736,6 @@
           pos.set(c.id, { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * (radius * 0.82) });
         });
 
-        // edges
         for (const rel of rels) {
           const p1 = pos.get(rel.from), p2 = pos.get(rel.to);
           if (!p1 || !p2) continue;
@@ -572,7 +758,6 @@
           }
         }
 
-        // nodes
         for (const c of chars) {
           const p = pos.get(c.id);
           const color = ROLE_COLOR[c.role] || '#38bdf8';
@@ -588,7 +773,6 @@
           svg.appendChild(g);
         }
 
-        // relation selectors & tags
         for (const sel of [$('rel-from'), $('rel-to')]) {
           const old = sel.value;
           sel.replaceChildren();
@@ -655,14 +839,12 @@
           ch: c,
         }));
 
-        // word bars
         const barW = Math.min(34, innerW / Math.max(4, chs.length * 1.8));
         for (const p of pts) {
           svg.appendChild(svgEl('rect', {
             x: p.x - barW / 2, y: padT + innerH - p.barH, width: barW, height: p.barH, rx: 4, fill: 'rgba(56,189,248,0.2)',
           }));
         }
-        // area + line
         const lineD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
         const areaD = `${lineD} L ${pts.at(-1).x} ${padT + innerH} L ${pts[0].x} ${padT + innerH} Z`;
         svg.appendChild(svgEl('path', { d: areaD, fill: 'url(#tGrad)' }));
@@ -791,7 +973,7 @@
           const targetCh = preferChId && state.book.chapters.some(c => c.id === preferChId) ? preferChId : (state.book.chapters[0]?.id ?? null);
           await openChapter(targetCh);
           if (state.characters.length && !activeCharId) selectChar(state.characters[0].id);
-          setStatus(`工作台已就绪 · 《${state.book.title}》共 ${state.book.chapters.length} 章`);
+          setStatus(`工作台已就绪 · 《${state.book.title}》共 ${state.book.chapters.length} 章（已存储分章键 ${state.stored_chapter_keys.length}）`);
         } catch (e) { setStatus(`初始化失败：${e?.message || '未知错误'}`, 'error'); }
       }
 
@@ -848,11 +1030,23 @@
         busy = true;
         try {
           const res = await plugin.action('novel.chapter.delete', { expected_revision: state.revision, id: activeChId });
-          if (res.status === 'deleted') { await load(); setStatus('章节已删除。', 'ok'); }
+          if (res.status === 'deleted') { await load(); setStatus('章节及分章正文记录已删除。', 'ok'); }
           else setStatus(`删除未完成：${res.status}`, 'error');
         } catch (e) { setStatus(`删除失败：${e?.message}`, 'error'); }
         finally { busy = false; }
       });
+
+      // FS Sync actions
+      $('btn-fs-list').addEventListener('click', () => void browseFs($('fs-dir').value));
+      $('btn-fs-up').addEventListener('click', () => {
+        const parts = currentDir.split('/').filter(Boolean);
+        parts.pop();
+        void browseFs(parts.join('/'));
+      });
+      $('btn-fs-stat').addEventListener('click', () => void inspectFsStat());
+      $('btn-fs-import').addEventListener('click', () => void importFsChapter());
+      $('btn-fs-export-new').addEventListener('click', () => void exportFsChapter('create'));
+      $('btn-fs-export-cas').addEventListener('click', () => void exportFsChapter('cas'));
 
       $('btn-new-char').addEventListener('click', () => { selectChar(null); $('c-name').focus(); });
       $('btn-save-char').addEventListener('click', () => {
@@ -913,72 +1107,6 @@
         const rec = { id: `l-${Date.now().toString(36)}`, category: $('lore-cat').value, title, detail: $('lore-detail').value.trim() };
         $('lore-title').value = ''; $('lore-detail').value = '';
         void saveWorld(state.characters, state.relations, [...state.lore, rec]);
-      });
-
-      // AI Copilot
-      $('btn-ai-send').addEventListener('click', async () => {
-        const mode = $('ai-mode').value;
-        const pov = $('ch-pov').value.trim();
-        const charInfo = state.characters.find(c => c.name === pov);
-        const openThreads = state.threads.filter(t => t.status === 'planted' || t.status === 'hinted').slice(0, 3).map(t => t.title).join('；');
-        const taskMap = {
-          continue: '请严格承接下文语气、人物性格和场景节拍，自然续写约 600 字小说正文。只输出正文段落，不要标题和解释。',
-          polish: '请提升以下小说片段的画面感、感官细节与情绪张力，保持原剧情和视角不变。只输出润色后正文。',
-          ooc: '请扮演资深网文/出版编辑，逐条检查本章是否存在人物 OOC、时间线矛盾或节奏拖沓问题，并给出 3 条具体修改建议。',
-          next_outline: '请根据当前章节和未回收伏笔，策划下一章的 4 步高冲突场景节拍与结尾钩子。',
-        };
-        const ctx = [
-          `书名：《${state.book?.title || ''}》（${state.book?.genre || ''}）`,
-          charInfo ? `视角人物「${charInfo.name}」：性格=${charInfo.traits}；目标=${charInfo.goal}；秘密=${charInfo.secret}` : '',
-          openThreads ? `待回收伏笔：${openThreads}` : '',
-          $('ch-beats').value.trim() ? `本章节拍：\n${$('ch-beats').value.trim()}` : '',
-          $('ai-extra').value.trim() ? `额外要求：${$('ai-extra').value.trim()}` : '',
-          `当前正文末尾：\n${$('ch-body').value.slice(-700)}`,
-        ].filter(Boolean).join('\n');
-        const prompt = `${taskMap[mode]}\n\n${ctx}`.slice(0, 2000);
-        pendingWorkId = uuid();
-        latestAi = '';
-        $('btn-ai-check').hidden = false;
-        $('ai-preview').hidden = true;
-        $('ai-adopt-row').hidden = true;
-        $('ai-status').textContent = '正在向当前会话派发上下文与指令…';
-        try {
-          await plugin.action('session.turn.request', { prompt, work_id: pendingWorkId });
-          $('ai-status').textContent = '已派发给当前会话，待回复完成后点击「核对结果」。';
-        } catch (e) {
-          $('ai-status').textContent = e?.message === 'cancelled' ? '请先在宿主中选择一个会话再派发。' : `派发未确认（${e?.message || 'unknown'}）`;
-        }
-      });
-
-      $('btn-ai-check').addEventListener('click', async () => {
-        if (!pendingWorkId) return;
-        $('ai-status').textContent = '正在核对会话回复…';
-        try {
-          const r = await plugin.action('session.turn.result', { work_id: pendingWorkId });
-          if (r.state === 'completed' && !r.truncated && typeof r.text === 'string' && r.text.trim()) {
-            latestAi = r.text.trim();
-            $('ai-status').textContent = '已取得完整回复，可预览并一键采纳：';
-            $('ai-preview').textContent = latestAi;
-            $('ai-preview').hidden = false;
-            $('ai-adopt-row').hidden = false;
-          } else {
-            $('ai-status').textContent = `当前状态：${r.state}${r.truncated ? '（回复过长被截断，请回原会话查看）' : ''}`;
-          }
-        } catch (e) { $('ai-status').textContent = `核对失败：${e?.message || '请回到原会话查看'}`; }
-      });
-
-      $('btn-ai-append').addEventListener('click', () => {
-        if (!latestAi) return;
-        const cur = $('ch-body').value.trimEnd();
-        $('ch-body').value = cur ? `${cur}\n\n${latestAi}` : latestAi;
-        $('live-words').textContent = `${countWords($('ch-body').value)} 字`;
-        setStatus('已追加至正文末尾，请点击「保存本章」持久化。', 'ok');
-      });
-      $('btn-ai-replace').addEventListener('click', () => {
-        if (!latestAi) return;
-        $('ch-body').value = latestAi;
-        $('live-words').textContent = `${countWords($('ch-body').value)} 字`;
-        setStatus('已替换当前正文，请点击「保存本章」持久化。', 'ok');
       });
 
       void load();

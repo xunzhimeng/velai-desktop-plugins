@@ -1,16 +1,16 @@
 {
-  "manifest_version": 1,
+  "manifest_version": 2,
   "plugin_id": "product-studio",
   "name": "产品需求与路线图设计台",
-  "version": "1.0.0",
-  "host_api": 1,
+  "version": "2.0.0",
+  "host_api": 2,
   "backend": "backend/index.js",
   "page": "ui/index.html",
   "ui": {
     "icon": "table",
     "surfaces": ["workspace", "chat"]
   },
-  "permissions": ["data.read", "data.write"],
+  "permissions": ["data.read", "data.write", "workspace.fs.read", "workspace.fs.write"],
   "actions": [
     {
       "id": "studio.load",
@@ -359,7 +359,7 @@
         "required": [],
         "properties": {
           "filename": { "type": "string", "maxLength": 80 },
-          "text": { "type": "string", "maxLength": 12288 },
+          "text": { "type": "string", "maxLength": 245760 },
           "error": { "type": "string", "maxLength": 64 }
         }
       }
@@ -373,7 +373,7 @@
         "additionalProperties": false,
         "required": ["text"],
         "properties": {
-          "text": { "type": "string", "minLength": 2, "maxLength": 12288 }
+          "text": { "type": "string", "minLength": 2, "maxLength": 245760 }
         }
       },
       "output_schema": {
@@ -384,6 +384,101 @@
           "imported": { "type": "boolean" },
           "reason": { "type": "string", "maxLength": 64 },
           "count": { "type": "integer", "minimum": 0, "maximum": 128 }
+        }
+      }
+    },
+    {
+      "id": "fs_list",
+      "title": "浏览当前项目工作区目录",
+      "permissions": ["workspace.fs.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "path": { "type": "string", "maxLength": 512 },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 100 },
+          "cursor": { "type": "string", "maxLength": 256 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "path", "entries", "next_cursor"],
+        "properties": {
+          "status": { "type": "string", "enum": ["ok", "permission_denied", "invalid_input"] },
+          "path": { "type": "string", "maxLength": 512 },
+          "entries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name", "kind", "size_bytes"],
+              "properties": {
+                "name": { "type": "string", "maxLength": 256 },
+                "kind": { "type": "string", "enum": ["dir", "file"] },
+                "size_bytes": { "type": ["integer", "null"], "minimum": 0 }
+              }
+            }
+          },
+          "next_cursor": { "type": ["string", "null"], "maxLength": 256 },
+          "error": { "type": "string", "maxLength": 160 }
+        }
+      }
+    },
+    {
+      "id": "fs_import_doc",
+      "title": "从当前项目工作区读取 PRD 或文档文件",
+      "permissions": ["workspace.fs.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1, "maxLength": 512 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "path", "content", "size_bytes", "sha256", "format"],
+        "properties": {
+          "status": { "type": "string", "enum": ["ok", "permission_denied", "resource_limit", "invalid_input"] },
+          "path": { "type": "string", "maxLength": 512 },
+          "content": { "type": "string", "maxLength": 245760 },
+          "size_bytes": { "type": "integer", "minimum": 0 },
+          "sha256": { "type": "string", "maxLength": 64 },
+          "format": { "type": "string", "enum": ["bundle_json", "prd_json", "markdown", "text"] },
+          "error": { "type": "string", "maxLength": 160 }
+        }
+      }
+    },
+    {
+      "id": "fs_export_doc",
+      "title": "将产品路线图或 PRD 同步写入当前项目工作区（支持 CAS）",
+      "permissions": ["workspace.fs.write", "data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "path"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "path": { "type": "string", "minLength": 1, "maxLength": 512 },
+          "format": { "type": "string", "enum": ["markdown", "json"] },
+          "create_only": { "type": "boolean" },
+          "expected_sha256": { "type": "string", "minLength": 64, "maxLength": 64 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "path", "size_bytes", "sha256"],
+        "properties": {
+          "status": { "type": "string", "enum": ["written", "conflict", "not_found", "permission_denied", "resource_limit", "invalid_input"] },
+          "path": { "type": "string", "maxLength": 512 },
+          "size_bytes": { "type": "integer", "minimum": 0 },
+          "sha256": { "type": "string", "maxLength": 64 },
+          "error": { "type": "string", "maxLength": 160 }
         }
       }
     }

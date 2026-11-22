@@ -1,16 +1,16 @@
 {
-  "manifest_version": 1,
+  "manifest_version": 2,
   "plugin_id": "novel-studio",
   "name": "AI 长篇小说开发系统",
-  "version": "1.0.0",
-  "host_api": 1,
+  "version": "2.0.0",
+  "host_api": 2,
   "backend": "backend/index.js",
   "page": "ui/index.html",
   "ui": {
     "icon": "edit",
-    "surfaces": ["workspace", "chat", "assistant"]
+    "surfaces": ["workspace", "chat"]
   },
-  "permissions": ["data.read", "data.write", "tasks.start", "tasks.read", "tasks.cancel"],
+  "permissions": ["data.read", "data.write", "workspace.fs.read", "workspace.fs.write"],
   "actions": [
     {
       "id": "novel.bootstrap",
@@ -20,9 +20,13 @@
       "output_schema": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["revision", "book", "characters", "relations", "lore", "threads"],
+        "required": ["revision", "book", "characters", "relations", "lore", "threads", "stored_chapter_keys"],
         "properties": {
           "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "stored_chapter_keys": {
+            "type": "array",
+            "items": { "type": "string", "maxLength": 64 }
+          },
           "book": {
             "type": "object",
             "additionalProperties": false,
@@ -47,8 +51,10 @@
                     "status": { "type": "string", "enum": ["draft", "revising", "done"] },
                     "tension": { "type": "integer", "minimum": 1, "maximum": 10 },
                     "pov": { "type": "string", "maxLength": 40 },
-                    "word_count": { "type": "integer", "minimum": 0, "maximum": 100000 },
-                    "summary": { "type": "string", "maxLength": 240 }
+                    "word_count": { "type": "integer", "minimum": 0, "maximum": 200000 },
+                    "summary": { "type": "string", "maxLength": 240 },
+                    "fs_path": { "type": ["string", "null"], "maxLength": 512 },
+                    "fs_sha256": { "type": ["string", "null"], "maxLength": 64 }
                   }
                 }
               }
@@ -163,9 +169,11 @@
         "properties": {
           "found": { "type": "boolean" },
           "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
-          "body": { "type": "string", "maxLength": 10000 },
-          "beats": { "type": "string", "maxLength": 1000 },
-          "notes": { "type": "string", "maxLength": 1000 }
+          "body": { "type": "string", "maxLength": 80000 },
+          "beats": { "type": "string", "maxLength": 4000 },
+          "notes": { "type": "string", "maxLength": 4000 },
+          "fs_path": { "type": ["string", "null"], "maxLength": 512 },
+          "fs_sha256": { "type": ["string", "null"], "maxLength": 64 }
         }
       }
     },
@@ -186,9 +194,11 @@
           "tension": { "type": "integer", "minimum": 1, "maximum": 10 },
           "pov": { "type": "string", "maxLength": 40 },
           "summary": { "type": "string", "maxLength": 240 },
-          "beats": { "type": "string", "maxLength": 1000 },
-          "notes": { "type": "string", "maxLength": 1000 },
-          "body": { "type": "string", "maxLength": 10000 }
+          "beats": { "type": "string", "maxLength": 4000 },
+          "notes": { "type": "string", "maxLength": 4000 },
+          "body": { "type": "string", "maxLength": 80000 },
+          "fs_path": { "type": ["string", "null"], "maxLength": 512 },
+          "fs_sha256": { "type": ["string", "null"], "maxLength": 64 }
         }
       },
       "output_schema": {
@@ -198,13 +208,13 @@
         "properties": {
           "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input"] },
           "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
-          "word_count": { "type": "integer", "minimum": 0, "maximum": 100000 }
+          "word_count": { "type": "integer", "minimum": 0, "maximum": 200000 }
         }
       }
     },
     {
       "id": "novel.chapter.delete",
-      "title": "删除章节",
+      "title": "删除章节并清理分章正文",
       "permissions": ["data.read", "data.write"],
       "input_schema": {
         "type": "object",
@@ -355,46 +365,126 @@
       }
     },
     {
-      "id": "session.turn.request",
-      "title": "向当前会话派发 AI 写作任务",
-      "permissions": ["tasks.start"],
+      "id": "novel.fs_list",
+      "title": "浏览项目工作区目录",
+      "permissions": ["workspace.fs.read"],
       "input_schema": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["prompt", "work_id"],
+        "required": [],
         "properties": {
-          "prompt": { "type": "string", "minLength": 1, "maxLength": 2048 },
-          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 }
+          "path": { "type": "string", "maxLength": 512 },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 100 },
+          "cursor": { "type": "string", "maxLength": 128 }
         }
       },
       "output_schema": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["task_id", "state"],
+        "required": ["path", "entries", "next_cursor"],
         "properties": {
-          "task_id": { "type": "string", "minLength": 36, "maxLength": 36 },
-          "state": { "type": "string", "enum": ["dispatching"] }
+          "path": { "type": "string", "maxLength": 512 },
+          "entries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name", "path", "kind", "size_bytes"],
+              "properties": {
+                "name": { "type": "string", "maxLength": 255 },
+                "path": { "type": "string", "maxLength": 1024 },
+                "kind": { "type": "string", "enum": ["file", "dir"] },
+                "size_bytes": { "type": ["integer", "null"], "minimum": 0, "maximum": 1073741824 }
+              }
+            }
+          },
+          "next_cursor": { "type": ["string", "null"], "maxLength": 128 }
         }
       }
     },
     {
-      "id": "session.turn.result",
-      "title": "核对 AI 写作结果",
-      "permissions": ["tasks.read"],
+      "id": "novel.fs_stat",
+      "title": "检查工作区文件元数据与摘要",
+      "permissions": ["workspace.fs.read"],
       "input_schema": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["work_id"],
-        "properties": { "work_id": { "type": "string", "minLength": 36, "maxLength": 36 } }
+        "required": ["path"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1, "maxLength": 512 }
+        }
       },
       "output_schema": {
         "type": "object",
-        "additionalProperties": true,
-        "required": ["work_id", "state", "truncated"],
+        "additionalProperties": false,
+        "required": ["path", "kind", "size_bytes", "sha256"],
         "properties": {
-          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 },
-          "state": { "type": "string", "enum": ["dispatching", "running", "waiting", "completed", "cancelled", "failed", "unknown", "unavailable"] },
-          "truncated": { "type": "boolean" }
+          "path": { "type": "string", "maxLength": 512 },
+          "kind": { "type": "string", "enum": ["file", "dir"] },
+          "size_bytes": { "type": ["integer", "null"], "minimum": 0, "maximum": 1073741824 },
+          "sha256": { "type": ["string", "null"], "maxLength": 64 }
+        }
+      }
+    },
+    {
+      "id": "novel.fs_import_chapter",
+      "title": "从项目工作区导入章节 Markdown",
+      "permissions": ["workspace.fs.read", "data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "path"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "path": { "type": "string", "minLength": 1, "maxLength": 512 },
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "volume": { "type": "string", "maxLength": 60 },
+          "title": { "type": "string", "maxLength": 100 },
+          "pov": { "type": "string", "maxLength": 40 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["imported", "conflict", "limit", "invalid_input"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "id": { "type": "string", "maxLength": 48 },
+          "title": { "type": "string", "maxLength": 100 },
+          "word_count": { "type": "integer", "minimum": 0, "maximum": 200000 },
+          "fs_path": { "type": "string", "maxLength": 512 },
+          "fs_sha256": { "type": "string", "maxLength": 64 },
+          "size_bytes": { "type": "integer", "minimum": 0, "maximum": 1048576 }
+        }
+      }
+    },
+    {
+      "id": "novel.fs_export_chapter",
+      "title": "原子导出章节手稿到项目工作区 (CAS)",
+      "permissions": ["workspace.fs.write", "data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "path"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "path": { "type": "string", "minLength": 1, "maxLength": 512 },
+          "create_only": { "type": "boolean" },
+          "expected_sha256": { "type": "string", "minLength": 64, "maxLength": 64 },
+          "include_header": { "type": "boolean" }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "path"],
+        "properties": {
+          "status": { "type": "string", "enum": ["exported", "conflict", "not_found", "invalid_input"] },
+          "path": { "type": "string", "maxLength": 512 },
+          "size_bytes": { "type": "integer", "minimum": 0, "maximum": 1048576 },
+          "sha256": { "type": "string", "maxLength": 64 },
+          "message": { "type": "string", "maxLength": 240 }
         }
       }
     },
@@ -406,7 +496,7 @@
       "output_schema": {
         "type": "object",
         "additionalProperties": false,
-        "required": [],
+        "required": ["items"],
         "properties": {
           "items": {
             "type": "array",
@@ -439,7 +529,7 @@
         "required": [],
         "properties": {
           "filename": { "type": "string", "maxLength": 80 },
-          "text": { "type": "string", "maxLength": 12288 },
+          "text": { "type": "string", "maxLength": 120000 },
           "error": { "type": "string", "maxLength": 64 }
         }
       }
@@ -452,7 +542,7 @@
         "type": "object",
         "additionalProperties": false,
         "required": ["text"],
-        "properties": { "text": { "type": "string", "minLength": 2, "maxLength": 12288 } }
+        "properties": { "text": { "type": "string", "minLength": 2, "maxLength": 120000 } }
       },
       "output_schema": {
         "type": "object",
@@ -467,33 +557,63 @@
   ],
   "tools": [
     {
-      "id": "novel.outline",
-      "title": "读取小说全书大纲与伏笔",
-      "description": "获取当前长篇小说的书名、总字数、分卷章节摘要、主要人物清单及未回收伏笔，用于续写或剧情策划。",
+      "id": "novel.get_story_context",
+      "title": "读取小说全书设定、章节大纲与未回收伏笔",
+      "description": "读取当前项目长篇小说的书目元数据、分卷章节大纲（含同步文件路径）、核心人物、世界观词条及未回收伏笔，可选读取指定章节正文。",
       "permissions": ["data.read"],
-      "input_schema": { "type": "object", "additionalProperties": false, "required": [], "properties": {} },
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "chapter_id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "include_body": { "type": "boolean" }
+        }
+      },
       "output_schema": {
         "type": "object",
         "additionalProperties": false,
         "required": ["success", "status"],
         "properties": {
           "success": { "type": "boolean" },
-          "status": { "type": "string", "enum": ["ready", "empty"] },
+          "status": { "type": "string", "enum": ["ready", "empty", "chapter_not_found"] },
           "title": { "type": "string", "maxLength": 100 },
+          "genre": { "type": "string", "maxLength": 40 },
+          "logline": { "type": "string", "maxLength": 400 },
           "total_words": { "type": "integer", "minimum": 0, "maximum": 10000000 },
           "chapters": {
             "type": "array",
             "items": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["id", "order", "title", "tension", "pov", "summary"],
+              "required": ["id", "volume", "order", "title", "status", "tension", "pov", "word_count", "summary"],
               "properties": {
                 "id": { "type": "string", "maxLength": 48 },
+                "volume": { "type": "string", "maxLength": 60 },
                 "order": { "type": "integer", "minimum": 1, "maximum": 9999 },
                 "title": { "type": "string", "maxLength": 100 },
+                "status": { "type": "string", "enum": ["draft", "revising", "done"] },
                 "tension": { "type": "integer", "minimum": 1, "maximum": 10 },
                 "pov": { "type": "string", "maxLength": 40 },
-                "summary": { "type": "string", "maxLength": 240 }
+                "word_count": { "type": "integer", "minimum": 0, "maximum": 200000 },
+                "summary": { "type": "string", "maxLength": 240 },
+                "fs_path": { "type": ["string", "null"], "maxLength": 512 }
+              }
+            }
+          },
+          "characters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "name", "role", "faction", "traits", "goal"],
+              "properties": {
+                "id": { "type": "string", "maxLength": 48 },
+                "name": { "type": "string", "maxLength": 40 },
+                "role": { "type": "string", "maxLength": 24 },
+                "faction": { "type": "string", "maxLength": 40 },
+                "traits": { "type": "string", "maxLength": 120 },
+                "goal": { "type": "string", "maxLength": 200 }
               }
             }
           },
@@ -502,56 +622,81 @@
             "items": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["title", "planted_ch", "priority"],
+              "required": ["id", "title", "planted_ch", "priority", "status"],
               "properties": {
+                "id": { "type": "string", "maxLength": 48 },
                 "title": { "type": "string", "maxLength": 80 },
                 "planted_ch": { "type": "integer", "minimum": 1, "maximum": 9999 },
-                "priority": { "type": "string", "maxLength": 16 }
+                "priority": { "type": "string", "maxLength": 16 },
+                "status": { "type": "string", "maxLength": 16 }
               }
+            }
+          },
+          "chapter_detail": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "title", "pov", "beats", "notes", "body"],
+            "properties": {
+              "id": { "type": "string", "maxLength": 48 },
+              "title": { "type": "string", "maxLength": 100 },
+              "pov": { "type": "string", "maxLength": 40 },
+              "beats": { "type": "string", "maxLength": 4000 },
+              "notes": { "type": "string", "maxLength": 4000 },
+              "body": { "type": "string", "maxLength": 80000 }
             }
           }
         }
       }
     },
     {
-      "id": "novel.chapter.read",
-      "title": "读取指定小说章节正文",
-      "description": "按章节 ID 读取该章的完整正文、分镜节拍和作者笔记，便于做续写、润色或一致性检查。",
-      "permissions": ["data.read"],
+      "id": "novel.read_manuscript_file",
+      "title": "只读读取工作区手稿文件",
+      "description": "从当前项目工作区只读读取 Markdown 或纯文本手稿文件，返回正文、字数、字节数与 SHA-256 摘要，便于审校或与章节账本比对。",
+      "permissions": ["workspace.fs.read"],
       "input_schema": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id"],
-        "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 48 } }
+        "required": ["path"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1, "maxLength": 512 }
+        }
       },
       "output_schema": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["success", "status"],
+        "required": ["success", "status", "path"],
         "properties": {
           "success": { "type": "boolean" },
-          "status": { "type": "string", "enum": ["ready", "not_found"] },
-          "title": { "type": "string", "maxLength": 100 },
-          "pov": { "type": "string", "maxLength": 40 },
-          "beats": { "type": "string", "maxLength": 1000 },
-          "body": { "type": "string", "maxLength": 10000 }
+          "status": { "type": "string", "enum": ["ready", "permission_denied", "resource_limit", "error"] },
+          "path": { "type": "string", "maxLength": 512 },
+          "content": { "type": "string", "maxLength": 120000 },
+          "word_count": { "type": "integer", "minimum": 0, "maximum": 200000 },
+          "size_bytes": { "type": "integer", "minimum": 0, "maximum": 1048576 },
+          "sha256": { "type": "string", "maxLength": 64 },
+          "error": { "type": "string", "maxLength": 240 }
         }
       }
     },
     {
-      "id": "novel.bible.upsert",
-      "title": "写入人物或世界观设定",
-      "description": "向小说世界观圣经新增或更新一条世界观词条（地点/势力/力量体系/道具/历史）或新伏笔。",
+      "id": "novel.upsert_chapter_outline",
+      "title": "新增或更新章节大纲与节拍",
+      "description": "向当前项目小说账本新增或更新指定章节的卷目、标题、张力、视角、摘要与场景节拍，默认保留已有正文与工作区同步锚点。",
       "permissions": ["data.read", "data.write"],
       "input_schema": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["kind", "title", "detail"],
+        "required": ["id", "title"],
         "properties": {
-          "kind": { "type": "string", "enum": ["location", "faction", "magic_tech", "artifact", "history", "thread"] },
-          "title": { "type": "string", "minLength": 1, "maxLength": 64 },
-          "detail": { "type": "string", "minLength": 1, "maxLength": 400 },
-          "planted_ch": { "type": "integer", "minimum": 1, "maximum": 9999 }
+          "id": { "type": "string", "minLength": 1, "maxLength": 48 },
+          "volume": { "type": "string", "maxLength": 60 },
+          "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "status": { "type": "string", "enum": ["draft", "revising", "done"] },
+          "tension": { "type": "integer", "minimum": 1, "maximum": 10 },
+          "pov": { "type": "string", "maxLength": 40 },
+          "summary": { "type": "string", "maxLength": 240 },
+          "beats": { "type": "string", "maxLength": 4000 },
+          "notes": { "type": "string", "maxLength": 4000 },
+          "body": { "type": "string", "maxLength": 80000 }
         }
       },
       "output_schema": {
@@ -560,17 +705,20 @@
         "required": ["success", "status"],
         "properties": {
           "success": { "type": "boolean" },
-          "status": { "type": "string", "enum": ["saved", "conflict", "limit"] },
-          "id": { "type": "string", "maxLength": 48 }
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_input"] },
+          "id": { "type": "string", "maxLength": 48 },
+          "order": { "type": "integer", "minimum": 1, "maximum": 9999 },
+          "word_count": { "type": "integer", "minimum": 0, "maximum": 200000 },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
         }
       }
     }
   ],
   "data": [
-    { "collection": "meta", "scope": "account", "schema_version": 1 },
-    { "collection": "chapters", "scope": "account", "schema_version": 1 },
-    { "collection": "world", "scope": "account", "schema_version": 1 },
-    { "collection": "plot", "scope": "account", "schema_version": 1 }
+    { "collection": "meta", "scope": "project", "schema_version": 1 },
+    { "collection": "chapters", "scope": "project", "schema_version": 1 },
+    { "collection": "world", "scope": "project", "schema_version": 1 },
+    { "collection": "plot", "scope": "project", "schema_version": 1 }
   ],
   "http": [],
   "tasks": [],
