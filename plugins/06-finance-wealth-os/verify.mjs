@@ -1,13 +1,29 @@
 import assert from 'node:assert/strict';
 
 export async function verify({ createHarness }) {
-  const h = await createHarness();
+  const fxCalls = [];
+  const h = await createHarness({
+    settingsMock: { base_currency: 'CNY', target_savings_pct: 35 },
+    httpMock: {
+      0: req => {
+        fxCalls.push(req);
+        return {
+          amount: 1,
+          base: req.query?.base || 'CNY',
+          date: '2026-11-22',
+          rates: { USD: 0.1385, EUR: 0.1292, HKD: 1.078, JPY: 21.35 },
+        };
+      },
+    },
+  });
 
-  // 1. 初始空快照
+  // 1. 初始空快照 + V2 settings 读取
   const empty = await h.action('finance.snapshot', {});
   assert.equal(empty.revision, 0);
   assert.equal(empty.accounts.length, 0);
   assert.equal(empty.summary.net_worth, 0);
+  assert.equal(empty.settings.base_currency, 'CNY');
+  assert.equal(empty.settings.target_savings_pct, 35);
 
   // 2. 加载完整演示数据集 + CAS 冲突校验
   const badSeed = await h.action('finance.demo.seed', { expected_revision: 42 });
@@ -134,4 +150,13 @@ export async function verify({ createHarness }) {
   assert.equal(snap2.accounts.length, 6);
   assert.equal(snap2.ledger.length, 16);
   assert.equal(snap2.goals.length, 6);
+
+  // 7. V2 Frankfurter FX HTTP v2 查询与 settings 联动
+  const fx = await h.action('finance.fetch_fx_rates', {});
+  assert.equal(fx.status, 'ok');
+  assert.equal(fx.base, 'CNY');
+  assert.equal(fx.target_savings_pct, 35);
+  assert.equal(fx.rates.length, 4);
+  assert.equal(fxCalls[0].path, '/v1/latest');
+  assert.equal(fxCalls[0].query.base, 'CNY');
 }

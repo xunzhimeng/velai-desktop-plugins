@@ -1,5 +1,6 @@
-const MAX_RECORD_BYTES = 13 * 1024;
+const MAX_RECORD_BYTES = 240 * 1024;
 const DOC_FORMAT = 'velai.stock-ai-terminal';
+const VALID_MARKETS = new Set(['US', 'HK', 'CN']);
 
 const r2 = n => Math.round(n * 100) / 100;
 const r4 = n => Math.round(n * 10000) / 10000;
@@ -13,6 +14,35 @@ function jsonBytes(v) {
   return b;
 }
 
+function clipText(val, maxLen) {
+  return String(val ?? '').trim().slice(0, maxLen);
+}
+
+function inferMarket(symbol, currency, defaultMarket) {
+  if (symbol.endsWith('.HK') || currency === 'HKD') return 'HK';
+  if (symbol.endsWith('.SS') || symbol.endsWith('.SZ') || currency === 'CNY') return 'CN';
+  if (currency === 'USD') return 'US';
+  return VALID_MARKETS.has(defaultMarket) ? defaultMarket : 'US';
+}
+
+async function readPublicSettings() {
+  const raw = await globalThis.nmas.settings.get();
+  const defaultMarket = typeof raw?.default_market === 'string' && raw.default_market.trim()
+    ? raw.default_market.trim().slice(0, 32)
+    : 'US';
+  const riskProfile = typeof raw?.risk_profile === 'string' && raw.risk_profile.trim()
+    ? raw.risk_profile.trim().slice(0, 32)
+    : 'balanced';
+  const enableLiveQuotes = typeof raw?.enable_live_quotes === 'boolean'
+    ? raw.enable_live_quotes
+    : true;
+  return {
+    default_market: defaultMarket,
+    risk_profile: riskProfile,
+    enable_live_quotes: enableLiveQuotes,
+  };
+}
+
 async function readKey(collection, key, fallback) {
   const res = await globalThis.nmas.data.read({ collection, key });
   return { revision: res.revision, value: res.value === null ? fallback : res.value };
@@ -23,6 +53,16 @@ async function writeKey(collection, key, expectedRevision, value) {
   try {
     const res = await globalThis.nmas.data.write({ collection, key, expected_revision: expectedRevision, value });
     return { status: 'saved', revision: res.revision };
+  } catch (e) {
+    if (e?.code === 'conflict' && e.outcome_unknown === false) return { status: 'conflict', revision: expectedRevision };
+    throw e;
+  }
+}
+
+async function deleteKey(collection, key, expectedRevision) {
+  try {
+    const res = await globalThis.nmas.data.delete({ collection, key, expected_revision: expectedRevision });
+    return { status: 'deleted', revision: res.revision };
   } catch (e) {
     if (e?.code === 'conflict' && e.outcome_unknown === false) return { status: 'conflict', revision: expectedRevision };
     throw e;
@@ -100,7 +140,13 @@ function calcIndicators(bars) {
 
 function runBacktest(bars, strategy, fast, slow) {
   if (bars.length < 10) {
-    return { ok: false, metrics: { strategy_return_pct: 0, benchmark_return_pct: 0, alpha_pct: 0, max_drawdown_pct: 0, win_rate_pct: 0, sharpe: 0, trade_count: 0 }, equity: [], benchmark: [], trades: [] };
+    return {
+      ok: false,
+      metrics: { strategy_return_pct: 0, benchmark_return_pct: 0, alpha_pct: 0, max_drawdown_pct: 0, win_rate_pct: 0, sharpe: 0, trade_count: 0 },
+      equity: [],
+      benchmark: [],
+      trades: [],
+    };
   }
   const closes = bars.map(b => b.c);
   let cash = 1, shares = 0, entryPrice = 0;
@@ -208,6 +254,244 @@ function summarizePortfolio(cash, watchlist, positions) {
   return { total_assets, market_value: r2(market_value), total_cost: r2(total_cost), unrealized_pnl, pnl_pct, cash_pct };
 }
 
+function parseYahooChart(json, sym) {
+  if (json?.chart?.error) {
+    const errMsg = json.chart.error.description || json.chart.error.code || 'Yahoo chart 返回错误';
+    return { ok: false, status: 'upstream_error', error: clipText(errMsg, 320) };
+  }
+  const result = json?.chart?.result?.[0];
+  if (!result || typeof result !== 'object') {
+    return { ok: false, status: 'parse_error', error: 'Yahoo 行情响应缺少 chart.result[0]' };
+  }
+  const meta = result.meta || {};
+  const timestamps = Array.isArray(result.timestamp) ? result.timestamp : [];
+  const quote = result.indicators?.quote?.[0] || {};
+  const opens = Array.isArray(quote.open) ? quote.open : [];
+  const highs = Array.isArray(quote.high) ? quote.high : [];
+  const lows = Array.isArray(quote.low) ? quote.low : [];
+  const closes = Array.isArray(quote.close) ? quote.close : [];
+  const volumes = Array.isArray(quote.volume) ? quote.volume : [];
+
+  const bars = [];
+  for (let i = 0; i < timestamps.length; i++) {
+    const ts = timestamps[i];
+    const o = opens[i], h = highs[i], l = lows[i], c = closes[i];
+    if (!Number.isFinite(ts) || !Number.isFinite(o) || !Number.isFinite(h) || !Number.isFinite(l) || !Number.isFinite(c) || c <= 0) {
+      continue;
+    }
+    const v = Number.isFinite(volumes[i]) && volumes[i] >= 0 ? Math.round(volumes[i]) : 0;
+    const d = new Date(ts * 1000).toISOString().slice(5, 10);
+    bars.push({ d, o: r2(o), h: r2(h), l: r2(l), c: r2(c), v });
+  }
+  const trimmedBars = bars.slice(-120);
+  const lastBar = trimmedBars.length ? trimmedBars[trimmedBars.length - 1] : null;
+  const prevBar = trimmedBars.length >= 2 ? trimmedBars[trimmedBars.length - 2] : null;
+
+  const rawPrice = Number.isFinite(meta.regularMarketPrice) && meta.regularMarketPrice > 0
+    ? meta.regularMarketPrice
+    : lastBar?.c;
+  if (!Number.isFinite(rawPrice) || rawPrice <= 0) {
+    return { ok: false, status: 'parse_error', error: '无法从 Yahoo 响应中解析有效现价' };
+  }
+
+  const prevCloseCandidates = [
+    meta.regularMarketPreviousClose,
+    meta.previousClose,
+    prevBar?.c,
+    meta.chartPreviousClose,
+  ];
+  const rawPrevClose = prevCloseCandidates.find(v => Number.isFinite(v) && v > 0) ?? rawPrice;
+  const price = r2(rawPrice);
+  const prevClose = r2(rawPrevClose);
+  const change = r2(price - prevClose);
+  const changePct = prevClose > 0 ? r2((change / prevClose) * 100) : 0;
+  const open = r2(lastBar?.o ?? (Number.isFinite(meta.regularMarketOpen) ? meta.regularMarketOpen : price));
+  const high = r2(lastBar?.h ?? (Number.isFinite(meta.regularMarketDayHigh) ? meta.regularMarketDayHigh : price));
+  const low = r2(lastBar?.l ?? (Number.isFinite(meta.regularMarketDayLow) ? meta.regularMarketDayLow : price));
+
+  return {
+    ok: true,
+    status: 'ok',
+    name: clipText(meta.shortName || meta.longName || sym, 64),
+    currency: clipText(meta.currency || 'USD', 12),
+    price,
+    change,
+    change_pct: changePct,
+    open,
+    high,
+    low,
+    prev_close: prevClose,
+    bars: trimmedBars,
+  };
+}
+
+async function fetchLiveQuoteCore(symbolRaw, sourceRaw = 'yahoo', rangeRaw = '1mo') {
+  const source = sourceRaw === 'finnhub_secret' ? 'finnhub_secret' : 'yahoo';
+  const range = rangeRaw === '5d' || rangeRaw === '3mo' ? rangeRaw : '1mo';
+  const sym = String(symbolRaw || '').trim().toUpperCase();
+  if (!sym || sym.length > 16 || !/^[A-Z0-9._-]+$/.test(sym) || sym.includes('..')) {
+    return { ok: false, status: 'invalid_symbol', source, symbol: sym.slice(0, 16), error: '无效股票代码格式' };
+  }
+
+  const settings = await readPublicSettings();
+  if (!settings.enable_live_quotes) {
+    return {
+      ok: false,
+      status: 'live_quotes_disabled',
+      source,
+      symbol: sym,
+      error: '实时行情已在插件设置中关闭（enable_live_quotes = false）。',
+    };
+  }
+
+  if (source === 'yahoo') {
+    let res;
+    try {
+      res = await globalThis.nmas.http.request({
+        rule: 0,
+        method: 'GET',
+        path: `/v8/finance/chart/${sym}`,
+        query: { interval: '1d', range },
+        headers: { accept: 'application/json' },
+        responseType: 'json',
+      });
+    } catch (e) {
+      return {
+        ok: false,
+        status: clipText(e?.code || 'http_error', 48),
+        source,
+        symbol: sym,
+        error: clipText(e?.message || 'Yahoo 实时行情请求失败', 320),
+      };
+    }
+
+    if (typeof res?.status === 'number' && (res.status < 200 || res.status >= 300)) {
+      return {
+        ok: false,
+        status: 'upstream_error',
+        source,
+        symbol: sym,
+        http_status: res.status,
+        error: `Yahoo 行情上游返回非 2xx 状态码: HTTP ${res.status}`,
+      };
+    }
+
+    const parsed = parseYahooChart(res?.json, sym);
+    if (!parsed.ok) {
+      return {
+        ok: false,
+        status: parsed.status,
+        source,
+        symbol: sym,
+        http_status: typeof res?.status === 'number' ? res.status : 200,
+        error: parsed.error,
+      };
+    }
+    return {
+      ok: true,
+      status: 'ok',
+      source,
+      symbol: sym,
+      name: parsed.name,
+      currency: parsed.currency,
+      price: parsed.price,
+      change: parsed.change,
+      change_pct: parsed.change_pct,
+      open: parsed.open,
+      high: parsed.high,
+      low: parsed.low,
+      prev_close: parsed.prev_close,
+      bars: parsed.bars,
+      bars_count: parsed.bars.length,
+      settings,
+    };
+  }
+
+  // source === 'finnhub_secret'（Rule #1：宿主加密密钥槽注入 + 窄标量投影）
+  let res;
+  try {
+    res = await globalThis.nmas.http.request({
+      rule: 1,
+      method: 'GET',
+      responseType: 'json',
+    });
+  } catch (e) {
+    const code = clipText(e?.code || 'http_error', 48);
+    const msg = code === 'credential_missing'
+      ? '密钥槽 market_api_key 未配置或未确认，请在插件设置中填写 Finnhub API Key 后重试。'
+      : clipText(e?.message || 'Finnhub 密钥槽行情请求失败', 320);
+    return {
+      ok: false,
+      status: code,
+      source,
+      symbol: sym,
+      error: msg,
+    };
+  }
+
+  if (typeof res?.status === 'number' && (res.status < 200 || res.status >= 300)) {
+    return {
+      ok: false,
+      status: 'upstream_error',
+      source,
+      symbol: sym,
+      http_status: res.status,
+      error: `Finnhub 上游返回非 2xx 状态码: HTTP ${res.status}`,
+    };
+  }
+
+  const j = res?.json;
+  if (
+    !j ||
+    typeof j !== 'object' ||
+    !Number.isFinite(j.c) ||
+    !Number.isFinite(j.d) ||
+    !Number.isFinite(j.dp) ||
+    !Number.isFinite(j.h) ||
+    !Number.isFinite(j.l) ||
+    !Number.isFinite(j.o) ||
+    !Number.isFinite(j.pc)
+  ) {
+    return {
+      ok: false,
+      status: 'parse_error',
+      source,
+      symbol: sym,
+      http_status: typeof res?.status === 'number' ? res.status : 200,
+      error: 'Finnhub 标量投影缺少预期数值字段 (c/d/dp/h/l/o/pc)',
+    };
+  }
+  if (j.c <= 0) {
+    return {
+      ok: false,
+      status: 'empty_quote',
+      source,
+      symbol: sym,
+      http_status: typeof res?.status === 'number' ? res.status : 200,
+      error: 'Finnhub 返回当前价格 <= 0，未获取到有效行情',
+    };
+  }
+
+  return {
+    ok: true,
+    status: 'ok',
+    source,
+    symbol: sym,
+    name: sym,
+    currency: 'USD',
+    price: r2(j.c),
+    change: r2(j.d),
+    change_pct: r2(j.dp),
+    open: r2(j.o),
+    high: r2(j.h),
+    low: r2(j.l),
+    prev_close: r2(j.pc),
+    bars: [],
+    bars_count: 0,
+    settings,
+  };
+}
+
 function demoData() {
   const watchlist = [
     { symbol: 'NVDA', name: '英伟达', market: 'US', sector: 'AI 算力芯片', price: 146.8, change_pct: 2.84, pe: 48.2, pb: 38.5, roe: 112.4, rev_growth: 94.2 },
@@ -246,19 +530,171 @@ export default async function (request) {
 
   if (kind === 'action') {
     if (contribution === 'stock.bootstrap') {
+      const settings = await readPublicSettings();
       const wRes = await readKey('watchlist', 'list', { schema_version: 1, items: [] });
       const pRes = await readKey('portfolio', 'book', { schema_version: 1, cash: 200000, positions: [] });
       const rRes = await readKey('research', 'notes', { schema_version: 1, notes: [] });
+      const sList = await globalThis.nmas.data.list({ collection: 'research', prefix: 'snap:', limit: 50 });
       const watchlist = wRes.value.items || [];
       const positions = pRes.value.positions || [];
       const cash = pRes.value.cash ?? 200000;
       return {
-        revision: wRes.revision,
+        revision: sList.revision,
         cash,
+        settings,
+        snapshots: sList.keys || [],
         watchlist,
         positions,
         notes: rRes.value.notes || [],
         summary: summarizePortfolio(cash, watchlist, positions),
+      };
+    }
+
+    if (contribution === 'stock.fetch_live_quote') {
+      const quote = await fetchLiveQuoteCore(input.symbol, input.source, input.range);
+      if (!quote.ok) {
+        const out = {
+          ok: false,
+          status: quote.status,
+          source: quote.source,
+          symbol: quote.symbol,
+          error: quote.error,
+        };
+        if (quote.http_status !== undefined) out.http_status = quote.http_status;
+        return out;
+      }
+
+      let persisted = false;
+      let latestRevision;
+      if (input.persist === true) {
+        const wRes = await readKey('watchlist', 'list', { schema_version: 1, items: [] });
+        let rev = wRes.revision;
+        const items = wRes.value.items || [];
+        const existing = items.find(x => x.symbol === quote.symbol);
+        const clampedPrice = Math.min(1000000, Math.max(0.01, quote.price));
+        const clampedChg = Math.min(1000, Math.max(-100, quote.change_pct));
+        const nextItem = existing
+          ? { ...existing, price: clampedPrice, change_pct: clampedChg }
+          : {
+              symbol: quote.symbol,
+              name: clipText(quote.name || quote.symbol, 48),
+              market: inferMarket(quote.symbol, quote.currency, quote.settings?.default_market),
+              sector: '实时行情标的',
+              price: clampedPrice,
+              change_pct: clampedChg,
+              pe: 0,
+              pb: 0,
+              roe: 0,
+              rev_growth: 0,
+            };
+        const nextList = existing
+          ? items.map(x => (x.symbol === quote.symbol ? nextItem : x))
+          : [...items, nextItem];
+        const w1 = await writeKey('watchlist', 'list', rev, { schema_version: 1, items: nextList });
+        if (w1.status === 'saved') {
+          rev = w1.revision;
+          persisted = true;
+          if (Array.isArray(quote.bars) && quote.bars.length >= 2) {
+            const w2 = await writeKey('strategies', `k:${quote.symbol}`, rev, { schema_version: 1, bars: quote.bars });
+            if (w2.status === 'saved') rev = w2.revision;
+          }
+        }
+        latestRevision = rev;
+      }
+
+      const out = {
+        ok: true,
+        status: 'ok',
+        source: quote.source,
+        symbol: quote.symbol,
+        name: quote.name,
+        currency: quote.currency,
+        price: quote.price,
+        change: quote.change,
+        change_pct: quote.change_pct,
+        open: quote.open,
+        high: quote.high,
+        low: quote.low,
+        prev_close: quote.prev_close,
+        bars_count: quote.bars_count,
+        persisted,
+      };
+      if (latestRevision !== undefined) out.revision = latestRevision;
+      return out;
+    }
+
+    if (contribution === 'stock.fetch_fx_rate') {
+      const base = String(input.base || 'USD').trim().toUpperCase();
+      const symbols = String(input.symbols || 'CNY,HKD,EUR').trim().toUpperCase();
+      if (!/^[A-Z]{3}$/.test(base) || !/^[A-Z]{3}(,[A-Z]{3})*$/.test(symbols)) {
+        return { ok: false, status: 'invalid_input', base: base.slice(0, 8), rates: [], error: '货币代码格式无效（需 3 位 ISO 币种，如 USD / CNY,HKD）' };
+      }
+
+      let res;
+      try {
+        res = await globalThis.nmas.http.request({
+          rule: 2,
+          method: 'GET',
+          path: '/v1/latest',
+          query: { base, symbols },
+          headers: { accept: 'application/json' },
+          responseType: 'json',
+        });
+      } catch (e) {
+        return {
+          ok: false,
+          status: clipText(e?.code || 'http_error', 48),
+          base,
+          rates: [],
+          error: clipText(e?.message || '实时汇率请求失败', 320),
+        };
+      }
+
+      if (typeof res?.status === 'number' && (res.status < 200 || res.status >= 300)) {
+        return {
+          ok: false,
+          status: 'upstream_error',
+          base,
+          rates: [],
+          http_status: res.status,
+          error: `汇率上游返回非 2xx 状态码: HTTP ${res.status}`,
+        };
+      }
+
+      const rawRates = res?.json?.rates;
+      if (!rawRates || typeof rawRates !== 'object' || Array.isArray(rawRates)) {
+        return {
+          ok: false,
+          status: 'parse_error',
+          base,
+          rates: [],
+          http_status: typeof res?.status === 'number' ? res.status : 200,
+          error: '汇率上游响应缺少 rates 字段',
+        };
+      }
+
+      const rates = Object.entries(rawRates)
+        .filter(([k, v]) => typeof k === 'string' && /^[A-Z]{3}$/.test(k) && Number.isFinite(v))
+        .map(([currency, rate]) => ({ currency, rate: r4(rate) }))
+        .sort((a, b) => a.currency.localeCompare(b.currency));
+
+      if (!rates.length) {
+        return {
+          ok: false,
+          status: 'parse_error',
+          base,
+          rates: [],
+          http_status: typeof res?.status === 'number' ? res.status : 200,
+          error: '未解析到有效汇率条目',
+        };
+      }
+
+      return {
+        ok: true,
+        status: 'ok',
+        base: clipText(res.json.base || base, 8),
+        date: clipText(res.json.date || '', 16),
+        rates,
       };
     }
 
@@ -338,6 +774,55 @@ export default async function (request) {
       return writeKey('research', 'notes', input.expected_revision, { schema_version: 1, notes: next });
     }
 
+    if (contribution === 'stock.snapshot.save') {
+      const key = String(input.key || '').trim();
+      if (!/^(snap|note):[A-Za-z0-9._-]{1,56}$/.test(key)) {
+        return { status: 'invalid_key', revision: input.expected_revision };
+      }
+      const wRes = await readKey('watchlist', 'list', { schema_version: 1, items: [] });
+      if (wRes.revision !== input.expected_revision) return { status: 'conflict', revision: wRes.revision };
+      const pRes = await readKey('portfolio', 'book', { schema_version: 1, cash: 200000, positions: [] });
+      const rRes = await readKey('research', 'notes', { schema_version: 1, notes: [] });
+      const payload = {
+        schema_version: 1,
+        saved_at: new Date().toISOString(),
+        memo: clipText(input.memo || '', 400),
+        watchlist: wRes.value.items || [],
+        portfolio: pRes.value,
+        notes: rRes.value.notes || [],
+      };
+      const wr = await writeKey('research', key, input.expected_revision, payload);
+      return { status: wr.status, revision: wr.revision, key };
+    }
+
+    if (contribution === 'stock.snapshot.list') {
+      const prefix = typeof input.prefix === 'string' ? input.prefix : 'snap:';
+      const limit = Number.isInteger(input.limit) ? input.limit : 20;
+      const listed = await globalThis.nmas.data.list({ collection: 'research', prefix, limit });
+      return {
+        keys: listed.keys || [],
+        next_cursor: listed.next_cursor ?? null,
+        revision: listed.revision,
+      };
+    }
+
+    if (contribution === 'stock.record.delete') {
+      const collection = input.collection;
+      const key = String(input.key || '').trim();
+      const allowed =
+        (collection === 'research' && /^(snap|note):[A-Za-z0-9._-]{1,56}$/.test(key)) ||
+        (collection === 'strategies' && /^k:[A-Z0-9._-]{1,16}$/.test(key));
+      if (!allowed) {
+        return { status: 'invalid_key', revision: input.expected_revision };
+      }
+      const cur = await readKey(collection, key, null);
+      if (cur.revision !== input.expected_revision) {
+        return { status: 'conflict', revision: cur.revision };
+      }
+      const del = await deleteKey(collection, key, input.expected_revision);
+      return { status: del.status, revision: del.revision, key };
+    }
+
     if (contribution === 'stock.seed_demo') {
       const wRes = await readKey('watchlist', 'list', { schema_version: 1, items: [] });
       if (wRes.revision !== input.expected_revision) return { status: 'conflict', revision: wRes.revision };
@@ -361,16 +846,33 @@ export default async function (request) {
 
     if (contribution === 'document.list') {
       const wRes = await readKey('watchlist', 'list', { schema_version: 1, items: [] });
-      return { items: wRes.value.items?.length ? [{ id: 'snapshot', label: `投研组合与研报快照 (${wRes.value.items.length} 标的)` }] : [] };
+      const sList = await globalThis.nmas.data.list({ collection: 'research', prefix: 'snap:', limit: 20 });
+      const items = [];
+      if (wRes.value.items?.length) {
+        items.push({ id: 'snapshot', label: `投研组合与研报快照 (${wRes.value.items.length} 标的)` });
+      }
+      for (const k of sList.keys || []) {
+        items.push({ id: k, label: `自定义快照 ${k}` });
+      }
+      return { items };
     }
 
     if (contribution === 'document.export') {
-      if (input.id !== 'snapshot') return { error: 'not_found' };
-      const w = await readKey('watchlist', 'list', { items: [] });
-      const p = await readKey('portfolio', 'book', { cash: 0, positions: [] });
-      const r = await readKey('research', 'notes', { notes: [] });
-      const text = JSON.stringify({ format: DOC_FORMAT, version: 1, watchlist: w.value.items, portfolio: p.value, notes: r.value.notes }, null, 2);
-      return { filename: 'stock-ai-terminal.json', text };
+      if (input.id === 'snapshot') {
+        const w = await readKey('watchlist', 'list', { items: [] });
+        const p = await readKey('portfolio', 'book', { cash: 0, positions: [] });
+        const r = await readKey('research', 'notes', { notes: [] });
+        const text = JSON.stringify({ format: DOC_FORMAT, version: 1, watchlist: w.value.items, portfolio: p.value, notes: r.value.notes }, null, 2);
+        return { filename: 'stock-ai-terminal.json', text };
+      }
+      if (/^snap:[A-Za-z0-9._-]{1,56}$/.test(input.id)) {
+        const s = await readKey('research', input.id, null);
+        if (!s.value) return { error: 'not_found' };
+        const text = JSON.stringify({ format: DOC_FORMAT, version: 1, ...s.value }, null, 2);
+        const safeName = input.id.replace(/[^A-Za-z0-9._-]/g, '_');
+        return { filename: `${safeName}.json`, text };
+      }
+      return { error: 'not_found' };
     }
 
     if (contribution === 'document.import') {
@@ -381,7 +883,7 @@ export default async function (request) {
       }
       const wRes = await readKey('watchlist', 'list', { schema_version: 1, items: [] });
       let rev = wRes.revision;
-      const w1 = await writeKey('watchlist', 'list', rev, { schema_version: 1, items: parsed.watchlist.slice(0, 20) });
+      const w1 = await writeKey('watchlist', 'list', rev, { schema_version: 1, items: parsed.watchlist.slice(0, 50) });
       if (w1.status !== 'saved') return { imported: false, reason: w1.status };
       rev = w1.revision;
       if (parsed.portfolio) {
@@ -390,7 +892,7 @@ export default async function (request) {
         rev = w2.revision;
       }
       if (Array.isArray(parsed.notes)) {
-        const w3 = await writeKey('research', 'notes', rev, { schema_version: 1, notes: parsed.notes.slice(0, 20) });
+        const w3 = await writeKey('research', 'notes', rev, { schema_version: 1, notes: parsed.notes.slice(0, 100) });
         if (w3.status !== 'saved') return { imported: false, reason: w3.status };
       }
       return { imported: true };
@@ -398,7 +900,8 @@ export default async function (request) {
   }
 
   if (kind === 'tool') {
-    if (contribution === 'stock.portfolio') {
+    if (contribution === 'stock.get_portfolio_summary') {
+      const settings = await readPublicSettings();
       const wRes = await readKey('watchlist', 'list', { items: [] });
       const pRes = await readKey('portfolio', 'book', { cash: 200000, positions: [] });
       const wl = wRes.value.items || [];
@@ -418,40 +921,80 @@ export default async function (request) {
           avg_cost: p.avg_cost,
           pnl_pct: r2(((price - p.avg_cost) / p.avg_cost) * 100),
           weight_pct: sum.total_assets > 0 ? r2((mv / sum.total_assets) * 100) : 0,
+          stop_loss: p.stop_loss ?? 0,
+          target_price: p.target_price ?? 0,
         };
       });
       return {
         success: true,
         status: detail.length ? 'ready' : 'empty',
         total_assets: sum.total_assets,
+        market_value: sum.market_value,
+        cash,
+        cash_pct: sum.cash_pct,
         unrealized_pnl: sum.unrealized_pnl,
+        pnl_pct: sum.pnl_pct,
+        risk_profile: settings.risk_profile,
+        default_market: settings.default_market,
         positions: detail,
       };
     }
 
-    if (contribution === 'stock.analyze') {
-      const sym = input.symbol.trim().toUpperCase();
+    if (contribution === 'stock.fetch_quote_live') {
+      const quote = await fetchLiveQuoteCore(input.symbol, input.source, input.range);
+      if (!quote.ok) {
+        const out = {
+          success: false,
+          status: quote.status,
+          source: quote.source,
+          symbol: quote.symbol,
+          error: quote.error,
+        };
+        if (quote.http_status !== undefined) out.http_status = quote.http_status;
+        return out;
+      }
+
       const wRes = await readKey('watchlist', 'list', { items: [] });
-      const kRes = await readKey('strategies', `k:${sym}`, null);
       const rRes = await readKey('research', 'notes', { notes: [] });
-      const stock = (wRes.value.items || []).find(x => x.symbol === sym);
-      if (!stock) return { success: false, status: 'not_found' };
-      const ind = calcIndicators(kRes.value?.bars || []);
-      const note = (rRes.value.notes || []).find(n => n.symbol === sym);
-      return {
+      const localStock = (wRes.value.items || []).find(x => x.symbol === quote.symbol);
+      const localNote = (rRes.value.notes || []).find(n => n.symbol === quote.symbol);
+
+      let barsForInd = quote.bars;
+      if (!barsForInd.length) {
+        const kRes = await readKey('strategies', `k:${quote.symbol}`, null);
+        barsForInd = kRes.value?.bars || [];
+      }
+      const ind = barsForInd.length ? calcIndicators(barsForInd) : null;
+
+      const out = {
         success: true,
         status: 'ready',
-        name: stock.name,
-        price: stock.price,
-        pe: stock.pe,
-        roe: stock.roe,
-        rsi14: ind.rsi14,
-        signal: ind.signal,
-        latest_thesis: note?.thesis || '暂无投研笔记',
+        source: quote.source,
+        symbol: quote.symbol,
+        name: localStock?.name || quote.name,
+        currency: quote.currency,
+        price: quote.price,
+        change: quote.change,
+        change_pct: quote.change_pct,
+        open: quote.open,
+        high: quote.high,
+        low: quote.low,
+        prev_close: quote.prev_close,
+        bars_count: quote.bars_count,
+        latest_thesis: localNote?.thesis || '暂无投研笔记',
       };
+      if (ind) {
+        out.rsi14 = ind.rsi14;
+        out.signal = ind.signal;
+      }
+      if (localStock) {
+        out.pe = localStock.pe;
+        out.roe = localStock.roe;
+      }
+      return out;
     }
 
-    if (contribution === 'stock.note.add') {
+    if (contribution === 'stock.record_research_note') {
       const rRes = await readKey('research', 'notes', { schema_version: 1, notes: [] });
       const id = `n-${Date.now().toString(36)}`;
       const rec = {

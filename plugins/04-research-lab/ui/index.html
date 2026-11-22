@@ -148,8 +148,9 @@ textarea{resize:vertical;line-height:1.55;}
 </nav>
 <div class="side-foot">
 <div class="side-meta"><span>作用域</span><span>Account 跨项目</span></div>
-<div class="side-meta"><span>AI 联动</span><span>session.turn.*</span></div>
-<div class="side-meta"><span>Tools</span><span>search / read / add</span></div>
+<div class="side-meta"><span>联网检索</span><span>Crossref HTTP v2</span></div>
+<div class="side-meta"><span>引用格式</span><span id="side-cite-style">APA · 5条</span></div>
+<div class="side-meta"><span>Tools</span><span>4 个 Agent Tools</span></div>
 <button id="btn-seed-side" class="btn sm" type="button" style="justify-content:center">✦ 加载 LLM 经典论文集</button>
 </div>
 </aside>
@@ -200,6 +201,12 @@ textarea{resize:vertical;line-height:1.55;}
 </div>
 </div>
 <div id="lib-content" class="card">
+<div class="toolbar" style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg-input)">
+<strong style="font-size:12px">Crossref 学术联网检索 (V2)</strong>
+<input id="cr-query" type="search" placeholder="输入英文/中文关键词检索 Crossref 论文元数据…" style="flex:1;min-width:200px">
+<button id="btn-cr-search" class="btn sm primary" type="button">联网检索</button>
+</div>
+<div id="cr-results" style="display:flex;flex-direction:column;gap:6px" hidden></div>
 <div class="card-head">
 <div class="toolbar" style="flex:1">
 <input id="search-paper" type="search" placeholder="搜索论文标题、作者、会议期刊、核心方法或标签…" style="min-width:220px;flex:1;max-width:380px">
@@ -274,8 +281,8 @@ textarea{resize:vertical;line-height:1.55;}
 <div class="card">
 <div class="card-head">
 <div>
-<h2 class="card-title">AI 文献综述与研究空白生成器</h2>
-<div class="card-sub">勾选 1~6 篇论文，通过 session.turn.request 委托 Velai 当前会话生成，核对后采纳保存为科研笔记</div>
+<h2 class="card-title">文献综述模板与提示词工作台</h2>
+<div class="card-sub">勾选 1~6 篇论文，一键生成本地结构化综述草稿，或复制/插入提示词至 Velai 工作台聊天或独立 AI 伴生插件深度写作</div>
 </div>
 <span class="rev-pill" id="ai-sel-count">已选 0 / 6 篇</span>
 </div>
@@ -303,13 +310,13 @@ textarea{resize:vertical;line-height:1.55;}
 <input id="ai-focus" type="text" maxlength="200" placeholder="例如：聚焦桌面端低延迟沙箱插件编排与事实验证场景…">
 </label>
 <div class="toolbar">
-<button id="btn-ai-dispatch" class="btn primary" type="button">✦ 发送给当前会话生成</button>
-<button id="btn-ai-check" class="btn" type="button" hidden>⟳ 核对会话结果</button>
-<button id="btn-ai-insert-prompt" class="btn" type="button" hidden>↗ 仅插入提示词到输入框</button>
+<button id="btn-ai-draft" class="btn primary" type="button">✦ 生成本地结构化草稿</button>
+<button id="btn-ai-copy-prompt" class="btn" type="button">复制 AI 写作提示词</button>
+<button id="btn-ai-insert-prompt" class="btn" type="button" hidden>↗ 插入提示词到工作台聊天</button>
 </div>
 <div id="ai-turn-box" class="ai-result-box" hidden>
 <div class="card-head">
-<strong id="ai-turn-state" style="font-size:12.5px">等待派发…</strong>
+<strong id="ai-turn-state" style="font-size:12.5px">本地结构化草稿已就绪</strong>
 <div class="toolbar">
 <button id="btn-ai-adopt" class="btn sm primary" type="button" hidden>✓ 采纳并存为科研笔记</button>
 </div>
@@ -983,6 +990,9 @@ state.kpi = res.kpi;
 state.papers = res.papers;
 state.matrix = res.matrix;
 state.notes = res.notes;
+if (res.settings && $('side-cite-style')) {
+$('side-cite-style').textContent = `${res.settings.citation_style} · ${res.settings.default_rows}条`;
+}
 renderView();
 } catch (e) { toast(`加载失败：${e?.message || '未知错误'}`, 'error'); }
 }
@@ -1114,40 +1124,82 @@ $('ai-modes').querySelectorAll('.mode-card').forEach(card => card.addEventListen
 state.aiMode = card.dataset.mode;
 $('ai-modes').querySelectorAll('.mode-card').forEach(c => c.classList.toggle('active', c === card));
 }));
-$('btn-ai-dispatch').addEventListener('click', async () => {
-const prompt = buildAiPrompt();
-if (!prompt) { toast('请先勾选至少 1 篇论文。', 'error'); return; }
-state.pendingWorkId = uuid();
-state.latestAiText = '';
-$('ai-turn-box').hidden = false;
-$('ai-turn-preview').hidden = true;
-$('btn-ai-adopt').hidden = true;
-$('btn-ai-check').hidden = false;
-$('ai-turn-state').textContent = '正在向 Velai 当前会话派发文献综述任务…';
+$('btn-cr-search').addEventListener('click', async () => {
+const q = $('cr-query').value.trim();
+if (!q) { toast('请输入检索关键词。', 'error'); return; }
+const box = $('cr-results');
+box.hidden = false;
+box.innerHTML = '<div style="font-size:12px;color:var(--fg-muted)">正在通过 Crossref API 联网检索…</div>';
 try {
-await plugin.action('session.turn.request', { prompt, work_id: state.pendingWorkId });
-$('ai-turn-state').textContent = '已派发至当前会话！待回复完成后点击「核对会话结果」。';
-} catch (e) {
-$('ai-turn-state').textContent = e?.message === 'cancelled'
-? '已取消派发，请先在 Velai 宿主中选择一个会话。'
-: `派发未确认（${e?.message || 'unknown'}），请检查当前会话。`;
+const r = await plugin.action('research.search_crossref', { query: q });
+box.replaceChildren();
+if (r.status !== 'ok') {
+box.innerHTML = `<div style="font-size:12px;color:var(--rose)">检索失败：${esc(r.error || r.status)}</div>`;
+return;
 }
+if (!r.items.length) {
+box.innerHTML = '<div style="font-size:12px;color:var(--fg-muted)">未找到匹配的 Crossref 文献。</div>';
+return;
+}
+for (const it of r.items) {
+const row = document.createElement('div');
+row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input)';
+row.innerHTML = `<div style="min-width:0"><div style="font-weight:600;font-size:12.5px">${esc(it.title)}</div><div style="font-size:11.5px;color:var(--fg-muted)">${esc(it.authors)} · ${it.year} · ${esc(it.venue)}</div><div style="font-size:11px;color:var(--fg-dim)">${esc(it.citation)}</div></div>`;
+const btn = document.createElement('button');
+btn.type = 'button';
+btn.className = 'btn sm primary';
+btn.textContent = '+ 收录';
+btn.addEventListener('click', async () => {
+const slug = it.title.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 12) || 'cr';
+const id = `${slug}${it.year}-${Date.now().toString(36).slice(-3)}`.slice(0, 40);
+const saved = await plugin.action('paper.save', {
+expected_revision: state.revision,
+id,
+title: it.title.slice(0, 160),
+authors: it.authors.slice(0, 120),
+year: Math.max(1950, Math.min(2100, it.year)),
+venue: it.venue.slice(0, 48),
+tags: ['Crossref'],
+rating: 4,
+status: 'unread',
+method: '',
+contribution: it.citation.slice(0, 260),
+limitations: '',
+cites: [],
 });
-$('btn-ai-check').addEventListener('click', async () => {
-if (!state.pendingWorkId) return;
-$('ai-turn-state').textContent = '正在核对会话生成结果…';
-try {
-const r = await plugin.action('session.turn.result', { work_id: state.pendingWorkId });
-if (r.state === 'completed' && !r.truncated && typeof r.text === 'string' && r.text.trim()) {
-state.latestAiText = r.text.trim();
-$('ai-turn-state').textContent = '已获取完整生成结果，确认无误后可采纳存为科研笔记！';
+if (saved.status === 'saved') { await loadAll(); toast(`已收录：${it.title.slice(0, 32)}`, 'ok'); }
+else toast(`收录未完成：${saved.status}`, 'error');
+});
+row.appendChild(btn);
+box.appendChild(row);
+}
+} catch (e) { box.innerHTML = `<div style="font-size:12px;color:var(--rose)">请求异常：${esc(e?.message || '未知错误')}</div>`; }
+});
+$('btn-ai-draft').addEventListener('click', () => {
+const selPapers = state.matrix.selected_ids.map(id => state.papers.find(p => p.id === id)).filter(Boolean).slice(0, 6);
+if (!selPapers.length) { toast('请先勾选至少 1 篇论文。', 'error'); return; }
+const focus = $('ai-focus').value.trim();
+const lines = [
+`## ${MODE_LBL[state.aiMode]}（本地结构化草稿）`,
+focus ? `> 聚焦方向：${focus}` : '',
+'',
+...selPapers.map((p, idx) => `${idx + 1}. **${p.title}** (${p.authors}, ${p.year}, ${p.venue})\n   - 方法：${p.method || '待补充'}\n   - 贡献：${p.contribution || '待补充'}\n   - 局限：${p.limitations || '待补充'}`),
+'',
+'### 综合分析与下一步建议',
+'- 可直接点击「采纳并存为科研笔记」保存本草稿，或点击「插入提示词到工作台聊天」交给 Velai 会话 / 独立 AI 伴生插件深度扩写。',
+].filter(Boolean);
+state.latestAiText = lines.join('\n');
+$('ai-turn-box').hidden = false;
+$('ai-turn-state').textContent = '已生成本地结构化草稿，可直接采纳存为科研笔记，或复制提示词至工作台聊天深化。';
 $('ai-turn-preview').textContent = state.latestAiText;
 $('ai-turn-preview').hidden = false;
 $('btn-ai-adopt').hidden = false;
-} else {
-$('ai-turn-state').textContent = `当前任务状态：${r.state}${r.truncated ? '（内容被截断，请回原会话查看全文）' : ''}`;
-}
-} catch (e) { $('ai-turn-state').textContent = `核对失败：${e?.message || '请回到原会话查看'}`; }
+});
+$('btn-ai-copy-prompt').addEventListener('click', async () => {
+const prompt = buildAiPrompt();
+if (!prompt) { toast('请先勾选至少 1 篇论文。', 'error'); return; }
+try { await navigator.clipboard.writeText(prompt); toast('已复制综述提示词，可粘贴至工作台聊天或 AI 伴生插件。', 'ok'); }
+catch { toast('请使用「插入提示词到工作台聊天」按钮。'); }
 });
 $('btn-ai-adopt').addEventListener('click', async () => {
 if (!state.latestAiText || state.busy) return;
@@ -1164,10 +1216,8 @@ paper_ids: selIds,
 content: state.latestAiText.slice(0, 6000),
 });
 if (r.status === 'saved') {
-state.pendingWorkId = null;
 state.latestAiText = '';
 $('ai-turn-box').hidden = true;
-$('btn-ai-check').hidden = true;
 await loadAll();
 await openNote(id);
 toast('已采纳并保存为科研笔记！', 'ok');

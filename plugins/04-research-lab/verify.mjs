@@ -1,12 +1,40 @@
 import assert from 'node:assert/strict';
 
 export async function verify({ createHarness }) {
-  const h = await createHarness();
+  const crossrefCalls = [];
+  const h = await createHarness({
+    settingsMock: { citation_style: 'IEEE', default_rows: 3 },
+    httpMock: {
+      0: req => {
+        crossrefCalls.push(req);
+        return {
+          message: {
+            'total-results': 42,
+            items: [
+              {
+                DOI: '10.48550/arXiv.2210.03629',
+                title: ['ReAct: Synergizing Reasoning and Acting in Language Models'],
+                author: [
+                  { given: 'Shunyu', family: 'Yao' },
+                  { given: 'Jeffrey', family: 'Zhao' },
+                ],
+                published: { 'date-parts': [[2023]] },
+                'container-title': ['ICLR 2023'],
+                URL: 'https://doi.org/10.48550/arXiv.2210.03629',
+              },
+            ],
+          },
+        };
+      },
+    },
+  });
 
-  // 1. Initial empty state
+  // 1. Initial empty state + V2 settings check
   const empty = await h.action('lab.load', {});
   assert.equal(empty.revision, 0);
   assert.equal(empty.kpi.total_papers, 0);
+  assert.equal(empty.settings.citation_style, 'IEEE');
+  assert.equal(empty.settings.default_rows, 3);
 
   // 2. Seed demo dataset (6 classic LLM Agent / RAG / Sandbox papers + 2 notes)
   const seeded = await h.action('lab.seed_demo', { expected_revision: 0 });
@@ -147,4 +175,20 @@ export async function verify({ createHarness }) {
   const afterDel = await h.action('lab.load', {});
   assert.equal(afterDel.papers.some(p => p.id === 'shinn2023reflexion'), false);
   assert.equal(afterDel.matrix.selected_ids.includes('shinn2023reflexion'), false);
+
+  // 10. V2 Crossref HTTP v2 action & Agent Tool + settings integration
+  const crAct = await h.action('research.search_crossref', { query: 'ReAct reasoning acting' });
+  assert.equal(crAct.status, 'ok');
+  assert.equal(crAct.citation_style, 'IEEE');
+  assert.equal(crAct.total_results, 42);
+  assert.equal(crAct.items.length, 1);
+  assert.equal(crAct.items[0].doi, '10.48550/arXiv.2210.03629');
+  assert.ok(crAct.items[0].citation.includes('doi: 10.48550/arXiv.2210.03629'));
+  assert.equal(crossrefCalls[0].query.rows, '3');
+
+  const crTool = await h.tool('research.search_literature', { query: 'LLM agent', rows: 2 });
+  assert.equal(crTool.success, true);
+  assert.equal(crTool.status, 'ok');
+  assert.equal(crTool.items.length, 1);
+  assert.equal(crossrefCalls[1].query.rows, '2');
 }

@@ -4,10 +4,10 @@ const COL_GOALS = 'goals';
 const KEY_LIST = 'list';
 const DOC_FORMAT = 'velai-finance-wealth-os';
 
-const MAX_RECORD_BYTES = 12 * 1024;
-const MAX_ACCOUNTS = 24;
-const MAX_LEDGER = 80;
-const MAX_GOALS = 16;
+const MAX_RECORD_BYTES = 240 * 1024;
+const MAX_ACCOUNTS = 64;
+const MAX_LEDGER = 500;
+const MAX_GOALS = 48;
 
 const ACC_KINDS = ['asset', 'liability'];
 const ASSET_CLASSES = ['cash', 'equity', 'fund', 'real_estate', 'fixed_income', 'debt', 'other'];
@@ -116,6 +116,16 @@ async function writeDoc(collection, expectedRevision, value) {
     }
     throw err;
   }
+}
+
+async function readPluginSettings() {
+  const raw = await globalThis.nmas.settings.get();
+  const base_currency = typeof raw?.base_currency === 'string' && /^[A-Z]{3,8}$/.test(raw.base_currency.trim().toUpperCase())
+    ? raw.base_currency.trim().toUpperCase()
+    : 'CNY';
+  const pct = Number.isInteger(raw?.target_savings_pct) ? raw.target_savings_pct : 30;
+  const target_savings_pct = Math.max(1, Math.min(95, pct));
+  return { base_currency, target_savings_pct };
 }
 
 function sanitizeAccount(raw) {
@@ -585,6 +595,7 @@ export default async function (request) {
   if (kind === 'action') {
     if (contribution === 'finance.snapshot') {
       const state = await readAll();
+      const settings = await readPluginSettings();
       const analytics = computeAnalytics(state, input.month);
       return {
         revision: state.revision,
@@ -598,6 +609,7 @@ export default async function (request) {
         top_expenses: analytics.top_expenses,
         trend: analytics.trend,
         cfo_memo: state.cfo_memo,
+        settings,
       };
     }
 
@@ -836,7 +848,7 @@ export default async function (request) {
         return { error: 'not_found' };
       }
       const text = JSON.stringify(payload);
-      if (jsonBytes(text) > 12000) return { error: 'payload_too_large' };
+      if (jsonBytes(text) > MAX_RECORD_BYTES) return { error: 'payload_too_large' };
       return { filename, text };
     }
 
@@ -877,6 +889,63 @@ export default async function (request) {
         if (r.status !== 'saved') return { imported: false, reason: r.status };
       }
       return { imported: true };
+    }
+
+    if (contribution === 'finance.fetch_fx_rates') {
+      const settings = await readPluginSettings();
+      const rawBase = typeof input.base === 'string' && input.base.trim() ? input.base.trim().toUpperCase() : settings.base_currency;
+      if (!/^[A-Z]{3,8}$/.test(rawBase)) {
+        return { status: 'invalid_input', base: settings.base_currency, date: '', rates: [], target_savings_pct: settings.target_savings_pct, error: '无效的基础币种代码' };
+      }
+      const defaults = ['USD', 'EUR', 'HKD', 'JPY', 'GBP'].filter(c => c !== rawBase);
+      const rawSymbols = Array.isArray(input.symbols) && input.symbols.length
+        ? input.symbols.map(s => String(s || '').trim().toUpperCase()).filter(s => /^[A-Z]{3,8}$/.test(s) && s !== rawBase)
+        : defaults;
+      const symbolsList = [...new Set(rawSymbols)].slice(0, 12);
+      const query = { base: rawBase };
+      if (symbolsList.length) query.symbols = symbolsList.join(',');
+      try {
+        const res = await globalThis.nmas.http.request({
+          rule: 0,
+          method: 'GET',
+          path: '/v1/latest',
+          query,
+          headers: { accept: 'application/json' },
+          responseType: 'json',
+        });
+        if (res.status && res.status >= 400) {
+          return {
+            status: 'http_error',
+            base: rawBase,
+            date: '',
+            rates: [],
+            target_savings_pct: settings.target_savings_pct,
+            error: `Frankfurter HTTP ${res.status}`,
+          };
+        }
+        const data = res.json ?? {};
+        const ratesObj = data.rates && typeof data.rates === 'object' ? data.rates : {};
+        const rates = Object.entries(ratesObj)
+          .filter(([k, v]) => typeof k === 'string' && typeof v === 'number' && Number.isFinite(v) && v >= 0)
+          .map(([currency, rate]) => ({ currency: currency.toUpperCase().slice(0, 8), rate }))
+          .sort((a, b) => a.currency.localeCompare(b.currency));
+        return {
+          status: 'ok',
+          base: typeof data.base === 'string' ? data.base.toUpperCase().slice(0, 8) : rawBase,
+          date: typeof data.date === 'string' ? data.date.slice(0, 16) : todayStr(),
+          rates,
+          target_savings_pct: settings.target_savings_pct,
+        };
+      } catch (err) {
+        return {
+          status: 'http_error',
+          base: rawBase,
+          date: '',
+          rates: [],
+          target_savings_pct: settings.target_savings_pct,
+          error: String(err?.message || 'network_error').slice(0, 160),
+        };
+      }
     }
   }
 

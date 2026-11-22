@@ -1,16 +1,20 @@
 {
-  "manifest_version": 1,
+  "manifest_version": 2,
   "plugin_id": "research-lab",
   "name": "AI 学术科研与文献综述工作台",
-  "version": "1.0.0",
-  "host_api": 1,
+  "version": "2.0.0",
+  "host_api": 2,
   "backend": "backend/index.js",
   "page": "ui/index.html",
   "ui": {
     "icon": "text",
     "surfaces": ["workspace", "chat", "assistant"]
   },
-  "permissions": ["data.read", "data.write", "tasks.start", "tasks.read", "tasks.cancel"],
+  "permissions": ["data.read", "data.write", "http.request"],
+  "settings": [
+    { "key": "citation_style", "type": "string", "secret": false, "required": false, "default": "APA" },
+    { "key": "default_rows", "type": "integer", "secret": false, "required": false, "default": 5 }
+  ],
   "actions": [
     {
       "id": "lab.load",
@@ -25,9 +29,18 @@
       "output_schema": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["revision", "kpi", "papers", "matrix", "notes"],
+        "required": ["revision", "kpi", "papers", "matrix", "notes", "settings"],
         "properties": {
           "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "settings": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["citation_style", "default_rows"],
+            "properties": {
+              "citation_style": { "type": "string", "maxLength": 32 },
+              "default_rows": { "type": "integer", "minimum": 1, "maximum": 20 }
+            }
+          },
           "kpi": {
             "type": "object",
             "additionalProperties": false,
@@ -324,48 +337,45 @@
       }
     },
     {
-      "id": "session.turn.request",
-      "title": "委托当前会话生成文献综述或研究空白",
-      "permissions": ["tasks.start"],
+      "id": "research.search_crossref",
+      "title": "通过 Crossref API 联网检索学术文献",
+      "permissions": ["http.request"],
       "input_schema": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["prompt", "work_id"],
+        "required": ["query"],
         "properties": {
-          "prompt": { "type": "string", "minLength": 1, "maxLength": 2048 },
-          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 }
+          "query": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "rows": { "type": "integer", "minimum": 1, "maximum": 20 }
         }
       },
       "output_schema": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["task_id", "state"],
+        "required": ["status", "query", "citation_style", "total_results", "items"],
         "properties": {
-          "task_id": { "type": "string", "minLength": 36, "maxLength": 36 },
-          "state": { "type": "string", "enum": ["dispatching"] }
-        }
-      }
-    },
-    {
-      "id": "session.turn.result",
-      "title": "核对当前会话文献综述生成结果",
-      "permissions": ["tasks.read"],
-      "input_schema": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["work_id"],
-        "properties": {
-          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 }
-        }
-      },
-      "output_schema": {
-        "type": "object",
-        "additionalProperties": true,
-        "required": ["work_id", "state", "truncated"],
-        "properties": {
-          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 },
-          "state": { "type": "string", "enum": ["dispatching", "running", "waiting", "completed", "cancelled", "failed", "unknown", "unavailable"] },
-          "truncated": { "type": "boolean" }
+          "status": { "type": "string", "enum": ["ok", "http_error", "invalid_input"] },
+          "query": { "type": "string", "maxLength": 200 },
+          "citation_style": { "type": "string", "maxLength": 32 },
+          "total_results": { "type": "integer", "minimum": 0 },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["doi", "title", "authors", "year", "venue", "url", "citation"],
+              "properties": {
+                "doi": { "type": "string", "maxLength": 120 },
+                "title": { "type": "string", "maxLength": 240 },
+                "authors": { "type": "string", "maxLength": 160 },
+                "year": { "type": "integer", "minimum": 1900, "maximum": 2100 },
+                "venue": { "type": "string", "maxLength": 96 },
+                "url": { "type": "string", "maxLength": 240 },
+                "citation": { "type": "string", "maxLength": 400 }
+              }
+            }
+          },
+          "error": { "type": "string", "maxLength": 160 }
         }
       }
     },
@@ -417,7 +427,7 @@
         "required": [],
         "properties": {
           "filename": { "type": "string", "maxLength": 80 },
-          "text": { "type": "string", "maxLength": 12288 },
+          "text": { "type": "string", "maxLength": 245760 },
           "error": { "type": "string", "maxLength": 64 }
         }
       }
@@ -431,7 +441,7 @@
         "additionalProperties": false,
         "required": ["text"],
         "properties": {
-          "text": { "type": "string", "minLength": 2, "maxLength": 12288 }
+          "text": { "type": "string", "minLength": 2, "maxLength": 245760 }
         }
       },
       "output_schema": {
@@ -588,6 +598,51 @@
           "id": { "type": "string", "maxLength": 40 }
         }
       }
+    },
+    {
+      "id": "research.search_literature",
+      "title": "联网检索 Crossref 学术论文文献",
+      "description": "通过 Crossref 开放学术接口检索外部论文元数据（DOI、标题、作者、年份、期刊会议及按插件设置格式化的引用串）。",
+      "permissions": ["http.request"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["query"],
+        "properties": {
+          "query": { "type": "string", "minLength": 1, "maxLength": 200, "description": "学术检索关键词或论文标题" },
+          "rows": { "type": "integer", "minimum": 1, "maximum": 15, "description": "返回条数，默认读取插件 default_rows 设置" }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "status", "query", "citation_style", "total_results", "items"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "status": { "type": "string", "enum": ["ok", "http_error", "invalid_input"] },
+          "query": { "type": "string", "maxLength": 200 },
+          "citation_style": { "type": "string", "maxLength": 32 },
+          "total_results": { "type": "integer", "minimum": 0 },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["doi", "title", "authors", "year", "venue", "url", "citation"],
+              "properties": {
+                "doi": { "type": "string", "maxLength": 120 },
+                "title": { "type": "string", "maxLength": 240 },
+                "authors": { "type": "string", "maxLength": 160 },
+                "year": { "type": "integer", "minimum": 1900, "maximum": 2100 },
+                "venue": { "type": "string", "maxLength": 96 },
+                "url": { "type": "string", "maxLength": 240 },
+                "citation": { "type": "string", "maxLength": 400 }
+              }
+            }
+          },
+          "error": { "type": "string", "maxLength": 160 }
+        }
+      }
     }
   ],
   "data": [
@@ -595,7 +650,17 @@
     { "collection": "matrix", "scope": "account", "schema_version": 1 },
     { "collection": "notes", "scope": "account", "schema_version": 1 }
   ],
-  "http": [],
+  "http": [
+    {
+      "host": "api.crossref.org",
+      "port": 443,
+      "path_prefix": "/works",
+      "methods": ["GET"],
+      "query_keys": ["query", "rows"],
+      "headers": ["accept"],
+      "redirects": 1
+    }
+  ],
   "tasks": [],
   "files": []
 }

@@ -5,9 +5,10 @@ const KEY_CATALOG = 'catalog';
 const KEY_GRID = 'grid';
 const KEY_NOTES_IDX = 'index';
 
-const MAX_BYTES = 12 * 1024;
-const MAX_PAPERS = 28;
-const MAX_NOTES = 24;
+const MAX_RECORD_BYTES = 240 * 1024;
+const MAX_BYTES = MAX_RECORD_BYTES;
+const MAX_PAPERS = 80;
+const MAX_NOTES = 64;
 const STATUSES = ['unread', 'reading', 'annotated', 'cited'];
 const MODES = ['related_work', 'research_gaps', 'experiment_plan', 'peer_review', 'custom'];
 const LIB_FORMAT = 'velai.research-lab.library';
@@ -118,6 +119,115 @@ async function safeWrite(collection, key, expectedRevision, value) {
       return { ok: false, status: 'limit', revision: expectedRevision };
     }
     throw err;
+  }
+}
+
+async function safeDelete(collection, key, expectedRevision) {
+  try {
+    const receipt = await globalThis.nmas.data.delete({
+      collection,
+      key,
+      expected_revision: expectedRevision,
+    });
+    return { ok: true, status: 'deleted', revision: receipt.revision };
+  } catch (err) {
+    if (err?.code === 'conflict' && err.outcome_unknown === false) {
+      return { ok: false, status: 'conflict', revision: expectedRevision };
+    }
+    throw err;
+  }
+}
+
+async function readPluginSettings() {
+  const raw = await globalThis.nmas.settings.get();
+  const citation_style = typeof raw?.citation_style === 'string' && raw.citation_style.trim()
+    ? raw.citation_style.trim().slice(0, 32)
+    : 'APA';
+  const rowsNum = Number.isInteger(raw?.default_rows) ? raw.default_rows : 5;
+  const default_rows = Math.max(1, Math.min(20, rowsNum));
+  return { citation_style, default_rows };
+}
+
+function formatCitation(style, { authors, year, title, venue, doi }) {
+  const upper = String(style || 'APA').toUpperCase();
+  if (upper === 'IEEE') {
+    return `${authors || 'Unknown'}, "${title}," ${venue || 'Crossref'}, ${year}.${doi ? ` doi: ${doi}.` : ''}`.slice(0, 400);
+  }
+  if (upper === 'MLA') {
+    return `${authors || 'Unknown'}. "${title}." ${venue || 'Crossref'}, ${year}.`.slice(0, 400);
+  }
+  return `${authors || 'Unknown'} (${year}). ${title}. ${venue || 'Crossref'}.${doi ? ` https://doi.org/${doi}` : ''}`.slice(0, 400);
+}
+
+function parseCrossrefItem(raw, citationStyle) {
+  const doi = typeof raw?.DOI === 'string' ? raw.DOI.trim().slice(0, 120) : '';
+  const titleArr = Array.isArray(raw?.title) ? raw.title : typeof raw?.title === 'string' ? [raw.title] : [];
+  const title = (titleArr[0] || 'Untitled Work').replace(/\s+/g, ' ').trim().slice(0, 240);
+  const authorList = Array.isArray(raw?.author)
+    ? raw.author
+        .slice(0, 4)
+        .map(a => [a?.given, a?.family].filter(Boolean).join(' ').trim())
+        .filter(Boolean)
+    : [];
+  const authors = (authorList.length
+    ? authorList.join(', ') + (Array.isArray(raw?.author) && raw.author.length > 4 ? ' et al.' : '')
+    : 'Unknown').slice(0, 160);
+  const parts = raw?.published?.['date-parts']?.[0] || raw?.['published-print']?.['date-parts']?.[0] || raw?.issued?.['date-parts']?.[0] || [];
+  const rawYear = Number(parts[0] ?? raw?.year ?? 2024);
+  const year = Number.isInteger(rawYear) && rawYear >= 1900 && rawYear <= 2100 ? rawYear : 2024;
+  const venueArr = Array.isArray(raw?.['container-title']) ? raw['container-title'] : [];
+  const venue = (venueArr[0] || raw?.publisher || 'Crossref').replace(/\s+/g, ' ').trim().slice(0, 96);
+  const url = (typeof raw?.URL === 'string' && raw.URL.trim() ? raw.URL.trim() : doi ? `https://doi.org/${doi}` : '').slice(0, 240);
+  const citation = formatCitation(citationStyle, { authors, year, title, venue, doi });
+  return { doi, title, authors, year, venue, url, citation };
+}
+
+async function searchCrossref(queryInput, rowsInput) {
+  const cleanQuery = String(queryInput || '').trim().slice(0, 200);
+  const settings = await readPluginSettings();
+  if (!cleanQuery) {
+    return { status: 'invalid_input', query: '', citation_style: settings.citation_style, total_results: 0, items: [], error: '检索关键词不能为空' };
+  }
+  const rows = Number.isInteger(rowsInput) ? Math.max(1, Math.min(20, rowsInput)) : settings.default_rows;
+  try {
+    const res = await globalThis.nmas.http.request({
+      rule: 0,
+      method: 'GET',
+      path: '/works',
+      query: { query: cleanQuery, rows: String(rows) },
+      headers: { accept: 'application/json' },
+      responseType: 'json',
+    });
+    if (res.status && res.status >= 400) {
+      return {
+        status: 'http_error',
+        query: cleanQuery,
+        citation_style: settings.citation_style,
+        total_results: 0,
+        items: [],
+        error: `Crossref HTTP ${res.status}`,
+      };
+    }
+    const msg = res.json?.message ?? res.json ?? {};
+    const rawItems = Array.isArray(msg.items) ? msg.items : [];
+    const total = Number.isInteger(msg['total-results']) && msg['total-results'] >= 0 ? msg['total-results'] : rawItems.length;
+    const items = rawItems.slice(0, rows).map(it => parseCrossrefItem(it, settings.citation_style));
+    return {
+      status: 'ok',
+      query: cleanQuery,
+      citation_style: settings.citation_style,
+      total_results: total,
+      items,
+    };
+  } catch (err) {
+    return {
+      status: 'http_error',
+      query: cleanQuery,
+      citation_style: settings.citation_style,
+      total_results: 0,
+      items: [],
+      error: String(err?.message || 'network_error').slice(0, 160),
+    };
   }
 }
 
@@ -337,12 +447,14 @@ export default async function (request) {
       const pData = await readPapers();
       const mData = await readMatrix();
       const nData = await readNotesIndex();
+      const settings = await readPluginSettings();
       return {
         revision: nData.revision,
         kpi: computeKpi(pData.items, nData.items),
         papers: pData.items,
         matrix: mData.matrix,
         notes: nData.items,
+        settings,
       };
     }
 
@@ -483,7 +595,7 @@ export default async function (request) {
       const w1 = await safeWrite(COL_NOTES, KEY_NOTES_IDX, expected_revision, { schema_version: 1, items: nextIdx });
       if (!w1.ok) return { status: 'conflict', revision: w1.revision };
       let rev = w1.revision;
-      const w2 = await safeWrite(COL_NOTES, `doc:${id}`, rev, null);
+      const w2 = await safeDelete(COL_NOTES, `doc:${id}`, rev);
       if (w2.ok) rev = w2.revision;
       return { status: 'deleted', revision: rev };
     }
@@ -517,8 +629,8 @@ export default async function (request) {
       return { status: 'seeded', revision: rev, seeded_papers: demo.papers.length, seeded_notes: demo.noteDocs.length };
     }
 
-    if (contribution === 'session.turn.request' || contribution === 'session.turn.result') {
-      throw new Error(`${contribution} 需由 Velai Desktop 宿主页面桥接执行`);
+    if (contribution === 'research.search_crossref') {
+      return searchCrossref(input.query, input.rows);
     }
 
     if (contribution === 'document.list') {
@@ -707,6 +819,14 @@ export default async function (request) {
       const next = exists ? pData.items.map(p => (p.id === id ? record : p)) : [...pData.items, record];
       const w = await safeWrite(COL_PAPERS, KEY_CATALOG, pData.revision, { schema_version: 1, items: next });
       return w.ok ? { success: true, status: 'saved', id } : { success: false, status: w.status };
+    }
+
+    if (contribution === 'research.search_literature') {
+      const res = await searchCrossref(input.query, input.rows);
+      return {
+        success: res.status === 'ok',
+        ...res,
+      };
     }
   }
 

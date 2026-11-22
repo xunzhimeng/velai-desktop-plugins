@@ -100,6 +100,16 @@ th{font-size:11.5px;font-weight:650;color:var(--muted);background:var(--surface-
 <div class="kpi-card indigo"><div class="kpi-label"><span>本月储蓄率</span><span class="tag warn num" id="kpi-alert-cnt">0 预警</span></div><div class="kpi-val num" id="kpi-savings">0%</div><div class="kpi-sub" id="kpi-flow-sub">收 ¥0 · 支 ¥0</div></div>
 </section>
 <section id="view-dashboard" class="view">
+<div class="card" style="margin-bottom:12px">
+<div class="card-head" style="margin-bottom:8px">
+<h2 class="card-title">多币种实时参考汇率 (Frankfurter HTTP v2)</h2>
+<div class="row">
+<span class="tag" id="fx-meta">基准币种 CNY · 目标储蓄率 30%</span>
+<button type="button" class="sm sky" id="btn-fx-fetch">刷新实时汇率</button>
+</div>
+</div>
+<div id="fx-rates-row" class="row" style="gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted)">点击「刷新实时汇率」联网查询外币参考汇率。</div>
+</div>
 <div class="grid-2" style="margin-bottom:12px">
 <div class="card"><div class="card-head"><h2 class="card-title">资产配置环形结构</h2><span class="tag">按资产大类实时占比</span></div><div class="donut-layout"><div class="svg-wrap" id="svg-donut"></div><div class="legend" id="donut-legend"></div></div></div>
 <div class="card"><div class="card-head"><h2 class="card-title">净资产与月度现金流双轨趋势</h2><div class="row" style="font-size:11.5px;color:var(--muted)"><span><strong style="color:var(--sky)">━●━</strong> 净资产</span><span><strong style="color:var(--accent)">■</strong> 收入</span><span><strong style="color:var(--danger)">■</strong> 支出</span></div></div><div class="svg-wrap" id="svg-trend"></div></div>
@@ -175,7 +185,7 @@ th{font-size:11.5px;font-weight:650;color:var(--muted);background:var(--surface-
 </section>
 <section id="view-cfo" class="view" hidden>
 <div class="card" style="display:flex;flex-direction:column;gap:14px">
-<div class="card-head" style="margin-bottom:0"><h2 class="card-title">AI 私人 CFO 财务诊断工作台</h2><span class="tag ok">联动 Velai 当前会话 · session.turn.*</span></div>
+<div class="card-head" style="margin-bottom:0"><h2 class="card-title">私人 CFO 财务诊断模板与提示词台</h2><span class="tag ok">本地诊断模板 · 可协同工作台聊天 / AI 伴生插件</span></div>
 <div class="sim-box" id="cfo-context" style="font-size:12.5px;line-height:1.65;color:var(--fg-2);white-space:pre-line"></div>
 <div>
 <div style="font-size:12.5px;font-weight:700;margin-bottom:7px;color:var(--fg-2)">选择 CFO 专项财务诊断维度</div>
@@ -188,8 +198,8 @@ th{font-size:11.5px;font-weight:650;color:var(--muted);background:var(--surface-
 </div>
 <label class="field">补充个人目标或约束（可选）<input id="cfo-extra" maxlength="200" placeholder="例如：3 年内有子女教育大额支出，偏好中等偏稳健风险"></label>
 <div class="row">
-<button type="button" class="primary" id="btn-cfo-send">发送给 Velai 当前会话进行 CFO 诊断</button>
-<button type="button" class="ghost" id="btn-cfo-check" hidden>核对 CFO 诊断报告</button>
+<button type="button" class="primary" id="btn-cfo-draft">生成本地结构化 CFO 诊断报告</button>
+<button type="button" class="ghost" id="btn-cfo-prompt">复制 AI 诊断提示词</button>
 <span id="cfo-state" style="font-size:12.5px;color:var(--muted)"></span>
 </div>
 <div id="cfo-result-box" hidden style="display:flex;flex-direction:column;gap:10px;padding-top:10px;border-top:1px dashed var(--border)">
@@ -310,6 +320,9 @@ $('kpi-flow-sub').textContent = `收 ${fmtFull(s.monthly_income)} · 支 ${fmtFu
 $('badge-acc').textContent = String(state.accounts.length);
 $('badge-budget').textContent = String(alerts || state.budgets.length);
 $('badge-budget').classList.toggle('alert', s.over_budget_count > 0);
+if (state.settings && $('fx-meta')) {
+$('fx-meta').textContent = `基准币种 ${state.settings.base_currency} · 目标储蓄率 ${state.settings.target_savings_pct}%`;
+}
 }
 function renderDonutSvg() {
 const alloc = state.allocation || [], total = state.summary?.total_assets || 0;
@@ -572,7 +585,18 @@ document.querySelectorAll('#cfo-scenarios .scenario-card').forEach(btn => btn.ad
 activeScenario = btn.dataset.sc;
 document.querySelectorAll('#cfo-scenarios .scenario-card').forEach(c => c.classList.toggle('active', c === btn));
 }));
-on('btn-cfo-send', 'click', async () => {
+on('btn-fx-fetch', 'click', async () => {
+const box = $('fx-rates-row');
+box.textContent = '正在从 Frankfurter API 获取最新参考汇率…';
+try {
+const r = await plugin.action('finance.fetch_fx_rates', {});
+if (r.status !== 'ok') { box.textContent = `汇率查询失败：${r.error || r.status}`; return; }
+if (!r.rates.length) { box.textContent = '暂无返回汇率数据。'; return; }
+box.innerHTML = `<span class="tag ok">1 ${esc(r.base)} (${esc(r.date)})</span>` + r.rates.map(it => `<span class="tag num">${esc(it.currency)} ${it.rate}</span>`).join('');
+setStatus(`已更新 ${r.base} 参考汇率 (${r.date})`);
+} catch (e) { box.textContent = `查询异常：${e?.message || '未知错误'}`; }
+});
+function buildCfoPromptText() {
 const scText = {
 rebalance: '请作为专业私人 CFO 诊断我的资产配置与负债率，指出集中度与流动性风险，给出可执行的季度再平衡调仓方案。',
 cashflow: '请基于我本月收支、储蓄率与预算超支/预警项，拆解消费漏洞并给出 3 条可落地的节流优化建议。',
@@ -580,27 +604,34 @@ debt: '请结合我的负债率、房贷利率与组合结构，评估应优先�
 tax_fire: '请从年度个人税务合规筹划与 FIRE 财务自由加速两维度，给出 12 个月行动路线图。',
 }[activeScenario];
 const extra = $('cfo-extra').value.trim();
-let prompt = `${scText}\n${extra ? `补充背景：${extra}\n` : ''}\n--- 当前个人财务实时快照 ---\n${buildCfoCtx()}`;
-if (Array.from(prompt).length > 2000) prompt = Array.from(prompt).slice(0, 2000).join('');
-pendingWorkId = uuid(); latestCfoText = '';
-$('btn-cfo-check').hidden = false; $('cfo-result-box').hidden = true;
-$('cfo-state').textContent = '正在向 Velai 当前会话派发 CFO 财务诊断…';
-try {
-await plugin.action('session.turn.request', { prompt, work_id: pendingWorkId });
-$('cfo-state').textContent = '已派发给当前会话，待 AI 回复完成后点击「核对 CFO 诊断报告」。';
-} catch (e) { $('cfo-state').textContent = e?.message === 'cancelled' ? '已取消派发，请先选择一个会话。' : `派发未确认（${e?.message || 'unknown'}），请到原会话查看。`; }
+return `${scText}\n${extra ? `补充背景：${extra}\n` : ''}\n--- 当前个人财务实时快照 ---\n${buildCfoCtx()}`;
+}
+on('btn-cfo-draft', 'click', () => {
+const s = state.summary || { net_worth: 0, debt_ratio: 0, savings_rate: 0, monthly_surplus: 0 };
+const targetPct = state.settings?.target_savings_pct ?? 30;
+const extra = $('cfo-extra').value.trim();
+const titleMap = { rebalance: '资产再平衡诊断', cashflow: '现金流与预算优化', debt: '负债与提前还贷决策', tax_fire: '税务与 FIRE 加速路线' };
+latestCfoText = [
+`# ${titleMap[activeScenario] || '私人 CFO 诊断'}（本地结构化报告）`,
+extra ? `> 个人约束：${extra}` : '',
+'',
+'## 核心财务快照',
+buildCfoCtx(),
+'',
+'## 关键规则体检',
+`- 储蓄率评估：当前 ${s.savings_rate}% vs 目标 ${targetPct}%（${s.savings_rate >= targetPct ? '已达标' : '低于目标，建议优化高频非刚性支出'}）`,
+`- 负债水平：负债率 ${s.debt_ratio}%（${s.debt_ratio > 45 ? '偏高，优先保留 6 个月应急金后评估降杠杆' : '处于可控区间'}）`,
+'- 下一步：可保存为 CFO 备忘，或点击「复制 AI 诊断提示词」/「一键插入会话输入框」交由 Velai 工作台聊天或独立 AI 伴生插件深度分析。',
+].filter(Boolean).join('\n');
+$('cfo-output').textContent = latestCfoText;
+$('cfo-result-box').hidden = false;
+$('btn-cfo-insert').hidden = !canInsert;
+$('cfo-state').textContent = '已生成本地结构化 CFO 报告，可核对保存或发送到工作台聊天深度推演。';
 });
-on('btn-cfo-check', 'click', async () => {
-if (!pendingWorkId) return;
-$('cfo-state').textContent = '正在核对诊断报告…';
-try {
-const r = await plugin.action('session.turn.result', { work_id: pendingWorkId });
-if (r.state === 'completed' && !r.truncated && typeof r.text === 'string' && r.text.trim()) {
-latestCfoText = r.text.trim(); $('cfo-output').textContent = latestCfoText;
-$('cfo-result-box').hidden = false; $('btn-cfo-insert').hidden = !canInsert;
-$('cfo-state').textContent = '已获取完整 CFO 诊断报告，可核对保存或插入输入框。';
-} else $('cfo-state').textContent = `当前状态：${r.state}${r.truncated ? '（内容被截断，请回原会话查看）' : ''}`;
-} catch (e) { $('cfo-state').textContent = `核对失败：${e?.message || '请回原会话查看'}`; }
+on('btn-cfo-prompt', 'click', async () => {
+const prompt = buildCfoPromptText();
+try { await navigator.clipboard.writeText(prompt); $('cfo-state').textContent = '已复制 CFO 诊断提示词，可粘贴至工作台聊天或 AI 伴生插件。'; }
+catch { $('cfo-state').textContent = '剪贴板不可用，请点击「生成本地结构化 CFO 诊断报告」后使用插入按钮。'; }
 });
 on('btn-cfo-insert', 'click', async () => {
 if (!latestCfoText) return;

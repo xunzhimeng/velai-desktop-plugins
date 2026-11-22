@@ -1,29 +1,117 @@
 {
-  "manifest_version": 1,
+  "manifest_version": 2,
   "plugin_id": "stock-ai-terminal",
   "name": "股票 AI 投研与量化终端",
-  "version": "1.0.0",
-  "host_api": 1,
+  "version": "2.0.0",
+  "host_api": 2,
   "backend": "backend/index.js",
   "page": "ui/index.html",
   "ui": {
     "icon": "table",
     "surfaces": ["workspace", "chat", "assistant"]
   },
-  "permissions": ["data.read", "data.write", "tasks.start", "tasks.read", "tasks.cancel"],
+  "permissions": ["data.read", "data.write", "http.request"],
+  "settings": [
+    {
+      "key": "default_market",
+      "type": "string",
+      "secret": false,
+      "required": false,
+      "default": "US"
+    },
+    {
+      "key": "risk_profile",
+      "type": "string",
+      "secret": false,
+      "required": false,
+      "default": "balanced"
+    },
+    {
+      "key": "enable_live_quotes",
+      "type": "boolean",
+      "secret": false,
+      "required": false,
+      "default": true
+    },
+    {
+      "key": "market_api_key",
+      "type": "string",
+      "secret": true,
+      "required": false
+    }
+  ],
+  "http": [
+    {
+      "host": "query1.finance.yahoo.com",
+      "port": 443,
+      "path_prefix": "/v8/finance/chart",
+      "methods": ["GET"],
+      "query_keys": ["interval", "range"],
+      "headers": ["accept"],
+      "redirects": 2
+    },
+    {
+      "host": "finnhub.io",
+      "port": 443,
+      "path": "/api/v1/quote",
+      "methods": ["GET"],
+      "credential": {
+        "slot": "market_api_key",
+        "header": "x-api-key",
+        "prefix": "",
+        "projection": [
+          { "path": ["c"], "type": "number" },
+          { "path": ["d"], "type": "number" },
+          { "path": ["dp"], "type": "number" },
+          { "path": ["h"], "type": "number" },
+          { "path": ["l"], "type": "number" },
+          { "path": ["o"], "type": "number" },
+          { "path": ["pc"], "type": "number" }
+        ]
+      }
+    },
+    {
+      "host": "api.frankfurter.app",
+      "port": 443,
+      "path_prefix": "/v1",
+      "methods": ["GET"],
+      "query_keys": ["base", "symbols"],
+      "headers": ["accept"],
+      "redirects": 1
+    }
+  ],
   "actions": [
     {
       "id": "stock.bootstrap",
-      "title": "读取投研终端总览",
+      "title": "读取投研终端总览与公开配置",
       "permissions": ["data.read"],
-      "input_schema": { "type": "object", "additionalProperties": false, "required": [], "properties": {} },
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      },
       "output_schema": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["revision", "cash", "watchlist", "positions", "notes", "summary"],
+        "required": ["revision", "cash", "watchlist", "positions", "notes", "summary", "settings", "snapshots"],
         "properties": {
           "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
           "cash": { "type": "number", "minimum": 0, "maximum": 100000000000 },
+          "settings": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["default_market", "risk_profile", "enable_live_quotes"],
+            "properties": {
+              "default_market": { "type": "string", "maxLength": 32 },
+              "risk_profile": { "type": "string", "maxLength": 32 },
+              "enable_live_quotes": { "type": "boolean" }
+            }
+          },
+          "snapshots": {
+            "type": "array",
+            "items": { "type": "string", "maxLength": 96 }
+          },
           "summary": {
             "type": "object",
             "additionalProperties": false,
@@ -89,6 +177,86 @@
               }
             }
           }
+        }
+      }
+    },
+    {
+      "id": "stock.fetch_live_quote",
+      "title": "拉取实时行情（Yahoo 公开 / Finnhub 密钥槽）",
+      "permissions": ["http.request", "data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["symbol"],
+        "properties": {
+          "symbol": { "type": "string", "minLength": 1, "maxLength": 16 },
+          "source": { "type": "string", "enum": ["yahoo", "finnhub_secret"] },
+          "range": { "type": "string", "enum": ["5d", "1mo", "3mo"] },
+          "persist": { "type": "boolean" }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ok", "status", "source", "symbol"],
+        "properties": {
+          "ok": { "type": "boolean" },
+          "status": { "type": "string", "maxLength": 48 },
+          "source": { "type": "string", "enum": ["yahoo", "finnhub_secret"] },
+          "symbol": { "type": "string", "maxLength": 16 },
+          "name": { "type": "string", "maxLength": 64 },
+          "currency": { "type": "string", "maxLength": 12 },
+          "price": { "type": "number" },
+          "change": { "type": "number" },
+          "change_pct": { "type": "number" },
+          "open": { "type": "number" },
+          "high": { "type": "number" },
+          "low": { "type": "number" },
+          "prev_close": { "type": "number" },
+          "bars_count": { "type": "integer", "minimum": 0, "maximum": 500 },
+          "persisted": { "type": "boolean" },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "http_status": { "type": "integer", "minimum": 0, "maximum": 999 },
+          "error": { "type": "string", "maxLength": 320 }
+        }
+      }
+    },
+    {
+      "id": "stock.fetch_fx_rate",
+      "title": "获取实时跨市场汇率",
+      "permissions": ["http.request"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "base": { "type": "string", "minLength": 3, "maxLength": 3 },
+          "symbols": { "type": "string", "minLength": 3, "maxLength": 64 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ok", "status", "base", "rates"],
+        "properties": {
+          "ok": { "type": "boolean" },
+          "status": { "type": "string", "maxLength": 48 },
+          "base": { "type": "string", "maxLength": 8 },
+          "date": { "type": "string", "maxLength": 16 },
+          "rates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["currency", "rate"],
+              "properties": {
+                "currency": { "type": "string", "maxLength": 8 },
+                "rate": { "type": "number" }
+              }
+            }
+          },
+          "http_status": { "type": "integer", "minimum": 0, "maximum": 999 },
+          "error": { "type": "string", "maxLength": 320 }
         }
       }
     },
@@ -295,7 +463,7 @@
     },
     {
       "id": "stock.note.save",
-      "title": "保存 AI 投研笔记",
+      "title": "保存投研笔记",
       "permissions": ["data.read", "data.write"],
       "input_schema": {
         "type": "object",
@@ -322,6 +490,83 @@
       }
     },
     {
+      "id": "stock.snapshot.save",
+      "title": "保存自定义组合快照或独立研报键",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "key"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "key": { "type": "string", "minLength": 5, "maxLength": 64 },
+          "memo": { "type": "string", "maxLength": 400 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["saved", "conflict", "limit", "invalid_key"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "key": { "type": "string", "maxLength": 64 }
+        }
+      }
+    },
+    {
+      "id": "stock.snapshot.list",
+      "title": "列出自定义快照与研报键",
+      "permissions": ["data.read"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "prefix": { "type": "string", "maxLength": 32 },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 50 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["keys", "revision"],
+        "properties": {
+          "keys": {
+            "type": "array",
+            "items": { "type": "string", "maxLength": 96 }
+          },
+          "next_cursor": { "type": ["string", "null"], "maxLength": 128 },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "stock.record.delete",
+      "title": "删除自定义快照或笔记键",
+      "permissions": ["data.read", "data.write"],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_revision", "collection", "key"],
+        "properties": {
+          "expected_revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740990 },
+          "collection": { "type": "string", "enum": ["research", "strategies"] },
+          "key": { "type": "string", "minLength": 2, "maxLength": 64 }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status", "revision"],
+        "properties": {
+          "status": { "type": "string", "enum": ["deleted", "conflict", "invalid_key"] },
+          "revision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "key": { "type": "string", "maxLength": 64 }
+        }
+      }
+    },
+    {
       "id": "stock.seed_demo",
       "title": "加载跨市场演示投研组合",
       "permissions": ["data.read", "data.write"],
@@ -342,50 +587,6 @@
       }
     },
     {
-      "id": "session.turn.request",
-      "title": "派发 AI 深度投研任务",
-      "permissions": ["tasks.start"],
-      "input_schema": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["prompt", "work_id"],
-        "properties": {
-          "prompt": { "type": "string", "minLength": 1, "maxLength": 2048 },
-          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 }
-        }
-      },
-      "output_schema": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["task_id", "state"],
-        "properties": {
-          "task_id": { "type": "string", "minLength": 36, "maxLength": 36 },
-          "state": { "type": "string", "enum": ["dispatching"] }
-        }
-      }
-    },
-    {
-      "id": "session.turn.result",
-      "title": "核对 AI 投研结果",
-      "permissions": ["tasks.read"],
-      "input_schema": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["work_id"],
-        "properties": { "work_id": { "type": "string", "minLength": 36, "maxLength": 36 } }
-      },
-      "output_schema": {
-        "type": "object",
-        "additionalProperties": true,
-        "required": ["work_id", "state", "truncated"],
-        "properties": {
-          "work_id": { "type": "string", "minLength": 36, "maxLength": 36 },
-          "state": { "type": "string", "enum": ["dispatching", "running", "waiting", "completed", "cancelled", "failed", "unknown", "unavailable"] },
-          "truncated": { "type": "boolean" }
-        }
-      }
-    },
-    {
       "id": "document.list",
       "title": "列出可导出的组合报告",
       "permissions": ["data.read"],
@@ -402,7 +603,7 @@
               "additionalProperties": false,
               "required": ["id", "label"],
               "properties": {
-                "id": { "type": "string", "maxLength": 32 },
+                "id": { "type": "string", "maxLength": 64 },
                 "label": { "type": "string", "maxLength": 100 }
               }
             }
@@ -418,15 +619,15 @@
         "type": "object",
         "additionalProperties": false,
         "required": ["id"],
-        "properties": { "id": { "type": "string", "maxLength": 32 } }
+        "properties": { "id": { "type": "string", "maxLength": 64 } }
       },
       "output_schema": {
         "type": "object",
         "additionalProperties": false,
         "required": [],
         "properties": {
-          "filename": { "type": "string", "maxLength": 64 },
-          "text": { "type": "string", "maxLength": 12288 },
+          "filename": { "type": "string", "maxLength": 80 },
+          "text": { "type": "string", "maxLength": 200000 },
           "error": { "type": "string", "maxLength": 64 }
         }
       }
@@ -439,7 +640,7 @@
         "type": "object",
         "additionalProperties": false,
         "required": ["text"],
-        "properties": { "text": { "type": "string", "minLength": 2, "maxLength": 12288 } }
+        "properties": { "text": { "type": "string", "minLength": 2, "maxLength": 200000 } }
       },
       "output_schema": {
         "type": "object",
@@ -454,11 +655,16 @@
   ],
   "tools": [
     {
-      "id": "stock.portfolio",
+      "id": "stock.get_portfolio_summary",
       "title": "读取股票持仓与风控总览",
-      "description": "获取当前投研终端的现金余额、各持仓市值、盈亏比例及单股仓位权重，用于组合风控与调仓分析。",
+      "description": "获取当前投研终端的现金余额、各持仓市值、盈亏比例、止损/目标位、单股仓位权重及公开风险偏好配置。",
       "permissions": ["data.read"],
-      "input_schema": { "type": "object", "additionalProperties": false, "required": [], "properties": {} },
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      },
       "output_schema": {
         "type": "object",
         "additionalProperties": false,
@@ -467,13 +673,19 @@
           "success": { "type": "boolean" },
           "status": { "type": "string", "enum": ["ready", "empty"] },
           "total_assets": { "type": "number" },
+          "market_value": { "type": "number" },
+          "cash": { "type": "number" },
+          "cash_pct": { "type": "number" },
           "unrealized_pnl": { "type": "number" },
+          "pnl_pct": { "type": "number" },
+          "risk_profile": { "type": "string", "maxLength": 32 },
+          "default_market": { "type": "string", "maxLength": 32 },
           "positions": {
             "type": "array",
             "items": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["symbol", "name", "shares", "price", "avg_cost", "pnl_pct", "weight_pct"],
+              "required": ["symbol", "name", "shares", "price", "avg_cost", "pnl_pct", "weight_pct", "stop_loss", "target_price"],
               "properties": {
                 "symbol": { "type": "string", "maxLength": 16 },
                 "name": { "type": "string", "maxLength": 48 },
@@ -481,7 +693,9 @@
                 "price": { "type": "number" },
                 "avg_cost": { "type": "number" },
                 "pnl_pct": { "type": "number" },
-                "weight_pct": { "type": "number" }
+                "weight_pct": { "type": "number" },
+                "stop_loss": { "type": "number" },
+                "target_price": { "type": "number" }
               }
             }
           }
@@ -489,36 +703,52 @@
       }
     },
     {
-      "id": "stock.analyze",
-      "title": "分析单只股票技术与基本面因子",
-      "description": "按股票代码返回财务指标(PE/PB/ROE/增速)、MA5/MA10/MA20 均线、RSI14、波动率信号以及最新投研笔记。",
-      "permissions": ["data.read"],
+      "id": "stock.fetch_quote_live",
+      "title": "联网查询实时股票行情与技术信号",
+      "description": "通过 V2 受管 HTTPS（Yahoo 公开行情或 Finnhub 密钥槽标量投影）获取实时价格与 K 线指标，并结合本地自选与投研笔记返回综合行情摘要。",
+      "permissions": ["http.request", "data.read"],
       "input_schema": {
         "type": "object",
         "additionalProperties": false,
         "required": ["symbol"],
-        "properties": { "symbol": { "type": "string", "minLength": 1, "maxLength": 16 } }
+        "properties": {
+          "symbol": { "type": "string", "minLength": 1, "maxLength": 16 },
+          "source": { "type": "string", "enum": ["yahoo", "finnhub_secret"] },
+          "range": { "type": "string", "enum": ["5d", "1mo", "3mo"] }
+        }
       },
       "output_schema": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["success", "status"],
+        "required": ["success", "status", "source", "symbol"],
         "properties": {
           "success": { "type": "boolean" },
-          "status": { "type": "string", "enum": ["ready", "not_found"] },
-          "name": { "type": "string", "maxLength": 48 },
+          "status": { "type": "string", "maxLength": 48 },
+          "source": { "type": "string", "enum": ["yahoo", "finnhub_secret"] },
+          "symbol": { "type": "string", "maxLength": 16 },
+          "name": { "type": "string", "maxLength": 64 },
+          "currency": { "type": "string", "maxLength": 12 },
           "price": { "type": "number" },
-          "pe": { "type": "number" },
-          "roe": { "type": "number" },
+          "change": { "type": "number" },
+          "change_pct": { "type": "number" },
+          "open": { "type": "number" },
+          "high": { "type": "number" },
+          "low": { "type": "number" },
+          "prev_close": { "type": "number" },
+          "bars_count": { "type": "integer", "minimum": 0, "maximum": 500 },
           "rsi14": { "type": "number" },
           "signal": { "type": "string", "maxLength": 32 },
-          "latest_thesis": { "type": "string", "maxLength": 800 }
+          "pe": { "type": "number" },
+          "roe": { "type": "number" },
+          "latest_thesis": { "type": "string", "maxLength": 800 },
+          "http_status": { "type": "integer", "minimum": 0, "maximum": 999 },
+          "error": { "type": "string", "maxLength": 320 }
         }
       }
     },
     {
-      "id": "stock.note.add",
-      "title": "记录股票 AI 投研评级与逻辑",
+      "id": "stock.record_research_note",
+      "title": "记录股票投研评级与多空逻辑",
       "description": "向指定标的写入一条结构化投研观点（评级、目标价、核心多头逻辑与关键风险）。",
       "permissions": ["data.read", "data.write"],
       "input_schema": {
@@ -551,7 +781,6 @@
     { "collection": "research", "scope": "account", "schema_version": 1 },
     { "collection": "strategies", "scope": "account", "schema_version": 1 }
   ],
-  "http": [],
   "tasks": [],
   "files": []
 }
