@@ -1,4 +1,5 @@
 const MAX_RECORD_BYTES = 240 * 1024;
+const NOTES_COLLECTION = 'metrics';
 const NOTE_PREFIX = 'note:';
 const WINDOW_KEYS = ['5m', '1h', 'today', '7d', '30d'];
 
@@ -240,13 +241,13 @@ async function listNotesPage({ prefix = NOTE_PREFIX, limit = 20, cursor } = {}) 
   const safePrefix = typeof prefix === 'string' && prefix.startsWith(NOTE_PREFIX)
     ? prefix.slice(0, 64)
     : `${NOTE_PREFIX}${typeof prefix === 'string' ? prefix.slice(0, 48) : ''}`;
-  const req = { collection: 'notes', prefix: safePrefix, limit };
+  const req = { collection: NOTES_COLLECTION, prefix: safePrefix, limit };
   if (typeof cursor === 'string' && cursor.length > 0) req.cursor = cursor;
   const listed = await globalThis.nmas.data.list(req);
   let latestRevision = listed.revision;
   const items = [];
   for (const key of listed.keys || []) {
-    const row = await globalThis.nmas.data.read({ collection: 'notes', key });
+    const row = await globalThis.nmas.data.read({ collection: NOTES_COLLECTION, key });
     if (row.revision > latestRevision) latestRevision = row.revision;
     if (row.value && typeof row.value === 'object') {
       const v = row.value;
@@ -370,7 +371,7 @@ export default async function (request) {
         ? args.id.slice(0, 64)
         : `rev-${Date.now().toString(36)}`;
       const key = `${NOTE_PREFIX}${rawId}`;
-      const existing = await readKey('notes', key, null);
+      const existing = await readKey(NOTES_COLLECTION, key, null);
       if (!title || !body) {
         return { status: 'invalid_input', revision: existing.revision, key, id: rawId };
       }
@@ -386,7 +387,7 @@ export default async function (request) {
         body,
         updated_at: new Date().toISOString(),
       };
-      const w = await writeKey('notes', key, args.expected_revision, record);
+      const w = await writeKey(NOTES_COLLECTION, key, args.expected_revision, record);
       return { status: w.status, revision: w.revision, key, id: rawId };
     }
 
@@ -402,7 +403,7 @@ export default async function (request) {
         const cur = await readKey('goals', 'budget', DEFAULT_BUDGET);
         return { status: 'invalid_input', revision: cur.revision };
       }
-      const existing = await readKey('notes', key, null);
+      const existing = await readKey(NOTES_COLLECTION, key, null);
       if (existing.revision !== args.expected_revision) {
         return { status: 'conflict', revision: existing.revision };
       }
@@ -411,7 +412,7 @@ export default async function (request) {
       }
       try {
         const del = await globalThis.nmas.data.delete({
-          collection: 'notes',
+          collection: NOTES_COLLECTION,
           key,
           expected_revision: args.expected_revision,
         });

@@ -641,8 +641,9 @@
     }
   ],
   "data": [
-    { "collection": "goals", "scope": "account", "schema_version": 1 },
-    { "collection": "notes", "scope": "account", "schema_version": 1 }
+    { "collection": "sessions", "scope": "account", "schema_version": 1 },
+    { "collection": "metrics", "scope": "account", "schema_version": 1 },
+    { "collection": "goals", "scope": "account", "schema_version": 1 }
   ],
   "http": [],
   "tasks": [],
